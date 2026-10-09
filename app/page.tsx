@@ -828,8 +828,7 @@ export default function HomePage() {
           </div>
         </div>
       </header>
-
-      <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-[220px_minmax(0,680px)] xl:grid-cols-[220px_minmax(0,680px)_280px]">
+mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[245px_minmax(0,1fr)_300px] 2xl:gap-8
         <aside
           className={
             (mobileMenuOpen ? "block" : "hidden") +
