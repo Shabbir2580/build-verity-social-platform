@@ -13,6 +13,7 @@ import {
   Clock3,
   Compass,
   FileSearch,
+  Flag,
   Flame,
   Headphones,
   Heart,
@@ -70,6 +71,41 @@ type Community = {
   topic: string;
 };
 
+
+type SupportCategory =
+  | "incorrect_ai_label"
+  | "incorrect_misinformation_label"
+  | "removed_post_appeal"
+  | "harmful_content"
+  | "impersonation_privacy"
+  | "account_recovery"
+  | "login_problem"
+  | "technical_issue"
+  | "general";
+
+type SupportTicket = {
+  id: string;
+  ticket_number: number | string;
+  category: SupportCategory;
+  subject: string;
+  status: string;
+  priority: string;
+  response_due_at: string;
+  created_at: string;
+};
+
+type ReportReason =
+  | "spam"
+  | "harassment"
+  | "misinformation"
+  | "hate"
+  | "violence"
+  | "impersonation"
+  | "privacy"
+  | "copyright"
+  | "incorrect_label"
+  | "other";
+
 type DbComment = {
   id: string;
   post_id: string;
@@ -125,6 +161,7 @@ const NAV_ITEMS = [
   { name: "Explore", icon: Compass },
   { name: "Communities", icon: Users },
   { name: "Questions", icon: CircleHelp },
+  { name: "Saved", icon: Bookmark },
   { name: "Verify", icon: FileSearch },
   { name: "Support", icon: Headphones },
 ] as const;
@@ -248,6 +285,7 @@ function pageTitleFor(page: string) {
   if (page === "Explore") return "Discover something new.";
   if (page === "Communities") return "Find your people.";
   if (page === "Questions") return "Questions worth answering.";
+  if (page === "Saved") return "Your saved posts.";
   return "Ideas worth your time.";
 }
 
@@ -283,6 +321,26 @@ export default function HomePage() {
   const [verifyUrl, setVerifyUrl] = useState("");
   const [verifyMessage, setVerifyMessage] = useState("");
 
+  const [membershipRoles, setMembershipRoles] = useState<Record<string, string>>({});
+
+  const [supportCategory, setSupportCategory] = useState<SupportCategory>("general");
+  const [supportSubject, setSupportSubject] = useState("");
+  const [supportDescription, setSupportDescription] = useState("");
+  const [supportRelatedPostId, setSupportRelatedPostId] = useState("");
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [supportError, setSupportError] = useState("");
+  const [supportNotice, setSupportNotice] = useState("");
+  const [requestedPostId, setRequestedPostId] = useState<string | null>(null);
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+
+  const [reportingPost, setReportingPost] = useState<FeedPost | null>(null);
+  const [reportReason, setReportReason] = useState<ReportReason>("misinformation");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState("");
+
   useEffect(() => {
     const previews = newFiles.map((file) => ({
       file,
@@ -307,6 +365,19 @@ export default function HomePage() {
 
       const currentUser = authData.user ? { id: authData.user.id, email: authData.user.email } : null;
       setUser(currentUser);
+
+      if (currentUser) {
+        const { data: membershipData, error: membershipError } = await supabase
+          .from("community_memberships")
+          .select("community_id, role")
+          .eq("user_id", currentUser.id);
+        if (membershipError) throw membershipError;
+        const roles: Record<string, string> = {};
+        for (const row of membershipData ?? []) roles[row.community_id] = row.role;
+        setMembershipRoles(roles);
+      } else {
+        setMembershipRoles({});
+      }
 
       const { data: postData, error: postError } = await supabase
         .from("posts")
@@ -460,14 +531,21 @@ export default function HomePage() {
 
   const visiblePosts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return posts.filter((post) => {
+    const filtered = posts.filter((post) => {
       const text = [post.author, post.username, post.community, post.title, post.body, post.label].join(" ").toLowerCase();
       if (query && !text.includes(query)) return false;
       if ((activePage === "Questions" || filter === "Questions") && post.category !== "question") return false;
       if (filter === "Discussions" && post.category === "question") return false;
+      if (activePage === "Saved" && !saved.includes(post.id)) return false;
       return true;
     });
-  }, [posts, search, activePage, filter]);
+
+    // Posts are initially loaded newest-first. For You uses current engagement as a simple, explainable ranking.
+    if (filter === "For you") {
+      return [...filtered].sort((a, b) => (b.likes * 2 + b.comments) - (a.likes * 2 + a.comments));
+    }
+    return filtered;
+  }, [posts, search, activePage, filter, saved]);
 
   async function handleCreatePost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -745,6 +823,162 @@ export default function HomePage() {
     await Promise.all([loadComments(postId), loadFeed()]);
   }
 
+  async function toggleCommunityMembership(communityId: string) {
+    setError("");
+    setNotice("");
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const currentRole = membershipRoles[communityId];
+    if (currentRole === "owner") {
+      setNotice("Community owners cannot leave their own community.");
+      return;
+    }
+
+    const supabase = createClient();
+    const result = currentRole
+      ? await supabase.from("community_memberships").delete().eq("community_id", communityId).eq("user_id", user.id)
+      : await supabase.from("community_memberships").insert({ community_id: communityId, user_id: user.id, role: "member" });
+
+    if (result.error) {
+      setError(result.error.message.includes("duplicate")
+        ? "You have already joined this community. Refresh and try again."
+        : result.error.message);
+      return;
+    }
+
+    setMembershipRoles((current) => {
+      const next = { ...current };
+      if (currentRole) delete next[communityId];
+      else next[communityId] = "member";
+      return next;
+    });
+    setNotice(currentRole ? "You left the community." : "You joined the community.");
+  }
+
+  async function handleReportSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setReportError("");
+    if (!reportingPost) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (reportDetails.trim().length > 2000) {
+      setReportError("Details must be 2,000 characters or fewer.");
+      return;
+    }
+
+    setReportSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { error: insertError } = await supabase.from("reports").insert({
+        reporter_id: user.id,
+        target_type: "post",
+        target_id: reportingPost.id,
+        reason: reportReason,
+        details: reportDetails.trim() || null,
+      });
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          throw new Error("You already reported this post. Our team can review the existing report.");
+        }
+        throw insertError;
+      }
+
+      setNotice("Report submitted to the Verity review queue. Thank you for helping keep the community safe.");
+      setReportingPost(null);
+      setReportReason("misinformation");
+      setReportDetails("");
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Could not submit this report.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
+  async function loadSupportTickets() {
+    if (!user) {
+      setSupportTickets([]);
+      return;
+    }
+
+    setSupportLoading(true);
+    setSupportError("");
+    try {
+      const supabase = createClient();
+      const { data, error: queryError } = await supabase
+        .from("support_tickets")
+        .select("id, ticket_number, category, subject, status, priority, response_due_at, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (queryError) throw queryError;
+      setSupportTickets((data ?? []) as SupportTicket[]);
+    } catch (err) {
+      setSupportError(err instanceof Error ? err.message : "Could not load your support tickets.");
+    } finally {
+      setSupportLoading(false);
+    }
+  }
+
+  async function handleSupportSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSupportError("");
+    setSupportNotice("");
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    const subject = supportSubject.trim();
+    const description = supportDescription.trim();
+    if (subject.length < 5 || subject.length > 150) {
+      setSupportError("Subject must be between 5 and 150 characters.");
+      return;
+    }
+    if (description.length < 20 || description.length > 5000) {
+      setSupportError("Description must be between 20 and 5,000 characters.");
+      return;
+    }
+
+    setSupportSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { data, error: insertError } = await supabase
+        .from("support_tickets")
+        .insert({
+          user_id: user.id,
+          category: supportCategory,
+          subject,
+          description,
+          related_post_id: supportRelatedPostId || null,
+        })
+        .select("ticket_number")
+        .single();
+      if (insertError) throw insertError;
+
+      setSupportSubject("");
+      setSupportDescription("");
+      setSupportRelatedPostId("");
+      setSupportNotice(`Support request ${data?.ticket_number ? `#${data.ticket_number}` : ""} was submitted. Track its status below.`);
+      await loadSupportTickets();
+    } catch (err) {
+      setSupportError(err instanceof Error ? err.message : "Could not submit your support request.");
+    } finally {
+      setSupportSubmitting(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activePage === "Support" && user?.id) void loadSupportTickets();
+    // Support cases are private to the signed-in user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage, user?.id]);
+
   async function handleSignOut() {
     setError("");
     const supabase = createClient();
@@ -858,13 +1092,73 @@ export default function HomePage() {
             <section className="verity-panel rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><Headphones size={25} /></div>
               <h1 className="mt-5 text-3xl font-black sm:text-4xl">How can we help?</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">The support form is not connected to ticket creation yet. These are the support categories planned for Verity.</p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">{[["Incorrect AI label", "Request a review of a content label."], ["Appeal a decision", "Challenge a moderation decision."], ["Report harmful content", "Report abuse or impersonation."], ["Account help", "Get help with a sign-in problem."]].map(([title, description]) => <div key={title} className="rounded-2xl border border-slate-200 p-4"><h3 className="text-sm font-bold">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{description}</p></div>)}</div>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Submit a ticket to the Verity support team and follow its status. Standard review target is shown on each ticket; complex cases may take longer.</p>
+
+              {!user ? (
+                <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-5">
+                  <p className="text-sm leading-6 text-indigo-950">Log in to create and track support tickets tied to your account.</p>
+                  <div className="mt-4 flex flex-wrap gap-3"><Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700">Log in</Link><Link href="/signup" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-bold text-indigo-700">Create account</Link></div>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                    {[
+                      ["incorrect_ai_label", "Incorrect AI label", "Challenge an AI-origin label."],
+                      ["incorrect_misinformation_label", "Incorrect misinformation label", "Challenge a factual/context decision."],
+                      ["removed_post_appeal", "Removed post appeal", "Ask for a moderation decision to be reviewed."],
+                      ["harmful_content", "Report harmful content", "Report abuse or unsafe content."],
+                      ["impersonation_privacy", "Privacy or impersonation", "Report an account or privacy concern."],
+                      ["technical_issue", "Technical issue", "Tell us what is broken."],
+                    ].map(([value, title, description]) => (
+                      <button key={value} type="button" onClick={() => { setSupportCategory(value as SupportCategory); setSupportSubject(title); document.getElementById("verity-support-form")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`rounded-2xl border p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40 ${supportCategory === value ? "border-indigo-300 bg-indigo-50/40" : "border-slate-200 bg-white"}`}>
+                        <span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{description}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <form id="verity-support-form" onSubmit={(event) => void handleSupportSubmit(event)} className="mt-6 scroll-mt-24 space-y-4 rounded-2xl border border-slate-200 p-4 sm:p-5">
+                    <h2 className="text-lg font-extrabold">Create a support ticket</h2>
+                    <label className="block text-sm font-bold">Category
+                      <select value={supportCategory} onChange={(event) => setSupportCategory(event.target.value as SupportCategory)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm">
+                        <option value="incorrect_ai_label">Incorrect AI label</option>
+                        <option value="incorrect_misinformation_label">Incorrect misinformation label</option>
+                        <option value="removed_post_appeal">Removed post appeal</option>
+                        <option value="harmful_content">Harmful content</option>
+                        <option value="impersonation_privacy">Impersonation or privacy</option>
+                        <option value="account_recovery">Account recovery</option>
+                        <option value="login_problem">Login problem</option>
+                        <option value="technical_issue">Technical issue</option>
+                        <option value="general">General question</option>
+                      </select>
+                    </label>
+                    <label className="block text-sm font-bold">Subject
+                      <input required minLength={5} maxLength={150} value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} placeholder="Briefly describe the problem" className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 px-3 py-3 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" />
+                    </label>
+                    <label className="block text-sm font-bold">Details
+                      <textarea required minLength={20} maxLength={5000} rows={5} value={supportDescription} onChange={(event) => setSupportDescription(event.target.value)} placeholder="Explain what happened and what you need help with (at least 20 characters)." className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-base font-normal leading-6 outline-none focus:border-indigo-400 sm:text-sm" />
+                    </label>
+                    <label className="block text-sm font-bold">Related post (optional)
+                      <select value={supportRelatedPostId} onChange={(event) => setSupportRelatedPostId(event.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm">
+                        <option value="">No specific post</option>
+                        {posts.map((post) => <option key={post.id} value={post.id}>{post.title.slice(0, 90)}</option>)}
+                      </select>
+                    </label>
+                    {supportError && <p role="alert" className="break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{supportError}</p>}
+                    {supportNotice && <p role="status" className="break-words rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm leading-6 text-emerald-800">{supportNotice}</p>}
+                    <button type="submit" disabled={supportSubmitting} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"><Send size={16} />{supportSubmitting ? "Submitting ticket..." : "Submit support ticket"}</button>
+                  </form>
+
+                  <div className="mt-8">
+                    <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-extrabold">Your tickets</h2><button type="button" onClick={() => void loadSupportTickets()} disabled={supportLoading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"><Clock3 size={14} />Refresh</button></div>
+                    {supportLoading ? <LoadingBox label="Loading your support tickets..." /> : supportError ? <p role="alert" className="mt-3 break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{supportError}</p> : supportTickets.length ? <div className="mt-3 space-y-3">{supportTickets.map((ticket) => <article key={ticket.id} className="rounded-2xl border border-slate-200 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Ticket #{ticket.ticket_number}</p><h3 className="mt-1 break-words font-bold">{ticket.subject}</h3></div><span className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-bold capitalize text-slate-600">{ticket.status.replaceAll("_", " ")}</span></div><p className="mt-2 text-xs text-slate-500">Priority: {ticket.priority} · Submitted {formatTime(ticket.created_at)}</p><p className="mt-1 text-xs text-slate-500">Response target: {new Date(ticket.response_due_at).toLocaleString()}</p></article>)}</div> : <div className="mt-3 rounded-2xl border border-dashed border-slate-300 p-6 text-center"><p className="font-bold">No support tickets yet</p><p className="mt-1 text-sm text-slate-500">When you submit a request, it will appear here.</p></div>}
+                  </div>
+                </>
+              )}
             </section>
           ) : activePage === "Communities" ? (
             <>
               <div className="mb-6"><p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-indigo-600">Meet your people</p><h1 className="mt-2 text-3xl font-black tracking-tight">Communities worth joining.</h1><p className="mt-2 text-sm text-slate-500">Explore the communities currently in your database.</p></div>
-              {loading ? <LoadingBox label="Loading communities..." /> : filteredCommunities.length ? <div className="grid gap-4 sm:grid-cols-2">{filteredCommunities.map((community, index) => <article key={community.id} className="verity-community-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-white ${index % 3 === 0 ? "bg-gradient-to-br from-indigo-600 to-violet-500" : index % 3 === 1 ? "bg-gradient-to-br from-cyan-600 to-teal-400" : "bg-gradient-to-br from-rose-600 to-orange-400"}`}><Users size={22} /></div><p className="mt-4 text-xs font-bold uppercase tracking-wide text-indigo-600">{community.topic}</p><h2 className="mt-1 text-lg font-extrabold">{community.name}</h2><p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{community.description || "Join the discussion and share ideas with this community."}</p><p className="mt-4 text-xs text-slate-400">/{community.slug}</p></article>)}</div> : <EmptyState title="No communities found" body="Communities will appear here when they are created in Supabase." />}
+              {loading ? <LoadingBox label="Loading communities..." /> : filteredCommunities.length ? <div className="grid gap-4 sm:grid-cols-2">{filteredCommunities.map((community, index) => <article key={community.id} className="verity-community-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-white ${index % 3 === 0 ? "bg-gradient-to-br from-indigo-600 to-violet-500" : index % 3 === 1 ? "bg-gradient-to-br from-cyan-600 to-teal-400" : "bg-gradient-to-br from-rose-600 to-orange-400"}`}><Users size={22} /></div><p className="mt-4 text-xs font-bold uppercase tracking-wide text-indigo-600">{community.topic}</p><h2 className="mt-1 text-lg font-extrabold">{community.name}</h2><p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{community.description || "Join the discussion and share ideas with this community."}</p><p className="mt-4 text-xs text-slate-400">/{community.slug}</p><button type="button" onClick={() => void toggleCommunityMembership(community.id)} disabled={membershipRoles[community.id] === "owner"} className={`mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${membershipRoles[community.id] ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"} disabled:cursor-not-allowed disabled:opacity-60`}>{membershipRoles[community.id] === "owner" ? "Community owner" : membershipRoles[community.id] ? "Leave community" : "Join community"}</button></article>)}</div> : <EmptyState title="No communities found" body="Communities will appear here when they are created in Supabase." />}
             </>
           ) : (
             <>
@@ -895,12 +1189,12 @@ export default function HomePage() {
 
               <div className="mb-4 flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-3 text-xs leading-5 text-indigo-950"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-indigo-700" /><p><strong>Content with context.</strong> Labels reflect creator declarations or unverified status. Automated AI detection is not connected yet.</p></div>
 
-              {loading ? <LoadingBox label="Loading posts from Supabase..." /> : visiblePosts.length === 0 ? <EmptyState title={search ? "No matching posts" : filter === "Questions" || activePage === "Questions" ? "No questions yet" : "Your feed starts here"} body={search ? "Try another search or clear the search field." : "No published posts were returned. Sign in and publish the first real post to your Verity community."} action={!search ? () => { setError(""); setCreateOpen(true); } : undefined} /> : <div className="space-y-4">{visiblePosts.map((post) => {
+              {loading ? <LoadingBox label="Loading posts from Supabase..." /> : visiblePosts.length === 0 ? <EmptyState title={search ? "No matching posts" : activePage === "Saved" ? "No saved posts yet" : filter === "Questions" || activePage === "Questions" ? "No questions yet" : "Your feed starts here"} body={search ? "Try another search or clear the search field." : activePage === "Saved" ? "Tap Save on any post to keep it here for later." : "No published posts were returned. Sign in and publish the first real post to your Verity community."} action={!search && activePage !== "Saved" ? () => { setError(""); setCreateOpen(true); } : undefined} /> : <div className="space-y-4">{visiblePosts.map((post) => {
                 const isLiked = liked.includes(post.id);
                 const isSaved = saved.includes(post.id);
                 const postComments = commentsByPost[post.id] || [];
                 const artTone = post.category.includes("meme") || post.category.includes("satire") || post.category.includes("parody") ? "rose" : post.category.includes("question") ? "cyan" : post.category.includes("ai") || post.category.includes("educational") ? "violet" : null;
-                return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{post.author}</p><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><span>@{post.username}</span><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div><button type="button" onClick={() => { setError("Reporting will be connected to the Trust & Support workflow in a later step."); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg text-slate-400 hover:bg-slate-100" aria-label="Post options">···</button></div>
+                return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{post.author}</p><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><span>@{post.username}</span><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div><button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button></div>
                   <h3 className="mt-4 break-words text-[17px] font-extrabold leading-7 tracking-tight text-slate-900 sm:text-lg">{post.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{post.body}</p>
                   {artTone && <Artwork tone={artTone} />}
                   {post.media.length > 0 && <div className={`verity-post-media mt-4 grid gap-2 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{post.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[560px] w-full rounded-2xl bg-slate-950 object-contain" aria-label="Post video"><source src={media.url} type={media.mime_type} />Your browser does not support HTML video.</video> : <img key={media.id} src={media.url} alt={media.alt_text || `Image shared by ${post.author}`} loading="lazy" className={`w-full rounded-2xl border border-slate-100 object-cover ${post.media.length === 1 ? "max-h-[560px]" : "aspect-square"}`} />)}</div>}
@@ -1015,6 +1309,28 @@ export default function HomePage() {
                 <button type="button" onClick={() => setCreateOpen(false)} disabled={actionLoading} className="min-h-12 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60">Cancel</button>
                 <button type="submit" disabled={actionLoading || !user} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">{actionLoading ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={15} />}{actionLoading ? "Publishing..." : "Publish post"}</button>
               </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {reportingPost && (
+        <div className="verity-modal-backdrop fixed inset-0 z-[60] flex items-center justify-center p-3 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !reportSubmitting) setReportingPost(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="report-post-title" className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-red-600">Trust & safety</p><h2 id="report-post-title" className="mt-1 text-2xl font-black">Report this post</h2><p className="mt-2 break-words text-sm text-slate-500">{reportingPost.title}</p></div><button type="button" disabled={reportSubmitting} onClick={() => setReportingPost(null)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100" aria-label="Close report dialog"><X size={20} /></button></div>
+            {!user && <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">You must <Link href="/login" className="font-bold underline">log in</Link> to submit a report.</div>}
+            <form onSubmit={(event) => void handleReportSubmit(event)} className="mt-5 space-y-4">
+              <label className="block text-sm font-bold">Why are you reporting this post?
+                <select value={reportReason} onChange={(event) => setReportReason(event.target.value as ReportReason)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm">
+                  <option value="spam">Spam</option><option value="harassment">Harassment</option><option value="misinformation">Potential misinformation</option><option value="hate">Hateful content</option><option value="violence">Violence</option><option value="impersonation">Impersonation</option><option value="privacy">Privacy concern</option><option value="copyright">Copyright concern</option><option value="incorrect_label">Incorrect content label</option><option value="other">Other</option>
+                </select>
+              </label>
+              <label className="block text-sm font-bold">Additional details (optional)
+                <textarea rows={4} maxLength={2000} value={reportDetails} onChange={(event) => setReportDetails(event.target.value)} placeholder="Add context that could help the review team." className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-base font-normal leading-6 outline-none focus:border-indigo-400 sm:text-sm" />
+              </label>
+              {reportError && <p role="alert" className="break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{reportError}</p>}
+              <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Reports are reviewed under Verity's policies. Reporting does not automatically establish that a claim is false.</div>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" disabled={reportSubmitting} onClick={() => setReportingPost(null)} className="min-h-12 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button><button type="submit" disabled={reportSubmitting || !user} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"><Flag size={15} />{reportSubmitting ? "Submitting report..." : "Submit report"}</button></div>
             </form>
           </section>
         </div>
