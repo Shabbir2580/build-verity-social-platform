@@ -20,6 +20,9 @@ import {
   ImagePlus,
   LoaderCircle,
   LockKeyhole,
+  Trash2,
+  Upload,
+  Video as VideoIcon,
   Menu,
   MessageCircle,
   Plus,
@@ -77,6 +80,26 @@ type DbComment = {
   username: string;
 };
 
+type DbPostMedia = {
+  id: string;
+  post_id: string;
+  kind: "image" | "video";
+  storage_path: string;
+  mime_type: string;
+  size_bytes: number;
+  alt_text: string | null;
+  position: number;
+};
+
+type FeedMedia = {
+  id: string;
+  kind: "image" | "video";
+  url: string;
+  mime_type: string;
+  alt_text: string | null;
+  position: number;
+};
+
 type FeedPost = {
   id: string;
   author_id: string;
@@ -94,6 +117,7 @@ type FeedPost = {
   comments: number;
   link_url: string | null;
   source_url: string | null;
+  media: FeedMedia[];
 };
 
 const NAV_ITEMS = [
@@ -252,9 +276,25 @@ export default function HomePage() {
   const [newCategory, setNewCategory] = useState<Category>("Discussion");
   const [newSourceUrl, setNewSourceUrl] = useState("");
   const [newAiDisclosure, setNewAiDisclosure] = useState(false);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newAltText, setNewAltText] = useState("");
+  const [mediaPreviews, setMediaPreviews] = useState<Array<{ file: File; url: string | null }>>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [verifyUrl, setVerifyUrl] = useState("");
   const [verifyMessage, setVerifyMessage] = useState("");
+
+  useEffect(() => {
+    const previews = newFiles.map((file) => ({
+      file,
+      url: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
+    }));
+    setMediaPreviews(previews);
+    return () => {
+      previews.forEach((item) => {
+        if (item.url) URL.revokeObjectURL(item.url);
+      });
+    };
+  }, [newFiles]);
 
   async function loadFeed() {
     setLoading(true);
@@ -280,6 +320,31 @@ export default function HomePage() {
       const postIds = rows.map((row) => row.id);
       const authorIds = [...new Set(rows.map((row) => row.author_id))];
       const communityIds = [...new Set(rows.map((row) => row.community_id).filter((id): id is string => Boolean(id)))];
+
+      let mediaRows: DbPostMedia[] = [];
+      if (postIds.length) {
+        const { data: postMediaData, error: postMediaError } = await supabase
+          .from("post_media")
+          .select("id, post_id, kind, storage_path, mime_type, size_bytes, alt_text, position")
+          .in("post_id", postIds)
+          .order("position", { ascending: true });
+        if (postMediaError) throw postMediaError;
+        mediaRows = (postMediaData ?? []) as DbPostMedia[];
+      }
+
+      const mediaMap = new Map<string, FeedMedia[]>();
+      for (const media of mediaRows) {
+        const { data: publicUrlData } = supabase.storage.from("post-media").getPublicUrl(media.storage_path);
+        const feedMedia: FeedMedia = {
+          id: media.id,
+          kind: media.kind,
+          url: publicUrlData.publicUrl,
+          mime_type: media.mime_type,
+          alt_text: media.alt_text,
+          position: media.position,
+        };
+        mediaMap.set(media.post_id, [...(mediaMap.get(media.post_id) ?? []), feedMedia]);
+      }
 
       let profiles: Profile[] = [];
       let communityRows: Community[] = [];
@@ -374,6 +439,7 @@ export default function HomePage() {
           comments: commentCounts.get(row.id) ?? 0,
           link_url: row.link_url,
           source_url: row.source_url,
+          media: mediaMap.get(row.id) ?? [],
         };
       }));
 
@@ -408,13 +474,40 @@ export default function HomePage() {
     setError("");
     setNotice("");
 
-    if (!newTitle.trim() || !newBody.trim()) {
-      setError("Add a title and description before publishing.");
+    if (!newTitle.trim() && !newBody.trim() && newFiles.length === 0 && !newSourceUrl.trim()) {
+      setError("Add a title, description, source link or media before publishing.");
       return;
     }
 
     if (!user) {
       router.push("/login");
+      return;
+    }
+
+    if (newFiles.length > 4) {
+      setError("You can upload up to 4 images, or one video, per post.");
+      return;
+    }
+
+    const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+    const allowedVideoTypes = new Set(["video/mp4", "video/webm"]);
+    const videos = newFiles.filter((file) => allowedVideoTypes.has(file.type));
+    const images = newFiles.filter((file) => allowedImageTypes.has(file.type));
+
+    if (newFiles.some((file) => !allowedImageTypes.has(file.type) && !allowedVideoTypes.has(file.type))) {
+      setError("Use JPG, PNG, WebP or GIF images, or an MP4/WebM video.");
+      return;
+    }
+    if (videos.length > 1 || (videos.length > 0 && images.length > 0)) {
+      setError("Choose up to 4 images, or one video. Images and video cannot be mixed in the same post yet.");
+      return;
+    }
+    if (images.some((file) => file.size > 8 * 1024 * 1024)) {
+      setError("Each image must be 8 MB or smaller.");
+      return;
+    }
+    if (videos.some((file) => file.size > 50 * 1024 * 1024)) {
+      setError("The video must be 50 MB or smaller.");
       return;
     }
 
@@ -432,25 +525,82 @@ export default function HomePage() {
 
     const categoryValue = newCategory === "News" ? "news" : newCategory === "Meme" ? "meme" : "original";
     const tags = newCategory === "Question" ? ["question"] : [];
-    const postType = newCategory === "News" && sourceUrl ? "link" : "text";
+    const postType = videos.length ? "video" : images.length ? "image" : newCategory === "News" && sourceUrl ? "link" : "text";
 
     setActionLoading(true);
+    let supabaseClient: ReturnType<typeof createClient> | null = null;
+    let createdPostId: string | null = null;
+    const uploadedPaths: string[] = [];
+
     try {
       const supabase = createClient();
-      const { error: insertError } = await supabase.from("posts").insert({
-        author_id: user.id,
-        community_id: null,
-        type: postType,
-        title: newTitle.trim(),
-        body: newBody.trim(),
-        link_url: postType === "link" ? sourceUrl : null,
-        source_url: sourceUrl,
-        declared_category: categoryValue,
-        ai_disclosure: newAiDisclosure,
-        tags,
-        status: "published",
-      });
+      supabaseClient = supabase;
+
+      const { data: createdPost, error: insertError } = await supabase
+        .from("posts")
+        .insert({
+          author_id: user.id,
+          community_id: null,
+          type: postType,
+          title: newTitle.trim() || null,
+          body: newBody.trim(),
+          link_url: postType === "link" ? sourceUrl : null,
+          source_url: sourceUrl,
+          declared_category: categoryValue,
+          ai_disclosure: newAiDisclosure,
+          tags,
+          status: "published",
+        })
+        .select("id")
+        .single();
+
       if (insertError) throw insertError;
+      if (!createdPost?.id) throw new Error("The post was created, but its ID was not returned.");
+      createdPostId = createdPost.id as string;
+
+      const mediaRowsToInsert: Array<{
+        post_id: string;
+        kind: "image" | "video";
+        storage_path: string;
+        mime_type: string;
+        size_bytes: number;
+        alt_text: string | null;
+        position: number;
+      }> = [];
+
+      for (const [index, file] of newFiles.entries()) {
+        const safeName = file.name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80) || "upload";
+        const path = `${user.id}/${createdPostId}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("post-media")
+          .upload(path, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+          });
+
+        if (uploadError) {
+          throw new Error(`Could not upload ${file.name}: ${uploadError.message}`);
+        }
+
+        uploadedPaths.push(path);
+        mediaRowsToInsert.push({
+          post_id: createdPostId,
+          kind: file.type.startsWith("video/") ? "video" : "image",
+          storage_path: path,
+          mime_type: file.type,
+          size_bytes: file.size,
+          alt_text: file.type.startsWith("image/") ? newAltText.trim() || null : null,
+          position: index,
+        });
+      }
+
+      if (mediaRowsToInsert.length) {
+        const { error: mediaInsertError } = await supabase
+          .from("post_media")
+          .insert(mediaRowsToInsert);
+        if (mediaInsertError) throw mediaInsertError;
+      }
 
       setCreateOpen(false);
       setNewTitle("");
@@ -458,11 +608,29 @@ export default function HomePage() {
       setNewSourceUrl("");
       setNewCategory("Discussion");
       setNewAiDisclosure(false);
+      setNewFiles([]);
+      setNewAltText("");
       setActivePage("Home");
       setFilter("For you");
       setNotice("Your post was published.");
       await loadFeed();
     } catch (err) {
+      if (supabaseClient) {
+        if (uploadedPaths.length) {
+          try {
+            await supabaseClient.storage.from("post-media").remove(uploadedPaths);
+          } catch {
+            // Cleanup is best-effort; the original upload error is more useful.
+          }
+        }
+        if (createdPostId) {
+          try {
+            await supabaseClient.from("posts").delete().eq("id", createdPostId);
+          } catch {
+            // Do not hide the original error if rollback is denied.
+          }
+        }
+      }
       setError(err instanceof Error ? err.message : "Could not publish your post.");
     } finally {
       setActionLoading(false);
@@ -735,6 +903,7 @@ export default function HomePage() {
                 return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{post.author}</p><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><span>@{post.username}</span><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div><button type="button" onClick={() => { setError("Reporting will be connected to the Trust & Support workflow in a later step."); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg text-slate-400 hover:bg-slate-100" aria-label="Post options">···</button></div>
                   <h3 className="mt-4 break-words text-[17px] font-extrabold leading-7 tracking-tight text-slate-900 sm:text-lg">{post.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{post.body}</p>
                   {artTone && <Artwork tone={artTone} />}
+                  {post.media.length > 0 && <div className={`verity-post-media mt-4 grid gap-2 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{post.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[560px] w-full rounded-2xl bg-slate-950 object-contain" aria-label="Post video"><source src={media.url} type={media.mime_type} />Your browser does not support HTML video.</video> : <img key={media.id} src={media.url} alt={media.alt_text || `Image shared by ${post.author}`} loading="lazy" className={`w-full rounded-2xl border border-slate-100 object-cover ${post.media.length === 1 ? "max-h-[560px]" : "aspect-square"}`} />)}</div>}
                   {post.link_url && <a href={post.link_url} target="_blank" rel="noreferrer noopener" className="mt-4 inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"><span className="break-all">Open linked content</span><ArrowUpRight size={15} className="shrink-0" /></a>}
                   {post.source_url && <a href={post.source_url} target="_blank" rel="noreferrer noopener" className="mt-3 block break-all text-xs text-slate-500 underline underline-offset-2 hover:text-indigo-700">Original source</a>}
                   <div className="mt-4 flex flex-wrap items-center gap-2"><ContentBadge label={post.label} tone={post.tone} /><button type="button" onClick={() => setActivePage("Verify")} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><ShieldCheck size={13} /> Content context</button></div>
@@ -760,17 +929,96 @@ export default function HomePage() {
 
       <nav className="verity-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 pt-1.5 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">{[{ name: "Home", icon: Home }, { name: "Explore", icon: Compass }, { name: "Create", icon: Plus }, { name: "Questions", icon: CircleHelp }, { name: "Support", icon: Headphones }].map(({ name, icon: Icon }) => <button key={name} type="button" onClick={() => { if (name === "Create") { setError(""); setCreateOpen(true); } else setActivePage(name); }} className={`flex min-h-12 flex-col items-center justify-center gap-1 py-1 text-[10px] font-bold ${activePage === name ? "text-indigo-700" : "text-slate-400"}`}><Icon size={20} />{name}</button>)}</nav>
 
-      {createOpen && <div className="verity-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !actionLoading) setCreateOpen(false); }}><section role="dialog" aria-modal="true" aria-labelledby="create-post-title" className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-indigo-600">Your community</p><h2 id="create-post-title" className="mt-1 text-2xl font-black tracking-tight">Start a conversation.</h2></div><button type="button" onClick={() => setCreateOpen(false)} disabled={actionLoading} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100" aria-label="Close dialog"><X size={20} /></button></div>
-        {!user && <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm leading-6 text-indigo-900">You need to log in to publish. <Link href="/login" className="font-bold underline">Log in</Link> or <Link href="/signup" className="font-bold underline">create an account</Link>.</div>}
-        <form onSubmit={handleCreatePost} className="mt-6 space-y-4"><label className="block text-sm font-bold">Post type<select value={newCategory} onChange={(event) => setNewCategory(event.target.value as Category)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm"><option>Discussion</option><option>Question</option><option>News</option><option>Meme</option></select></label>
-          <label className="block text-sm font-bold">Title<input required maxLength={300} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="What would you like to share?" className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" /></label>
-          <label className="block text-sm font-bold">Description<textarea required rows={5} maxLength={20000} value={newBody} onChange={(event) => setNewBody(event.target.value)} placeholder="Add your thoughts, a question or some context..." className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-base font-normal leading-6 outline-none focus:border-indigo-400 sm:text-sm" /></label>
-          <label className="block text-sm font-bold">Source URL (optional)<input type="url" value={newSourceUrl} onChange={(event) => setNewSourceUrl(event.target.value)} placeholder="https://example.com/article" className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" /></label>
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm leading-6"><input type="checkbox" checked={newAiDisclosure} onChange={(event) => setNewAiDisclosure(event.target.checked)} className="mt-1 h-4 w-4 accent-indigo-600" /><span><strong>AI disclosure</strong><span className="block text-xs leading-5 text-slate-500">I used AI to generate or materially alter this content. This is a creator declaration, not a detector result.</span></span></label>
-          {error && <p role="alert" className="break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{error}</p>}
-          <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Live AI detection and automatic fact-checking are not connected yet. Only publish content you have the right to share.</div>
-          <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end"><button type="button" onClick={() => setCreateOpen(false)} disabled={actionLoading} className="min-h-12 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60">Cancel</button><button type="submit" disabled={actionLoading || !user} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">{actionLoading ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={15} />}{actionLoading ? "Publishing..." : "Publish post"}</button></div>
-        </form></section></div>}
+      {createOpen && (
+        <div
+          className="verity-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 backdrop-blur-sm sm:p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !actionLoading) setCreateOpen(false);
+          }}
+        >
+          <section role="dialog" aria-modal="true" aria-labelledby="create-post-title" className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-indigo-600">Your community</p>
+                <h2 id="create-post-title" className="mt-1 text-2xl font-black tracking-tight">Start a conversation.</h2>
+              </div>
+              <button type="button" onClick={() => setCreateOpen(false)} disabled={actionLoading} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100" aria-label="Close dialog"><X size={20} /></button>
+            </div>
+
+            {!user && <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm leading-6 text-indigo-900">You need to log in to publish. <Link href="/login" className="font-bold underline">Log in</Link> or <Link href="/signup" className="font-bold underline">create an account</Link>.</div>}
+
+            <form onSubmit={handleCreatePost} className="mt-6 space-y-4">
+              <label className="block text-sm font-bold">Post type
+                <select value={newCategory} onChange={(event) => setNewCategory(event.target.value as Category)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm">
+                  <option>Discussion</option><option>Question</option><option>News</option><option>Meme</option>
+                </select>
+              </label>
+
+              <label className="block text-sm font-bold">Title <span className="font-normal text-slate-400">(optional for photo/video posts)</span>
+                <input maxLength={300} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="What would you like to share?" className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" />
+              </label>
+
+              <label className="block text-sm font-bold">Caption or description
+                <textarea rows={4} maxLength={20000} value={newBody} onChange={(event) => setNewBody(event.target.value)} placeholder="Add a caption, a question or useful context..." className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-base font-normal leading-6 outline-none focus:border-indigo-400 sm:text-sm" />
+              </label>
+
+              <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/60 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-700 shadow-sm"><ImagePlus size={20} /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-extrabold">Add photos or a video</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">Up to 4 images (8 MB each), or 1 MP4/WebM video (50 MB). JPG, PNG, WebP and GIF are supported.</p>
+                  </div>
+                </div>
+                <input id="verity-post-media" type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple onChange={(event) => {
+                  const incoming = Array.from(event.currentTarget.files ?? []);
+                  event.currentTarget.value = "";
+                  setError("");
+                  const allowedImages = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+                  const allowedVideos = new Set(["video/mp4", "video/webm"]);
+                  if (incoming.length > 4) { setError("Choose no more than 4 files."); return; }
+                  if (incoming.some((file) => !allowedImages.has(file.type) && !allowedVideos.has(file.type))) { setError("Unsupported file. Use JPG, PNG, WebP, GIF, MP4 or WebM."); return; }
+                  const selectedVideos = incoming.filter((file) => allowedVideos.has(file.type));
+                  const selectedImages = incoming.filter((file) => allowedImages.has(file.type));
+                  if (selectedVideos.length > 1 || (selectedVideos.length > 0 && selectedImages.length > 0)) { setError("Choose up to 4 images, or one video. Do not mix images and video in the same post yet."); return; }
+                  if (selectedImages.some((file) => file.size > 8 * 1024 * 1024)) { setError("Each image must be 8 MB or smaller."); return; }
+                  if (selectedVideos.some((file) => file.size > 50 * 1024 * 1024)) { setError("The video must be 50 MB or smaller."); return; }
+                  setNewFiles(incoming);
+                }} />
+                <label htmlFor="verity-post-media" className="mt-4 flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50">
+                  <Upload size={16} /> Choose media from device
+                </label>
+
+                {mediaPreviews.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {mediaPreviews.map(({ file, url }, index) => <div key={`${file.name}-${file.size}-${index}`} className="relative min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    {url ? <img src={url} alt={`Selected preview ${index + 1}`} className="aspect-square w-full object-cover" /> : <div className="flex aspect-square items-center justify-center bg-slate-900 text-white"><VideoIcon size={30} /></div>}
+                    <div className="p-2"><p className="truncate text-xs font-semibold">{file.name}</p><p className="text-[10px] text-slate-400">{(file.size / (1024 * 1024)).toFixed(1)} MB</p></div>
+                    <button type="button" onClick={() => setNewFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/80 text-white hover:bg-red-600" aria-label={`Remove ${file.name}`}><Trash2 size={14} /></button>
+                  </div>)}
+                </div>}
+
+                {newFiles.some((file) => file.type.startsWith("image/")) && <label className="mt-4 block text-sm font-bold">Image description for accessibility (optional)
+                  <input maxLength={500} value={newAltText} onChange={(event) => setNewAltText(event.target.value)} placeholder="Describe what the image shows" className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" />
+                </label>}
+              </div>
+
+              <label className="block text-sm font-bold">Source URL (optional)
+                <input type="url" value={newSourceUrl} onChange={(event) => setNewSourceUrl(event.target.value)} placeholder="https://example.com/article" className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" />
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm leading-6"><input type="checkbox" checked={newAiDisclosure} onChange={(event) => setNewAiDisclosure(event.target.checked)} className="mt-1 h-4 w-4 accent-indigo-600" /><span><strong>AI disclosure</strong><span className="block text-xs leading-5 text-slate-500">I used AI to generate or materially alter this content. This is a creator declaration, not a detector result.</span></span></label>
+
+              {error && <p role="alert" className="break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{error}</p>}
+              <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Uploads require the existing public `post-media` storage bucket and its own-folder upload policy. Live AI detection and fact-checking are not connected yet.</div>
+
+              <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => setCreateOpen(false)} disabled={actionLoading} className="min-h-12 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60">Cancel</button>
+                <button type="submit" disabled={actionLoading || !user} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">{actionLoading ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={15} />}{actionLoading ? "Publishing..." : "Publish post"}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
