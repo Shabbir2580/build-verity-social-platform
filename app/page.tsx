@@ -1,549 +1,624 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import {
-  ShieldCheck,
-  Search,
-  Bell,
-  Home,
-  Compass,
-  Users,
-  CircleHelp,
-  FileSearch,
-  Bookmark,
-  Heart,
-  MessageCircle,
-  Share2,
-  Plus,
-  X,
-  Send,
-  Sparkles,
-  TrendingUp,
-  ArrowUpRight,
-  CheckCircle2,
-  AlertCircle,
-  ImagePlus,
-  Menu,
-  ExternalLink,
-  Headphones,
-} from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
 
 type Post = {
-  id: string;
-  name: string;
+  id: number;
+  author: string;
   username: string;
-  time: string;
   community: string;
   title: string;
   body: string;
-  kind: "discussion" | "question" | "news" | "meme";
   label: string;
-  labelType: "ai" | "context" | "fun" | "neutral";
+  labelColor: string;
   likes: number;
   comments: number;
-  image?: string;
+  category: string;
 };
 
-const INITIAL_POSTS: Post[] = [
+const initialPosts: Post[] = [
   {
-    id: "p1",
-    name: "Aarav Mehta",
+    id: 1,
+    author: "Aarav Mehta",
     username: "curiousmind",
-    time: "22 min ago",
     community: "Digital Literacy",
-    title: "Before you forward that viral news, check this.",
-    body: "A screenshot can be genuine while the caption attached to it is completely wrong. Always look for the original source, publication date and context before sharing a claim.",
-    kind: "discussion",
+    title: "Before forwarding viral news, check the original source.",
+    body: "A screenshot can be genuine while the caption is misleading. Check the original publication, date, location and supporting evidence before sharing a claim.",
     label: "Not verified",
-    labelType: "neutral",
+    labelColor: "gray",
     likes: 128,
     comments: 34,
+    category: "Discussion",
   },
   {
-    id: "p2",
-    name: "Sana Qureshi",
+    id: 2,
+    author: "Sana Qureshi",
     username: "pixelandpaper",
-    time: "2 hours ago",
     community: "AI & Technology",
     title: "AI-generated does not automatically mean fake.",
-    body: "An AI-generated illustration can be perfectly legitimate entertainment. A real photograph can also be used with a misleading caption. Media origin and factual accuracy need separate assessments.",
-    kind: "discussion",
+    body: "An AI illustration can be legitimate entertainment. A real photograph can also be used with a misleading caption. Media origin and factual accuracy are two different questions.",
     label: "Educational",
-    labelType: "context",
+    labelColor: "blue",
     likes: 86,
     comments: 19,
-    image:
-      "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=85",
+    category: "Discussion",
   },
   {
-    id: "p3",
-    name: "Rohan Shah",
+    id: 3,
+    author: "Rohan Shah",
     username: "chaiandcode",
-    time: "5 hours ago",
     community: "Learning Together",
-    title: "What is one skill you are learning this month?",
-    body: "I am working on understanding databases and building full-stack applications. What are you learning, and what resource has helped you most?",
-    kind: "question",
-    label: "Community question",
-    labelType: "context",
+    title: "What skill are you learning this month?",
+    body: "I am learning how databases and full-stack applications work. What are you learning, and which resources have helped you?",
+    label: "Question",
+    labelColor: "blue",
     likes: 52,
     comments: 12,
+    category: "Question",
   },
   {
-    id: "p4",
-    name: "Mira Creates",
+    id: 4,
+    author: "Mira Creates",
     username: "miramakes",
-    time: "7 hours ago",
     community: "Memes & Entertainment",
-    title: "When the AI writes your assignment but cannot explain it in viva.",
-    body: "The difference between submitting an answer and actually understanding it. 😅",
-    kind: "meme",
-    label: "Meme",
-    labelType: "fun",
+    title: "When AI writes your assignment but cannot explain it in viva.",
+    body: "Submitting an answer and actually understanding it are two very different things. 😅",
+    label: "Creator-declared meme",
+    labelColor: "orange",
     likes: 241,
     comments: 48,
-    image:
-      "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=85",
+    category: "Meme",
   },
 ];
 
-const NAV_ITEMS = [
-  { label: "Home feed", key: "home", icon: Home },
-  { label: "Explore", key: "explore", icon: Compass },
-  { label: "Communities", key: "communities", icon: Users },
-  { label: "Questions", key: "questions", icon: CircleHelp },
-  { label: "Verify content", key: "verify", icon: FileSearch },
-] as const;
-
-const TRENDING = [
-  { tag: "ArtificialIntelligence", count: "2.4k discussions" },
-  { tag: "DigitalLiteracy", count: "1.8k discussions" },
-  { tag: "ScienceExplained", count: "956 discussions" },
+const navigation = [
+  { id: "Home", icon: "⌂" },
+  { id: "Explore", icon: "⌕" },
+  { id: "Communities", icon: "◎" },
+  { id: "Questions", icon: "?" },
+  { id: "Verify", icon: "✳" },
+  { id: "Support", icon: "♧" },
 ];
 
-function Avatar({ name }: { name: string }) {
-  const initials = name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
-      {initials}
-    </div>
-  );
-}
-
-function ContentBadge({
-  label,
-  type,
-}: {
-  label: string;
-  type: Post["labelType"];
-}) {
-  const styles: Record<Post["labelType"], string> = {
-    ai: "border-violet-200 bg-violet-50 text-violet-700",
-    context: "border-blue-200 bg-blue-50 text-blue-700",
-    fun: "border-orange-200 bg-orange-50 text-orange-700",
-    neutral: "border-slate-200 bg-slate-100 text-slate-600",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold ${styles[type]}`}
-    >
-      {type === "ai" ? (
-        <Sparkles size={12} />
-      ) : type === "fun" ? (
-        <span aria-hidden="true">☺</span>
-      ) : type === "context" ? (
-        <ShieldCheck size={12} />
-      ) : (
-        <AlertCircle size={12} />
-      )}
-      {label}
-    </span>
-  );
-}
-
 export default function HomePage() {
-  const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
-  const [activeNav, setActiveNav] = useState<string>("home");
-  const [activeFilter, setActiveFilter] = useState("For you");
+  const [posts, setPosts] = useState(initialPosts);
+  const [activePage, setActivePage] = useState("Home");
+  const [filter, setFilter] = useState("For you");
   const [search, setSearch] = useState("");
-  const [liked, setLiked] = useState<Record<string, boolean>>({});
-  const [saved, setSaved] = useState<Record<string, boolean>>({});
+  const [liked, setLiked] = useState<number[]>([]);
+  const [saved, setSaved] = useState<number[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openCommentId, setOpenCommentId] = useState<string | null>(null);
-  const [commentDraft, setCommentDraft] = useState("");
-  const [commentsByPost, setCommentsByPost] = useState<
-    Record<string, string[]>
-  >({});
+  const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [newCategory, setNewCategory] = useState("Discussion");
   const [verifyUrl, setVerifyUrl] = useState("");
   const [verifyMessage, setVerifyMessage] = useState("");
 
-  const [draftTitle, setDraftTitle] = useState("");
-  const [draftBody, setDraftBody] = useState("");
-  const [draftKind, setDraftKind] = useState<Post["kind"]>("discussion");
-
-  const displayedPosts = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  const visiblePosts = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
     return posts.filter((post) => {
-      const searchableText = [
-        post.name,
-        post.username,
-        post.community,
-        post.title,
-        post.body,
-        post.label,
-      ]
-        .join(" ")
-        .toLowerCase();
+      const text =
+        `${post.author} ${post.username} ${post.community} ${post.title} ${post.body}`.toLowerCase();
 
-      if (q && !searchableText.includes(q)) return false;
-
-      if (activeNav === "questions" && post.kind !== "question") {
+      if (query && !text.includes(query)) return false;
+      if (activePage === "Questions" && post.category !== "Question")
         return false;
-      }
+      if (activePage === "Communities" && !post.community) return false;
 
-      if (
-        activeNav === "communities" &&
-        !post.community
-      ) {
+      if (filter === "Questions" && post.category !== "Question")
         return false;
-      }
 
-      if (activeNav === "explore") return true;
-
-      if (activeFilter === "Questions" && post.kind !== "question") {
+      if (filter === "Discussions" && post.category === "Question")
         return false;
-      }
-
-      if (activeFilter === "Discussions" && post.kind === "question") {
-        return false;
-      }
 
       return true;
     });
-  }, [posts, search, activeNav, activeFilter]);
+  }, [posts, search, activePage, filter]);
 
-  function createPost(event: React.FormEvent<HTMLFormElement>) {
+  function handleCreatePost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!draftTitle.trim() || !draftBody.trim()) return;
+    if (!newTitle.trim() || !newBody.trim()) return;
 
     const newPost: Post = {
-      id: crypto.randomUUID(),
-      name: "Demo User",
+      id: Date.now(),
+      author: "Demo User",
       username: "demo_user",
-      time: "Just now",
       community: "General",
-      title: draftTitle.trim(),
-      body: draftBody.trim(),
-      kind: draftKind,
-      label: draftKind === "meme" ? "Creator-declared meme" : "Not checked",
-      labelType: draftKind === "meme" ? "fun" : "neutral",
+      title: newTitle.trim(),
+      body: newBody.trim(),
+      label:
+        newCategory === "Meme"
+          ? "Creator-declared meme"
+          : "Not checked",
+      labelColor: newCategory === "Meme" ? "orange" : "gray",
       likes: 0,
       comments: 0,
+      category: newCategory,
     };
 
     setPosts((current) => [newPost, ...current]);
-    setDraftTitle("");
-    setDraftBody("");
-    setDraftKind("discussion");
+    setNewTitle("");
+    setNewBody("");
+    setNewCategory("Discussion");
     setCreateOpen(false);
-    setActiveNav("home");
-    setActiveFilter("For you");
+    setActivePage("Home");
+    setFilter("For you");
   }
 
-  function addComment(event: React.FormEvent<HTMLFormElement>, postId: string) {
-    event.preventDefault();
-
-    const text = commentDraft.trim();
-    if (!text) return;
-
-    setCommentsByPost((current) => ({
-      ...current,
-      [postId]: [...(current[postId] || []), text],
-    }));
-
-    setPosts((current) =>
-      current.map((post) =>
-        post.id === postId
-          ? { ...post, comments: post.comments + 1 }
-          : post
-      )
+  function toggleLike(id: number) {
+    setLiked((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
     );
-
-    setCommentDraft("");
   }
 
-  const currentTitle =
-    activeNav === "explore"
+  function toggleSave(id: number) {
+    setSaved((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
+  }
+
+  const heading =
+    activePage === "Explore"
       ? "Explore ideas"
-      : activeNav === "communities"
+      : activePage === "Communities"
         ? "Your communities"
-        : activeNav === "questions"
+        : activePage === "Questions"
           ? "Questions worth answering"
           : "Your community feed";
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] text-slate-900">
-      {/* Top navigation */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-[68px] max-w-[1500px] items-center gap-4 px-4 sm:px-6">
+    <main className="min-h-screen bg-[#f6f7fb] text-slate-900">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-[1450px] flex-wrap items-center gap-4 px-5 py-3">
           <button
             type="button"
-            onClick={() => setMobileMenuOpen((value) => !value)}
-            className="rounded-lg p-2 hover:bg-slate-100 lg:hidden"
-            aria-label="Toggle navigation"
+            onClick={() => setActivePage("Home")}
+            className="flex items-center gap-2 text-2xl font-black tracking-tight"
           >
-            <Menu size={21} />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-xl text-white">
+              ◈
+            </span>
+            verity<span className="text-indigo-600">.</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveNav("home");
-              setMobileMenuOpen(false);
-            }}
-            className="flex shrink-0 items-center gap-2 text-xl font-black tracking-tight"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white">
-              <ShieldCheck size={21} />
-            </span>
-            <span>
-              verity<span className="text-indigo-600">.</span>
-            </span>
-          </button>
-
-          <label className="ml-3 hidden min-w-0 max-w-xl flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 md:flex">
-            <Search size={17} className="shrink-0 text-slate-400" />
+          <div className="flex min-w-[180px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <span className="text-lg text-slate-400">⌕</span>
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search posts, communities and topics..."
-              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-              aria-label="Search content"
-            />
-            <span className="hidden rounded border bg-white px-1.5 py-0.5 text-[10px] text-slate-400 lg:inline">
-              SEARCH
-            </span>
-          </label>
-
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <button
-              onClick={() => setActiveNav("verify")}
-              className="hidden items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 sm:flex"
-            >
-              <Sparkles size={16} />
-              Verify
-            </button>
-
-            <Link
-              href="/login"
-              className="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-            >
-              Log in
-            </Link>
-
-            <Link
-              href="/signup"
-              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-            >
-              Join Verity
-            </Link>
-          </div>
-        </div>
-
-        <div className="px-4 pb-3 md:hidden">
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <Search size={17} className="text-slate-400" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search Verity..."
+              placeholder="Search posts and communities..."
               className="w-full bg-transparent text-sm outline-none"
+              aria-label="Search posts"
             />
-          </label>
+          </div>
+
+          <a
+            href="/login"
+            className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+          >
+            Log in
+          </a>
+
+          <a
+            href="/signup"
+            className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+          >
+            Join Verity
+          </a>
         </div>
       </header>
 
-      {/* Main layout */}
-      <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[230px_minmax(0,680px)_290px]">
-        {/* Sidebar */}
-        <aside
-          className={`${
-            mobileMenuOpen ? "block" : "hidden"
-          } fixed inset-x-0 top-[119px] z-30 max-h-[calc(100vh-119px)] overflow-y-auto border-b border-slate-200 bg-white p-4 shadow-xl lg:sticky lg:top-[84px] lg:block lg:max-h-[calc(100vh-84px)] lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none`}
-        >
-          <div className="py-6">
-            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
-              <Avatar name="Verity Community" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold">Welcome to Verity</p>
-                <p className="text-xs text-slate-500">Ideas with context</p>
-              </div>
-            </div>
+      <div className="mx-auto grid max-w-[1450px] grid-cols-1 gap-6 px-4 py-6 md:px-6 lg:grid-cols-[220px_minmax(0,680px)] xl:grid-cols-[220px_minmax(0,680px)_280px]">
+        <aside className="space-y-5">
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-bold text-white shadow-sm hover:bg-indigo-700"
+          >
+            + Create a post
+          </button>
 
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="mb-7 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-indigo-700"
-            >
-              <Plus size={18} />
-              Create a post
-            </button>
-
-            <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
-              Discover
-            </p>
-
-            <nav className="space-y-1">
-              {NAV_ITEMS.map(({ label, key, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setActiveNav(key);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${
-                    activeNav === key
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "text-slate-600 hover:bg-white hover:text-slate-950"
-                  }`}
-                >
-                  <Icon size={18} />
-                  {label}
-                </button>
-              ))}
-            </nav>
-
-            <div className="my-7 border-t border-slate-200" />
-
-            <button
-              onClick={() => setActiveNav("support")}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold ${
-                activeNav === "support"
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-slate-600 hover:bg-white"
-              }`}
-            >
-              <Headphones size={18} />
-              Help & support
-            </button>
-
-            <div className="mt-7 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4">
-              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
-                <ShieldCheck size={20} />
-              </div>
-              <h3 className="text-sm font-bold">Think before you share.</h3>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Explore evidence and context instead of relying on viral
-                claims alone.
-              </p>
+          <nav className="space-y-1 rounded-2xl border border-slate-200 bg-white p-2">
+            {navigation.map((item) => (
               <button
-                onClick={() => setActiveNav("verify")}
-                className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-indigo-700"
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActivePage(item.id);
+                  setVerifyMessage("");
+                }}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold ${
+                  activePage === item.id
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
               >
-                Explore verification <ArrowUpRight size={13} />
+                <span className="w-6 text-center text-lg">{item.icon}</span>
+                {item.id}
               </button>
-            </div>
+            ))}
+          </nav>
+
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+            <div className="text-lg">🛡️</div>
+            <h3 className="mt-2 font-bold">Think before you share.</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              Look for evidence and context instead of relying on viral claims
+              alone.
+            </p>
           </div>
         </aside>
 
-        {/* Main content */}
-        <main className="min-w-0 py-6">
-          {activeNav === "verify" ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
-                <FileSearch size={25} />
-              </div>
-
-              <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">
-                Verity content context
+        <section className="min-w-0">
+          {activePage === "Verify" ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+              <div className="text-3xl">🔎</div>
+              <p className="mt-4 text-xs font-bold uppercase tracking-widest text-indigo-600">
+                Content context
               </p>
-              <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
+              <h1 className="mt-2 text-3xl font-black">
                 Check before you share.
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-                Submit a public news link to prepare it for evidence-based
-                review. AI origin and factual accuracy are different questions.
+              <p className="mt-3 text-sm leading-6 text-slate-500">
+                Enter a public article or post link to prepare it for a
+                future evidence-based verification service.
               </p>
 
               <form
-                className="mt-7 space-y-3"
+                className="mt-6 space-y-3"
                 onSubmit={(event) => {
                   event.preventDefault();
                   setVerifyMessage(
                     verifyUrl.trim()
-                      ? "This preview does not run a live verification yet. Connect the verification service and evidence sources before presenting a real result."
-                      : "Enter a public URL first."
+                      ? "Live verification is not connected yet. No claim has been verified."
+                      : "Please enter a URL."
                   );
                 }}
               >
-                <label className="block text-sm font-semibold">
-                  Article or public post URL
-                </label>
                 <input
                   value={verifyUrl}
                   onChange={(event) => setVerifyUrl(event.target.value)}
-                  placeholder="https://example.com/news-article"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
+                  placeholder="https://example.com/article"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500"
                 />
-                <button className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-700">
-                  <Search size={16} />
+                <button className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-700">
                   Prepare check
                 </button>
               </form>
 
               {verifyMessage && (
-                <div className="mt-5 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  <AlertCircle className="mt-0.5 shrink-0" size={18} />
-                  <p>{verifyMessage}</p>
-                </div>
+                <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+                  {verifyMessage}
+                </p>
               )}
 
-              <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <h3 className="flex items-center gap-2 text-sm font-bold">
-                  <CheckCircle2 size={17} className="text-indigo-600" />
-                  What a real check should include
-                </h3>
-                <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                  <li>• The specific factual claim being examined.</li>
-                  <li>• Supporting and contradicting source links.</li>
-                  <li>• Available media-origin evidence.</li>
-                  <li>• Uncertainty and the time of the assessment.</li>
-                  <li>• A route to request human review.</li>
-                </ul>
-              </div>
-            </section>
-          ) : activeNav === "support" ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
-                <Headphones size={25} />
-              </div>
-              <h1 className="text-2xl font-black tracking-tight">
-                Help & support
-              </h1>
+              <p className="mt-6 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                A media file can be AI-generated without being misinformation.
+                A genuine photograph can also accompany a false caption. These
+                require separate assessments.
+              </p>
+            </div>
+          ) : activePage === "Support" ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <h1 className="text-2xl font-black">Help & support</h1>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Get help with account access, technical problems, content
-                labels and moderation decisions.
+                Support tickets and human review will be connected to the
+                database in the next development step.
               </p>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {[
-                  {
-                    title: "Incorrect AI label",
-                    description: "Request a human review of a content label.",
-                  },
-                  {
-                    title: "Appeal a decision",
-                    description: "Challenge a moderation decision.",
-                  },
-                  {
-                    title: "Report harmful content",
+              {[
+                "Incorrect AI label",
+                "Appeal a moderation decision",
+                "Report harmful content",
+                "Account or technical issue",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="mt-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold"
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="mb-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">
+                  Your corner of the internet
+                </p>
+                <h1 className="mt-2 text-3xl font-black tracking-tight">
+                  {heading}
+                </h1>
+                <p className="mt-2 text-sm text-slate-500">
+                  Ideas, discussions and content worth understanding.
+                </p>
+              </div>
+
+              <div className="mb-4 flex flex-wrap gap-5 border-b border-slate-200">
+                {["For you", "Latest", "Questions", "Discussions"].map(
+                  (item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setFilter(item)}
+                      className={`border-b-2 pb-3 text-sm font-semibold ${
+                        filter === item
+                          ? "border-indigo-600 text-indigo-700"
+                          : "border-transparent text-slate-500"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="mb-5 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left text-sm text-slate-400 hover:border-indigo-300"
+              >
+                Share something worth discussing...
+                <span className="float-right font-bold text-indigo-600">
+                  + Create
+                </span>
+              </button>
+
+              <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs leading-5 text-indigo-900">
+                These posts are demonstration content. AI detection and
+                live fact-checking are not connected yet.
+              </div>
+
+              <div className="space-y-4">
+                {visiblePosts.map((post) => {
+                  const isLiked = liked.includes(post.id);
+                  const isSaved = saved.includes(post.id);
+
+                  return (
+                    <article
+                      key={post.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700">
+                          {post.author
+                            .split(" ")
+                            .map((part) => part[0])
+                            .slice(0, 2)
+                            .join("")}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold">{post.author}</p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            @{post.username} · {post.community}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.alert(
+                              "Reporting will be connected to the support system later."
+                            )
+                          }
+                          className="text-lg text-slate-400"
+                          aria-label="Report options"
+                        >
+                          ···
+                        </button>
+                      </div>
+
+                      <h2 className="mt-4 text-lg font-bold leading-7">
+                        {post.title}
+                      </h2>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-600">
+                        {post.body}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
+                            post.labelColor === "blue"
+                              ? "border-blue-200 bg-blue-50 text-blue-700"
+                              : post.labelColor === "orange"
+                                ? "border-orange-200 bg-orange-50 text-orange-700"
+                                : "border-slate-200 bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {post.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActivePage("Verify")}
+                          className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        >
+                          Content context
+                        </button>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-5 border-t border-slate-100 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleLike(post.id)}
+                          className={`text-sm font-semibold ${
+                            isLiked ? "text-rose-600" : "text-slate-500"
+                          }`}
+                        >
+                          {isLiked ? "♥" : "♡"}{" "}
+                          {post.likes + (isLiked ? 1 : 0)}
+                        </button>
+
+                        <span className="text-sm text-slate-500">
+                          ◯ {post.comments} comments
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleSave(post.id)}
+                          className={`ml-auto text-sm font-semibold ${
+                            isSaved ? "text-indigo-700" : "text-slate-500"
+                          }`}
+                        >
+                          {isSaved ? "✓ Saved" : "♧ Save"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+
+                {visiblePosts.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+                    <h2 className="font-bold">No posts found</h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Try a different search or filter.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+
+        <aside className="hidden space-y-5 xl:block">
+          <section className="rounded-2xl bg-gradient-to-br from-indigo-950 to-indigo-600 p-5 text-white">
+            <p className="text-xs font-bold uppercase tracking-widest text-indigo-200">
+              The Verity difference
+            </p>
+            <h2 className="mt-4 text-2xl font-black leading-tight">
+              Context makes conversations better.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-indigo-100">
+              Understand claims, inspect evidence and challenge incorrect
+              labels through human review.
+            </p>
+            <button
+              type="button"
+              onClick={() => setActivePage("Verify")}
+              className="mt-5 rounded-xl bg-white px-4 py-3 text-sm font-bold text-indigo-800"
+            >
+              Explore verification →
+            </button>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="font-bold">Trending topics</h2>
+            {[
+              "#ArtificialIntelligence",
+              "#DigitalLiteracy",
+              "#ScienceExplained",
+            ].map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setSearch(item.replace("#", ""))}
+                className="mt-4 block text-left text-sm font-semibold text-indigo-700 hover:text-indigo-900"
+              >
+                {item}
+              </button>
+            ))}
+          </section>
+
+          <p className="px-2 text-xs leading-6 text-slate-400">
+            Verity separates media origin from factual accuracy.
+            <br />
+            © 2026 Verity
+          </p>
+        </aside>
+      </div>
+
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-title"
+            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <h2 id="create-title" className="text-xl font-black">
+                Create a post
+              </h2>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(false)}
+                className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePost} className="mt-5 space-y-4">
+              <label className="block text-sm font-semibold">
+                Post type
+                <select
+                  value={newCategory}
+                  onChange={(event) => setNewCategory(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3"
+                >
+                  <option>Discussion</option>
+                  <option>Question</option>
+                  <option>News</option>
+                  <option>Meme</option>
+                </select>
+              </label>
+
+              <label className="block text-sm font-semibold">
+                Title
+                <input
+                  required
+                  maxLength={160}
+                  value={newTitle}
+                  onChange={(event) => setNewTitle(event.target.value)}
+                  placeholder="What would you like to share?"
+                  className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-normal outline-none focus:border-indigo-500"
+                />
+              </label>
+
+              <label className="block text-sm font-semibold">
+                Description
+                <textarea
+                  required
+                  rows={5}
+                  maxLength={5000}
+                  value={newBody}
+                  onChange={(event) => setNewBody(event.target.value)}
+                  placeholder="Add your thoughts, sources or context..."
+                  className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-normal outline-none focus:border-indigo-500"
+                />
+              </label>
+
+              <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                This first version stores newly created posts only in
+                temporary page state. Database publishing comes next.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+                >
+                  Publish preview
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+    </main>
+  );
+}
