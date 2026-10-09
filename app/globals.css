@@ -328,3 +328,14 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Verity media posts: responsive display and reduced-motion-safe controls */
+.verity-post-media { width: 100%; min-width: 0; }
+.verity-post-media img,
+.verity-post-media video { display: block; max-width: 100%; background: #0f172a; }
+.verity-post-media video { aspect-ratio: 16 / 9; }
+@media (max-width: 639px) {
+  .verity-post-media { gap: 8px; }
+  .verity-post-media img { border-radius: 14px; }
+}
