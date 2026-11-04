@@ -79,15 +79,20 @@ export default function PublicProfilePage() {
         viewer && viewer !== found.id
           ? supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("follower_id", viewer).eq("following_id", found.id)
           : Promise.resolve({ count: 0, error: null }),
+        viewer && viewer !== found.id
+          ? supabase.from("blocks").select("blocked_id", { count: "exact", head: true }).eq("blocker_id", viewer).eq("blocked_id", found.id)
+          : Promise.resolve({ count: 0, error: null }),
       ]);
       if (postsError) throw postsError;
       if (followerError) throw followerError;
       if (followingError) throw followingError;
-      if (relationError) throw relationError;\n      if (blockError) throw blockError;
+      if (relationError) throw relationError;
+      if (blockError) throw blockError;
       setPosts(postRows ?? []);
       setFollowers(followerCount ?? 0);
       setFollowingCount(followingTotal ?? 0);
-      setFollowing((isFollowing ?? 0) > 0);\n      setBlocked((isBlocked ?? 0) > 0);
+      setFollowing((isFollowing ?? 0) > 0);
+      setBlocked((isBlocked ?? 0) > 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load this profile.");
     } finally {
@@ -170,7 +175,8 @@ export default function PublicProfilePage() {
             </div>
             <h1 className="mt-4 text-2xl font-black tracking-tight">{profile.display_name}</h1>
             <p className="mt-1 text-sm text-slate-500">@{profile.username}</p>
-            {blocked && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">You have blocked this account. You can unblock it from here or in Settings.</p>}\n            {profile.bio && <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-slate-700">{profile.bio}</p>}
+            {blocked && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">You have blocked this account. You can unblock it from here or in Settings.</p>}
+            {profile.bio && <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-slate-700">{profile.bio}</p>}
             <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
               <span><strong className="text-slate-900">{followers}</strong> followers</span>
               <span><strong className="text-slate-900">{followingCount}</strong> following</span>
