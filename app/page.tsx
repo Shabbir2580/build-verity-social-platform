@@ -299,6 +299,7 @@ export default function HomePage() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [isModerator, setIsModerator] = useState(false);
   const [isSupportStaff, setIsSupportStaff] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [liked, setLiked] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DbComment[]>>({});
@@ -332,7 +333,8 @@ export default function HomePage() {
     ...NAV_ITEMS,
     ...(isSupportStaff ? [{ name: "Support queue", icon: Headphones }] : []),
     ...(isModerator ? [{ name: "Moderation", icon: ShieldCheck }] : []),
-  ], [isModerator, isSupportStaff]);
+    ...(isAdmin ? [{ name: "Admin", icon: ShieldCheck }] : []),
+  ], [isModerator, isSupportStaff, isAdmin]);
 
   const [supportCategory, setSupportCategory] = useState<SupportCategory>("general");
   const [supportSubject, setSupportSubject] = useState("");
@@ -381,6 +383,7 @@ export default function HomePage() {
         const { data: roleData } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
         setIsModerator(roleData?.role === "moderator" || roleData?.role === "admin");
         setIsSupportStaff(roleData?.role === "support" || roleData?.role === "moderator" || roleData?.role === "admin");
+        setIsAdmin(roleData?.role === "admin");
         const { data: membershipData, error: membershipError } = await supabase
           .from("community_memberships")
           .select("community_id, role")
@@ -392,6 +395,7 @@ export default function HomePage() {
       } else {
         setIsModerator(false);
         setIsSupportStaff(false);
+        setIsAdmin(false);
         setMembershipRoles({});
       }
 
@@ -1069,7 +1073,7 @@ export default function HomePage() {
             <p className="mb-3 mt-8 px-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Your space</p>
             <nav className="space-y-1">
               {visibleNavItems.map(({ name, icon: Icon }) => (
-                <button key={name} type="button" onClick={() => { if (name === "Moderation") router.push("/moderation"); else if (name === "Support queue") router.push("/support/staff"); else if (name === "Verify") router.push("/verify"); else if (name === "Questions") router.push("/questions"); else if (name === "Notifications") router.push("/notifications"); else if (name === "Settings") router.push("/settings"); else setActivePage(name); setMobileMenuOpen(false); }} className={`verity-nav-link group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${activePage === name ? "verity-nav-active bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80" : "text-slate-500 hover:bg-white hover:text-slate-900"}`}>
+                <button key={name} type="button" onClick={() => { if (name === "Admin") router.push("/admin"); else if (name === "Moderation") router.push("/moderation"); else if (name === "Support queue") router.push("/support/staff"); else if (name === "Verify") router.push("/verify"); else if (name === "Questions") router.push("/questions"); else if (name === "Notifications") router.push("/notifications"); else if (name === "Settings") router.push("/settings"); else setActivePage(name); setMobileMenuOpen(false); }} className={`verity-nav-link group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${activePage === name ? "verity-nav-active bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80" : "text-slate-500 hover:bg-white hover:text-slate-900"}`}>
                   <Icon size={19} className={activePage === name ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600"} />
                   <span className="flex-1">{name}</span>
                   {activePage === name && <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />}
