@@ -201,6 +201,7 @@ export default function SettingsPage() {
         {error && <div role="alert" className="mt-5 break-words rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
         {notice && <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
         {!profile ? <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">Your profile settings could not be loaded. Try refreshing the page.</div> : (
+          <>
           <form onSubmit={(event) => void saveProfile(event)} className="mt-6 space-y-5">
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="flex items-center gap-2"><UserRound size={18} className="text-indigo-600" /><h2 className="font-extrabold">Public profile</h2></div>
@@ -241,7 +242,8 @@ export default function SettingsPage() {
               {blockedUsers.length === 0 ? <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">You have not blocked anyone.</p> : <div className="mt-4 divide-y divide-slate-100">{blockedUsers.map((blocked) => <div key={blocked.id} className="flex items-center gap-3 py-3"><Link href={"/u/" + encodeURIComponent(blocked.username)} className="flex min-w-0 flex-1 items-center gap-3">{blocked.avatar_url ? <img src={blocked.avatar_url} alt="" className="h-10 w-10 rounded-xl object-cover" /> : <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 font-bold text-indigo-700">{blocked.display_name.slice(0,1).toUpperCase()}</span>}<span className="min-w-0"><span className="block truncate text-sm font-bold">{blocked.display_name}</span><span className="block text-xs text-slate-500">@{blocked.username}</span></span></Link><button type="button" disabled={unblockingId !== null} onClick={() => void unblockUser(blocked)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:border-indigo-300 disabled:opacity-50">{unblockingId === blocked.id ? "Working..." : "Unblock"}</button></div>)}</div>}
             </section>
 
-          </form>
+          
+          </>
         )}
       </section>
     </main>
