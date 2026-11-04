@@ -24,6 +24,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type PostMedia = {
   id: string;
+  post_id: string;
   kind: "image" | "video";
   storage_path: string;
   mime_type: string;
