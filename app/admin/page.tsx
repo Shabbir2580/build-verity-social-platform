@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Activity, ArrowLeft, Ban, CheckCircle2, ClipboardList, FileText, LoaderCircle, RefreshCw, ShieldCheck, Users, UserCog } from "lucide-react";
+import { Activity, ArrowLeft, Ban, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileText, LoaderCircle, RefreshCw, ShieldCheck, Users, UserCog } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = { id: string; username: string; display_name: string; role: string; is_suspended: boolean; created_at: string };
@@ -19,7 +19,7 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, reports: 0, cases: 0, tickets: 0 });
-  const [staff, setStaff] = useState<Profile[]>([]);
+  const [staff, setStaff] = useState<Profile[]>([]);\n  const [peopleTotal, setPeopleTotal] = useState(0);\n  const [peoplePage, setPeoplePage] = useState(0);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [daily, setDaily] = useState<DailyMetric[]>([]);
   const [engagement, setEngagement] = useState({ comments: 0, reactions: 0, communities: 0, contributors: 0 });
@@ -50,7 +50,7 @@ export default function AdminPage() {
         supabase.from("reports").select("id", { count: "exact", head: true }),
         supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved"),
         supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved"),
-        supabase.from("profiles").select("id, username, display_name, role, is_suspended, created_at").order("created_at", { ascending: false }).limit(200),
+        supabase.from("profiles").select("id, username, display_name, role, is_suspended, created_at", { count: "exact" }).order("created_at", { ascending: false }).range(peoplePage * 50, peoplePage * 50 + 49),
         supabase.from("audit_logs").select("id, actor_id, action, entity_type, entity_id, details, created_at").order("created_at", { ascending: false }).limit(30),
         supabase.from("profiles").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
         supabase.from("posts").select("author_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
@@ -71,7 +71,7 @@ export default function AdminPage() {
       if (recentReactions.error) throw recentReactions.error;
       if (recentMemberships.error) throw recentMemberships.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
-      setStaff((people.data ?? []) as Profile[]);
+      setStaff((people.data ?? []) as Profile[]);\n      setPeopleTotal(people.count ?? 0);
       setAudit((logs.data ?? []) as Audit[]);
       const days: DailyMetric[] = Array.from({ length: 14 }, (_, index) => { const date = new Date(since); date.setDate(since.getDate() + index); return { day: date.toISOString().slice(0,10), members: 0, posts: 0, comments: 0 }; });
       const byDay = new Map(days.map((item) => [item.day, item]));
@@ -148,10 +148,11 @@ export default function AdminPage() {
         <p className="mt-4 text-[11px] leading-5 text-slate-400">“Contributing members” means unique accounts with at least one post, comment or reaction in this period. It is not a daily-active-user or retention metric. Recent event queries are capped at 10,000 rows per source.</p>
       </section>
       <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><UserCog size={18} className="text-indigo-600"/><h2 className="font-extrabold">People & role management</h2></div><p className="mt-1 text-xs text-slate-500">Role changes use protected database functions and automatically create audit records.</p>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><UserCog size={18} className="text-indigo-600"/><h2 className="font-extrabold">People & role management</h2></div><p className="mt-1 text-xs text-slate-500">Browse all {peopleTotal.toLocaleString()} profiles · 50 per page. Role changes use protected database functions and automatically create audit records.</p>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search members by username or name" className="mt-4 min-h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"/>
           <div className="mt-3 divide-y divide-slate-100">{staff.filter((person) => `${person.username} ${person.display_name}`.toLowerCase().includes(search.toLowerCase())).map((person) => <article key={person.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{person.display_name} <span className="font-normal text-slate-400">@{person.username}</span></p><p className="mt-1 text-xs text-slate-500">{pretty(person.role)} · {person.is_suspended ? "Suspended" : "Active"} · Joined {new Date(person.created_at).toLocaleDateString()}</p></div><div className="flex items-center gap-2"><button onClick={() => {setSelected(person);setNewRole(person.role);setReason("");setError("");}} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">Change role</button><button disabled={saving} onClick={() => void toggleSuspension(person)} className={`rounded-lg px-3 py-2 text-xs font-bold ${person.is_suspended ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"} disabled:opacity-50`}>{person.is_suspended ? <><CheckCircle2 size={13} className="mr-1 inline"/>Restore</> : <><Ban size={13} className="mr-1 inline"/>Suspend</>}</button></div></article>)}</div>
-          {!staff.length && <p className="py-8 text-center text-sm text-slate-500">No staff accounts found.</p>}
+          {!staff.length && <p className="py-8 text-center text-sm text-slate-500">No profiles on this page.</p>}
+          <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><p className="text-xs text-slate-500">Page {peoplePage + 1} of {Math.max(1, Math.ceil(peopleTotal / 50))} · Showing {peopleTotal ? peoplePage * 50 + 1 : 0}–{Math.min((peoplePage + 1) * 50, peopleTotal)} of {peopleTotal.toLocaleString()}</p><div className="flex gap-2"><button disabled={peoplePage === 0 || loading} onClick={() => setPeoplePage((page) => Math.max(0, page - 1))} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40"><ChevronLeft size={14}/> Previous</button><button disabled={(peoplePage + 1) * 50 >= peopleTotal || loading} onClick={() => setPeoplePage((page) => page + 1)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40">Next <ChevronRight size={14}/></button></div></div>
           {selected && <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4"><div className="flex items-center justify-between"><h3 className="font-extrabold">Change role · @{selected.username}</h3><button onClick={() => setSelected(null)} className="text-xs font-bold text-slate-500">Cancel</button></div><label className="mt-3 block text-xs font-bold text-slate-600">New role<select value={newRole} onChange={(event) => setNewRole(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm">{roleOptions.map((role) => <option key={role} value={role}>{pretty(role)}</option>)}</select></label><label className="mt-3 block text-xs font-bold text-slate-600">Reason (required for audit)<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Explain why this role change is necessary."/></label><button disabled={saving || reason.trim().length < 5} onClick={() => void saveRole()} className="mt-3 min-h-10 rounded-lg bg-indigo-600 px-4 text-xs font-extrabold text-white disabled:opacity-50">{saving ? "Saving…" : "Save role change"}</button></div>}
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Activity size={18} className="text-indigo-600"/><h2 className="font-extrabold">Administrative audit log</h2></div><p className="mt-1 text-xs text-slate-500">Latest 30 recorded administrative actions. Read access is restricted to admins.</p><div className="mt-4 space-y-3">{audit.length ? audit.map((entry) => <article key={entry.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-extrabold text-slate-800">{pretty(entry.action)}</p><time className="text-[11px] text-slate-400">{fmt(entry.created_at)}</time></div><p className="mt-1 text-xs text-slate-500">{pretty(entry.entity_type)} · {entry.entity_id || "No entity ID"}</p>{Object.keys(entry.details ?? {}).length > 0 && <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] text-slate-600">{JSON.stringify(entry.details,null,2)}</pre>}</article>) : <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No audit entries available.</p>}</div></section>
