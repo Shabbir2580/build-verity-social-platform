@@ -314,6 +314,7 @@ export default function HomePage() {
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
   const [newCategory, setNewCategory] = useState<Category>("Discussion");
+  const [newCommunityId, setNewCommunityId] = useState("");
   const [newSourceUrl, setNewSourceUrl] = useState("");
   const [newAiDisclosure, setNewAiDisclosure] = useState(false);
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -620,7 +621,7 @@ export default function HomePage() {
         .from("posts")
         .insert({
           author_id: user.id,
-          community_id: null,
+          community_id: newCommunityId || null,
           type: postType,
           title: newTitle.trim() || null,
           body: newBody.trim(),
@@ -687,6 +688,7 @@ export default function HomePage() {
       setNewBody("");
       setNewSourceUrl("");
       setNewCategory("Discussion");
+      setNewCommunityId("");
       setNewAiDisclosure(false);
       setNewFiles([]);
       setNewAltText("");
@@ -1248,6 +1250,14 @@ export default function HomePage() {
                 <select value={newCategory} onChange={(event) => setNewCategory(event.target.value as Category)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm">
                   <option>Discussion</option><option>Question</option><option>News</option><option>Meme</option>
                 </select>
+              </label>
+
+              <label className="block text-sm font-bold">Post to community
+                <select value={newCommunityId} onChange={(event) => setNewCommunityId(event.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm">
+                  <option value="">General feed</option>
+                  {communities.filter((community) => Boolean(membershipRoles[community.id])).map((community) => <option key={community.id} value={community.id}>{community.name}</option>)}
+                </select>
+                <span className="mt-1 block text-xs font-normal text-slate-500">Only communities you have joined are available here.</span>
               </label>
 
               <label className="block text-sm font-bold">Title <span className="font-normal text-slate-400">(optional for photo/video posts)</span>
