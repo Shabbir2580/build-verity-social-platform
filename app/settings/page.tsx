@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, Bell, LoaderCircle, Save, ShieldCheck, UserRound, ImagePlus } from "lucide-react";
+import { ArrowLeft, Bell, LoaderCircle, Save, ShieldCheck, UserRound, ImagePlus, LockKeyhole, UserMinus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -13,6 +13,8 @@ type Profile = {
   interests: string[] | null;
   show_memberships: boolean;
 };
+
+type BlockedUser = { id: string; username: string; display_name: string; avatar_url: string | null };
 
 type Preferences = {
   follows: boolean;
@@ -42,6 +44,11 @@ export default function SettingsPage() {
     answers: true, support: true, moderation: true,
   });
   const [interestText, setInterestText] = useState("");
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -60,7 +67,7 @@ export default function SettingsPage() {
         return;
       }
       setUserId(auth.user.id);
-      const [{ data: profileData, error: profileError }, { data: settingsData, error: settingsError }] = await Promise.all([
+      const [{ data: profileData, error: profileError }, { data: settingsData, error: settingsError }, { data: blockRows, error: blocksError }] = await Promise.all([
         supabase.from("profiles").select("username, display_name, bio, avatar_url, interests, show_memberships").eq("id", auth.user.id).single(),
         supabase.from("user_settings").select("notification_prefs").eq("user_id", auth.user.id).single(),
       ]);
@@ -147,6 +154,38 @@ export default function SettingsPage() {
     }
   }
 
+  async function changePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (passwordSaving) return;
+    if (newPassword.length < 8) { setError("Use a password with at least 8 characters."); return; }
+    if (newPassword !== confirmNewPassword) { setError("The new passwords do not match."); return; }
+    setPasswordSaving(true); setError(""); setNotice("");
+    try {
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      setNewPassword(""); setConfirmNewPassword("");
+      setNotice("Your password has been changed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change your password.");
+    } finally { setPasswordSaving(false); }
+  }
+
+  async function unblockUser(target: BlockedUser) {
+    if (!userId || unblockingId) return;
+    setUnblockingId(target.id); setError(""); setNotice("");
+    try {
+      const supabase = createClient();
+      const { error: deleteError } = await supabase.from("blocks").delete()
+        .eq("blocker_id", userId).eq("blocked_id", target.id);
+      if (deleteError) throw deleteError;
+      setBlockedUsers((current) => current.filter((item) => item.id !== target.id));
+      setNotice("@" + target.username + " has been unblocked.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not unblock this account.");
+    } finally { setUnblockingId(null); }
+  }
+
   if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle size={18} className="animate-spin" /> Loading settings...</main>;
 
   return (
@@ -181,6 +220,20 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2"><Bell size={18} className="text-indigo-600" /><h2 className="font-extrabold">Notification preferences</h2></div>
               <p className="mt-1 text-xs text-slate-500">Turn off categories you do not want in your notification center.</p>
               <div className="mt-4 divide-y divide-slate-100">{preferenceItems.map((item) => <label key={item.key} className="flex cursor-pointer items-start justify-between gap-4 py-4"><span><span className="block text-sm font-bold">{item.title}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{item.description}</span></span><input type="checkbox" checked={preferences[item.key]} onChange={(event) => setPreferences((current) => ({ ...current, [item.key]: event.target.checked }))} className="mt-1 h-4 w-4 shrink-0 accent-indigo-600" /></label>)}</div>
+            </section>
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex items-center gap-2"><LockKeyhole size={18} className="text-indigo-600" /><h2 className="font-extrabold">Change password</h2></div>
+              <p className="mt-1 text-xs text-slate-500">Choose a unique password with at least 8 characters.</p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-bold">New password<input type="password" autoComplete="new-password" minLength={8} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" /></label>
+                <label className="block text-sm font-bold">Confirm new password<input type="password" autoComplete="new-password" minLength={8} required value={confirmNewPassword} onChange={(event) => setConfirmNewPassword(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" /></label>
+              </div>
+              <div className="mt-4 flex justify-end"><button type="button" disabled={passwordSaving || !newPassword || !confirmNewPassword} onClick={() => { const form = document.getElementById("verity-password-form") as HTMLFormElement | null; form?.requestSubmit(); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-indigo-300 disabled:opacity-50">{passwordSaving ? <LoaderCircle size={15} className="animate-spin" /> : <LockKeyhole size={15} />}Update password</button></div>
+            </section>
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex items-center gap-2"><UserMinus size={18} className="text-indigo-600" /><h2 className="font-extrabold">Blocked accounts</h2></div>
+              <p className="mt-1 text-xs text-slate-500">Accounts you have blocked. Unblocking allows their interactions with you again, subject to your other settings.</p>
+              {blockedUsers.length === 0 ? <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">You have not blocked anyone.</p> : <div className="mt-4 divide-y divide-slate-100">{blockedUsers.map((blocked) => <div key={blocked.id} className="flex items-center gap-3 py-3"><Link href={"/u/" + encodeURIComponent(blocked.username)} className="flex min-w-0 flex-1 items-center gap-3">{blocked.avatar_url ? <img src={blocked.avatar_url} alt="" className="h-10 w-10 rounded-xl object-cover" /> : <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 font-bold text-indigo-700">{blocked.display_name.slice(0,1).toUpperCase()}</span>}<span className="min-w-0"><span className="block truncate text-sm font-bold">{blocked.display_name}</span><span className="block text-xs text-slate-500">@{blocked.username}</span></span></Link><button type="button" disabled={unblockingId !== null} onClick={() => void unblockUser(blocked)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:border-indigo-300 disabled:opacity-50">{unblockingId === blocked.id ? "Working..." : "Unblock"}</button></div>)}</div>}
             </section>
             <div className="flex justify-end"><button type="submit" disabled={saving || uploading} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">{saving ? <LoaderCircle size={16} className="animate-spin" /> : <Save size={16} />}{saving ? "Saving..." : "Save settings"}</button></div>
           </form>
