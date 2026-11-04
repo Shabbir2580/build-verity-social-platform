@@ -58,21 +58,21 @@ export default function AdminPage() {
         supabase.from("reactions").select("user_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
         supabase.from("community_memberships").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
       ]);
-      for (const result of [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships]) if (result.error) throw result.error;
+      if (members.error) throw members.error;\n      if (posts.error) throw posts.error;\n      if (reports.error) throw reports.error;\n      if (cases.error) throw cases.error;\n      if (tickets.error) throw tickets.error;\n      if (people.error) throw people.error;\n      if (logs.error) throw logs.error;\n      if (recentMembers.error) throw recentMembers.error;\n      if (recentPosts.error) throw recentPosts.error;\n      if (recentComments.error) throw recentComments.error;\n      if (recentReactions.error) throw recentReactions.error;\n      if (recentMemberships.error) throw recentMemberships.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
       setStaff((people.data ?? []) as Profile[]);
       setAudit((logs.data ?? []) as Audit[]);
       const days: DailyMetric[] = Array.from({ length: 14 }, (_, index) => { const date = new Date(since); date.setDate(since.getDate() + index); return { day: date.toISOString().slice(0,10), members: 0, posts: 0, comments: 0 }; });
       const byDay = new Map(days.map((item) => [item.day, item]));
-      for (const row of recentMembers.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.members++; }
-      for (const row of recentPosts.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.posts++; }
-      for (const row of recentComments.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.comments++; }
+      for (const row of recentMembers?.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.members++; }
+      for (const row of recentPosts?.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.posts++; }
+      for (const row of recentComments?.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.comments++; }
       setDaily(days);
       const contributors = new Set<string>();
       for (const row of recentPosts.data ?? []) contributors.add(row.author_id);
       for (const row of recentComments.data ?? []) contributors.add(row.author_id);
-      for (const row of recentReactions.data ?? []) contributors.add(row.user_id);
-      setEngagement({ comments: recentComments.data?.length ?? 0, reactions: recentReactions.data?.length ?? 0, communities: recentMemberships.data?.length ?? 0, contributors: contributors.size });
+      for (const row of recentReactions?.data ?? []) contributors.add(row.user_id);
+      setEngagement({ comments: recentComments?.data?.length ?? 0, reactions: recentReactions?.data?.length ?? 0, communities: recentMemberships?.data?.length ?? 0, contributors: contributors.size });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
     finally { setLoading(false); setChecking(false); }
   }, []);
