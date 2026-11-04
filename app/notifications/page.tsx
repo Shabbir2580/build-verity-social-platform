@@ -38,8 +38,10 @@ export default function NotificationsPage() {
   const [error, setError] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async (silent = false) => {
+  const load = useCallback(async (silent = false, append = false) => {
     if (!silent) setLoading(true);
     setError("");
     try {
@@ -51,28 +53,35 @@ export default function NotificationsPage() {
         return;
       }
       setUserId(auth.user.id);
+      const offset = append ? rows.length : 0;
       const { data, error: queryError } = await supabase.from("notifications")
         .select("id, actor_id, type, message, link, read_at, created_at")
         .eq("user_id", auth.user.id)
-        .order("created_at", { ascending: false }).limit(100);
+        .order("created_at", { ascending: false }).range(offset, offset + 99);
       if (queryError) throw queryError;
       const items = (data ?? []) as Notification[];
+      setHasMore(items.length === 100);
       const actorIds = [...new Set(items.map((item) => item.actor_id).filter((id): id is string => Boolean(id)))];
       if (actorIds.length) {
         const { data: actors, error: actorError } = await supabase.from("profiles")
           .select("id, username, display_name").in("id", actorIds);
         if (actorError) throw actorError;
         const actorMap = new Map((actors ?? []).map((actor) => [actor.id, actor]));
-        setRows(items.map((item) => ({ ...item, actor: item.actor_id ? actorMap.get(item.actor_id) ?? null : null })));
+        const hydrated = items.map((item) => ({ ...item, actor: item.actor_id ? actorMap.get(item.actor_id) ?? null : null }));
+        setRows((current) => append
+          ? [...current, ...hydrated.filter((item) => !current.some((existing) => existing.id === item.id))]
+          : silent ? [...hydrated, ...current.filter((item) => !hydrated.some((fresh) => fresh.id === item.id))] : hydrated);
       } else {
-        setRows(items);
+        setRows((current) => append
+          ? [...current, ...items.filter((item) => !current.some((existing) => existing.id === item.id))]
+          : silent ? [...items, ...current.filter((item) => !items.some((fresh) => fresh.id === item.id))] : items);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load notifications.");
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [rows.length]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -95,6 +104,13 @@ export default function NotificationsPage() {
       void supabase.removeChannel(channel);
     };
   }, [userId, load]);
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try { await load(true, true); }
+    finally { setLoadingMore(false); }
+  }
 
   async function markRead(id: string) {
     if (!userId) return;
@@ -130,7 +146,7 @@ export default function NotificationsPage() {
       </header>
       <section className="mx-auto max-w-3xl pt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><div className="flex items-center gap-2 text-indigo-600"><Bell size={19} /><span className="text-xs font-extrabold uppercase tracking-wider">Your activity</span></div><h1 className="mt-2 text-3xl font-black tracking-tight">Notifications</h1><p className="mt-2 text-sm text-slate-500">{unread} unread · latest 100 notifications</p></div>
+          <div><div className="flex items-center gap-2 text-indigo-600"><Bell size={19} /><span className="text-xs font-extrabold uppercase tracking-wider">Your activity</span></div><h1 className="mt-2 text-3xl font-black tracking-tight">Notifications</h1><p className="mt-2 text-sm text-slate-500">{unread} unread in the notifications loaded so far</p></div>
           <button type="button" onClick={() => void markAllRead()} disabled={busy || unread === 0} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 hover:border-indigo-200 hover:text-indigo-700 disabled:opacity-40">{busy ? <LoaderCircle size={15} className="animate-spin" /> : <CheckCheck size={15} />} Mark all read</button>
         </div>
         <div className="mt-6 flex gap-2">
@@ -149,7 +165,8 @@ export default function NotificationsPage() {
             {!item.read_at && <button type="button" onClick={() => void markRead(item.id)} className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white hover:text-indigo-700" aria-label="Mark notification as read" title="Mark as read"><Check size={16} /></button>}
           </div>;
         })}</div>}
-        <p className="mt-5 text-center text-xs text-slate-400">Notifications respect your account's notification preferences.</p>
+        {hasMore && <div className="mt-5 flex justify-center"><button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:border-indigo-200 hover:text-indigo-700 disabled:opacity-50">{loadingMore && <LoaderCircle size={15} className="animate-spin" />}{loadingMore ? "Loading older notifications..." : "Load older notifications"}</button></div>}
+        <p className="mt-5 text-center text-xs text-slate-400">Notifications respect your account&apos;s notification preferences.</p>
       </section>
     </main>
   );
