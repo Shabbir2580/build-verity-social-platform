@@ -46,6 +46,7 @@ type PublicPost = {
   declared_category: string | null;
   ai_disclosure: boolean;
   status: string;
+  removal_reason: string | null;
   created_at: string;
   author_name: string;
   author_username: string;
@@ -220,7 +221,7 @@ export default function VerifyPage() {
 
       let postQuery = supabase
         .from("posts")
-        .select("id, author_id, type, title, body, link_url, video_url, source_url, declared_category, ai_disclosure, status, created_at");
+        .select("id, author_id, type, title, body, link_url, video_url, source_url, declared_category, ai_disclosure, status, removal_reason, created_at");
       postQuery = currentUser
         ? postQuery.or(`status.eq.published,author_id.eq.${currentUser.id}`)
         : postQuery.eq("status", "published");
@@ -458,7 +459,7 @@ export default function VerifyPage() {
 
             {!selectedPost ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center sm:p-12"><ShieldCheck size={34} className="mx-auto text-slate-300" /><h2 className="mt-4 text-xl font-extrabold">Choose a post to begin</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">When posts exist, select one to see any stored assessments and submit a human-review request.</p></div> : <>
               <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-                <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">{pretty(selectedPost.type)}</span><span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{selectedPost.ai_disclosure ? "Creator disclosed AI use" : "No creator AI disclosure"}</span></div>
+                <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">{pretty(selectedPost.type)}</span><span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{selectedPost.ai_disclosure ? "Creator disclosed AI use" : "No creator AI disclosure"}</span>{selectedPost.status !== "published" && <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${selectedPost.status === "restricted" ? "bg-amber-50 text-amber-800" : "bg-rose-50 text-rose-800"}`}>{pretty(selectedPost.status)}</span>}</div>{selectedPost.status !== "published" && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-extrabold uppercase tracking-wide text-amber-900">Moderation explanation</p><p className="mt-1 text-sm leading-6 text-amber-950">{selectedPost.removal_reason || "No additional explanation was recorded for this post."}</p><p className="mt-2 text-xs leading-5 text-amber-800">You can submit a human-review request below. The current status remains in place until a reviewer records a decision.</p></div>}
                 <h2 className="mt-4 break-words text-2xl font-black leading-tight tracking-tight sm:text-3xl">{selectedPost.title || "Untitled post"}</h2>
                 <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{selectedPost.body || "This post has no description."}</p>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500"><span>Posted by <strong className="text-slate-700">{selectedPost.author_name}</strong> (@{selectedPost.author_username})</span><span>·</span><span>{timeLabel(selectedPost.created_at)}</span></div>
