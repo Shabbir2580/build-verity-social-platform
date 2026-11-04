@@ -70,9 +70,17 @@ export default function SettingsPage() {
       const [{ data: profileData, error: profileError }, { data: settingsData, error: settingsError }, { data: blockRows, error: blocksError }] = await Promise.all([
         supabase.from("profiles").select("username, display_name, bio, avatar_url, interests, show_memberships").eq("id", auth.user.id).single(),
         supabase.from("user_settings").select("notification_prefs").eq("user_id", auth.user.id).single(),
+        supabase.from("blocks").select("blocked_id").eq("blocker_id", auth.user.id),
       ]);
       if (profileError) throw profileError;
       if (settingsError) throw settingsError;
+      if (blocksError) throw blocksError;
+      const blockedIds = (blockRows ?? []).map((row) => row.blocked_id);
+      if (blockedIds.length) {
+        const { data: blockedProfiles, error: blockedProfilesError } = await supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", blockedIds);
+        if (blockedProfilesError) throw blockedProfilesError;
+        setBlockedUsers((blockedProfiles ?? []) as BlockedUser[]);
+      } else setBlockedUsers([]);
       setProfile(profileData as Profile);
       setInterestText((profileData.interests ?? []).join(", "));
       setPreferences({ ...preferences, ...(settingsData.notification_prefs ?? {}) });
