@@ -52,6 +52,11 @@ export default function AdminPage() {
         supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved"),
         supabase.from("profiles").select("id, username, display_name, role, is_suspended, created_at").order("created_at", { ascending: false }).limit(200),
         supabase.from("audit_logs").select("id, actor_id, action, entity_type, entity_id, details, created_at").order("created_at", { ascending: false }).limit(30),
+        supabase.from("profiles").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
+        supabase.from("posts").select("author_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
+        supabase.from("comments").select("author_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
+        supabase.from("reactions").select("user_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
+        supabase.from("community_memberships").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
       ]);
       for (const result of [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships]) if (result.error) throw result.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
