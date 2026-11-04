@@ -19,7 +19,9 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, reports: 0, cases: 0, tickets: 0 });
-  const [staff, setStaff] = useState<Profile[]>([]);\n  const [peopleTotal, setPeopleTotal] = useState(0);\n  const [peoplePage, setPeoplePage] = useState(0);
+  const [staff, setStaff] = useState<Profile[]>([]);
+  const [peopleTotal, setPeopleTotal] = useState(0);
+  const [peoplePage, setPeoplePage] = useState(0);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [daily, setDaily] = useState<DailyMetric[]>([]);
   const [engagement, setEngagement] = useState({ comments: 0, reactions: 0, communities: 0, contributors: 0 });
@@ -71,7 +73,8 @@ export default function AdminPage() {
       if (recentReactions.error) throw recentReactions.error;
       if (recentMemberships.error) throw recentMemberships.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
-      setStaff((people.data ?? []) as Profile[]);\n      setPeopleTotal(people.count ?? 0);
+      setStaff((people.data ?? []) as Profile[]);
+      setPeopleTotal(people.count ?? 0);
       setAudit((logs.data ?? []) as Audit[]);
       const days: DailyMetric[] = Array.from({ length: 14 }, (_, index) => { const date = new Date(since); date.setDate(since.getDate() + index); return { day: date.toISOString().slice(0,10), members: 0, posts: 0, comments: 0 }; });
       const byDay = new Map(days.map((item) => [item.day, item]));
