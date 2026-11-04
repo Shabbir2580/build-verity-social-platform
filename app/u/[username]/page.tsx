@@ -168,10 +168,24 @@ export default function PublicProfilePage() {
           <div className="h-28 bg-gradient-to-r from-slate-950 via-indigo-950 to-indigo-600" />
           <div className="px-6 pb-6 sm:px-8">
             <div className="-mt-12 flex flex-wrap items-end justify-between gap-4">
-              {profile.avatar_url
-                ? <img src={profile.avatar_url} alt={profile.display_name} className="h-24 w-24 rounded-2xl border-4 border-white bg-white object-cover shadow-md" />
-                : <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-indigo-100 text-3xl font-black text-indigo-700 shadow-md">{profile.display_name.slice(0, 1).toUpperCase()}</div>}
-              {viewerId !== profile.id && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void toggleBlock()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:border-rose-200 hover:text-rose-700 disabled:opacity-60"><ShieldBan size={15} />{blocked ? "Unblock" : "Block"}</button><button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : following ? <UserMinus size={15} /> : <UserPlus size={15} />}{following ? "Following" : "Follow"}</button></div>}
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.display_name} className="h-24 w-24 rounded-2xl border-4 border-white bg-white object-cover shadow-md" />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-indigo-100 text-3xl font-black text-indigo-700 shadow-md">
+                  {profile.display_name.slice(0, 1).toUpperCase()}
+                </div>
+              )}
+              {viewerId !== profile.id ? (
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void toggleBlock()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:border-rose-200 hover:text-rose-700 disabled:opacity-60">
+                    <ShieldBan size={15} />{blocked ? "Unblock" : "Block"}
+                  </button>
+                  <button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
+                    {busy ? <LoaderCircle size={15} className="animate-spin" /> : following ? <UserMinus size={15} /> : <UserPlus size={15} />}
+                    {following ? "Following" : "Follow"}
+                  </button>
+                </div>
+              ) : null}
             </div>
             <h1 className="mt-4 text-2xl font-black tracking-tight">{profile.display_name}</h1>
             <p className="mt-1 text-sm text-slate-500">@{profile.username}</p>
