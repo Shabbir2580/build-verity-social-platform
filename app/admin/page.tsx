@@ -20,7 +20,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, reports: 0, cases: 0, tickets: 0 });
   const [staff, setStaff] = useState<Profile[]>([]);
-  const [audit, setAudit] = useState<Audit[]>([]);\n  const [daily, setDaily] = useState<DailyMetric[]>([]);\n  const [engagement, setEngagement] = useState({ comments: 0, reactions: 0, communities: 0, contributors: 0 });
+  const [audit, setAudit] = useState<Audit[]>([]);
+  const [daily, setDaily] = useState<DailyMetric[]>([]);
+  const [engagement, setEngagement] = useState({ comments: 0, reactions: 0, communities: 0, contributors: 0 });
   const [selected, setSelected] = useState<Profile | null>(null);
   const [newRole, setNewRole] = useState("support");
   const [reason, setReason] = useState("");
@@ -40,7 +42,9 @@ export default function AdminPage() {
       if (roleError) throw roleError;
       if (me.role !== "admin") { setAuthorized(false); setChecking(false); return; }
       setAuthorized(true);
-      const since = new Date(); since.setDate(since.getDate() - 13); since.setHours(0,0,0,0);\n      const sinceIso = since.toISOString();\n      const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships] = await Promise.all([
+      const since = new Date(); since.setDate(since.getDate() - 13); since.setHours(0,0,0,0);
+      const sinceIso = since.toISOString();
+      const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
         supabase.from("reports").select("id", { count: "exact", head: true }),
@@ -52,7 +56,18 @@ export default function AdminPage() {
       for (const result of [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships]) if (result.error) throw result.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
       setStaff((people.data ?? []) as Profile[]);
-      setAudit((logs.data ?? []) as Audit[]);\n      const days: DailyMetric[] = Array.from({ length: 14 }, (_, index) => { const date = new Date(since); date.setDate(since.getDate() + index); return { day: date.toISOString().slice(0,10), members: 0, posts: 0, comments: 0 }; });\n      const byDay = new Map(days.map((item) => [item.day, item]));\n      for (const row of recentMembers.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.members++; }\n      for (const row of recentPosts.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.posts++; }\n      for (const row of recentComments.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.comments++; }\n      setDaily(days);\n      const contributors = new Set<string>();\n      for (const row of recentPosts.data ?? []) contributors.add(row.author_id);\n      for (const row of recentComments.data ?? []) contributors.add(row.author_id);\n      for (const row of recentReactions.data ?? []) contributors.add(row.user_id);\n      setEngagement({ comments: recentComments.data?.length ?? 0, reactions: recentReactions.data?.length ?? 0, communities: recentMemberships.data?.length ?? 0, contributors: contributors.size });
+      setAudit((logs.data ?? []) as Audit[]);
+      const days: DailyMetric[] = Array.from({ length: 14 }, (_, index) => { const date = new Date(since); date.setDate(since.getDate() + index); return { day: date.toISOString().slice(0,10), members: 0, posts: 0, comments: 0 }; });
+      const byDay = new Map(days.map((item) => [item.day, item]));
+      for (const row of recentMembers.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.members++; }
+      for (const row of recentPosts.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.posts++; }
+      for (const row of recentComments.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.comments++; }
+      setDaily(days);
+      const contributors = new Set<string>();
+      for (const row of recentPosts.data ?? []) contributors.add(row.author_id);
+      for (const row of recentComments.data ?? []) contributors.add(row.author_id);
+      for (const row of recentReactions.data ?? []) contributors.add(row.user_id);
+      setEngagement({ comments: recentComments.data?.length ?? 0, reactions: recentReactions.data?.length ?? 0, communities: recentMemberships.data?.length ?? 0, contributors: contributors.size });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
     finally { setLoading(false); setChecking(false); }
   }, []);
