@@ -58,7 +58,18 @@ export default function AdminPage() {
         supabase.from("reactions").select("user_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
         supabase.from("community_memberships").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
       ]);
-      if (members.error) throw members.error;\n      if (posts.error) throw posts.error;\n      if (reports.error) throw reports.error;\n      if (cases.error) throw cases.error;\n      if (tickets.error) throw tickets.error;\n      if (people.error) throw people.error;\n      if (logs.error) throw logs.error;\n      if (recentMembers.error) throw recentMembers.error;\n      if (recentPosts.error) throw recentPosts.error;\n      if (recentComments.error) throw recentComments.error;\n      if (recentReactions.error) throw recentReactions.error;\n      if (recentMemberships.error) throw recentMemberships.error;
+      if (members.error) throw members.error;
+      if (posts.error) throw posts.error;
+      if (reports.error) throw reports.error;
+      if (cases.error) throw cases.error;
+      if (tickets.error) throw tickets.error;
+      if (people.error) throw people.error;
+      if (logs.error) throw logs.error;
+      if (recentMembers.error) throw recentMembers.error;
+      if (recentPosts.error) throw recentPosts.error;
+      if (recentComments.error) throw recentComments.error;
+      if (recentReactions.error) throw recentReactions.error;
+      if (recentMemberships.error) throw recentMemberships.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
       setStaff((people.data ?? []) as Profile[]);
       setAudit((logs.data ?? []) as Audit[]);
@@ -69,8 +80,8 @@ export default function AdminPage() {
       for (const row of recentComments?.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.comments++; }
       setDaily(days);
       const contributors = new Set<string>();
-      for (const row of recentPosts.data ?? []) contributors.add(row.author_id);
-      for (const row of recentComments.data ?? []) contributors.add(row.author_id);
+      for (const row of recentPosts?.data ?? []) contributors.add(row.author_id);
+      for (const row of recentComments?.data ?? []) contributors.add(row.author_id);
       for (const row of recentReactions?.data ?? []) contributors.add(row.user_id);
       setEngagement({ comments: recentComments?.data?.length ?? 0, reactions: recentReactions?.data?.length ?? 0, communities: recentMemberships?.data?.length ?? 0, contributors: contributors.size });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
