@@ -121,7 +121,6 @@ export default function PublicProfilePage() {
 
   async function toggleBlock() {
     if (!profile || !viewerId || busy || viewerId === profile.id) return;
-    const action = blocked ? "unblock" : "block";
     if (!window.confirm((blocked ? "Unblock " : "Block ") + "@" + profile.username + "?")) return;
     setBusy(true); setError("");
     const supabase = createClient();
