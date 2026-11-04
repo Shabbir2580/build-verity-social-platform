@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 type Profile = { id: string; username: string; display_name: string; role: string; is_suspended: boolean; created_at: string };
 type Audit = { id: number; actor_id: string | null; action: string; entity_type: string; entity_id: string | null; details: Record<string, unknown>; created_at: string };
 type Stats = { members: number; posts: number; reports: number; cases: number; tickets: number };
+type DailyMetric = { day: string; members: number; posts: number; comments: number };
 
 const roleOptions = ["user", "support", "moderator", "admin"];
 const fmt = (value: string) => { const d = new Date(value); return Number.isFinite(d.getTime()) ? d.toLocaleString() : "—"; };
@@ -19,7 +20,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, reports: 0, cases: 0, tickets: 0 });
   const [staff, setStaff] = useState<Profile[]>([]);
-  const [audit, setAudit] = useState<Audit[]>([]);
+  const [audit, setAudit] = useState<Audit[]>([]);\n  const [daily, setDaily] = useState<DailyMetric[]>([]);\n  const [engagement, setEngagement] = useState({ comments: 0, reactions: 0, communities: 0, contributors: 0 });
   const [selected, setSelected] = useState<Profile | null>(null);
   const [newRole, setNewRole] = useState("support");
   const [reason, setReason] = useState("");
@@ -39,7 +40,7 @@ export default function AdminPage() {
       if (roleError) throw roleError;
       if (me.role !== "admin") { setAuthorized(false); setChecking(false); return; }
       setAuthorized(true);
-      const [members, posts, reports, cases, tickets, people, logs] = await Promise.all([
+      const since = new Date(); since.setDate(since.getDate() - 13); since.setHours(0,0,0,0);\n      const sinceIso = since.toISOString();\n      const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
         supabase.from("reports").select("id", { count: "exact", head: true }),
@@ -48,10 +49,10 @@ export default function AdminPage() {
         supabase.from("profiles").select("id, username, display_name, role, is_suspended, created_at").order("created_at", { ascending: false }).limit(200),
         supabase.from("audit_logs").select("id, actor_id, action, entity_type, entity_id, details, created_at").order("created_at", { ascending: false }).limit(30),
       ]);
-      for (const result of [members, posts, reports, cases, tickets, people, logs]) if (result.error) throw result.error;
+      for (const result of [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships]) if (result.error) throw result.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
       setStaff((people.data ?? []) as Profile[]);
-      setAudit((logs.data ?? []) as Audit[]);
+      setAudit((logs.data ?? []) as Audit[]);\n      const days: DailyMetric[] = Array.from({ length: 14 }, (_, index) => { const date = new Date(since); date.setDate(since.getDate() + index); return { day: date.toISOString().slice(0,10), members: 0, posts: 0, comments: 0 }; });\n      const byDay = new Map(days.map((item) => [item.day, item]));\n      for (const row of recentMembers.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.members++; }\n      for (const row of recentPosts.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.posts++; }\n      for (const row of recentComments.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.comments++; }\n      setDaily(days);\n      const contributors = new Set<string>();\n      for (const row of recentPosts.data ?? []) contributors.add(row.author_id);\n      for (const row of recentComments.data ?? []) contributors.add(row.author_id);\n      for (const row of recentReactions.data ?? []) contributors.add(row.user_id);\n      setEngagement({ comments: recentComments.data?.length ?? 0, reactions: recentReactions.data?.length ?? 0, communities: recentMemberships.data?.length ?? 0, contributors: contributors.size });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
     finally { setLoading(false); setChecking(false); }
   }, []);
@@ -106,6 +107,15 @@ export default function AdminPage() {
       {error && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
       {notice && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{cards.map(({label,value,icon:Icon,note}) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-xs font-bold text-slate-500">{label}</span><Icon size={17} className="text-indigo-600"/></div><p className="mt-3 text-3xl font-black tabular-nums">{value.toLocaleString()}</p><p className="mt-1 text-xs text-slate-400">{note}</p></article>)}</div>
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="flex items-center gap-2"><Activity size={18} className="text-indigo-600"/><h2 className="font-extrabold">Growth & engagement · 14 days</h2></div><p className="mt-1 text-xs text-slate-500">Daily registrations, posts and comments from stored timestamps.</p></div><span className="text-xs text-slate-400">Rolling 14-day window</span></div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          {[["Contributing members",engagement.contributors],["Comments",engagement.comments],["Reactions",engagement.reactions],["Community joins",engagement.communities]].map(([label,value]) => <div key={label} className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-1 text-2xl font-black tabular-nums">{Number(value).toLocaleString()}</p></div>)}
+        </div>
+        <div className="mt-6 space-y-3">{daily.map((item) => { const max = Math.max(1,...daily.flatMap((d) => [d.members,d.posts,d.comments])); return <div key={item.day} className="grid grid-cols-[76px_1fr_1fr_1fr] items-center gap-2 text-xs"><span className="text-slate-500">{new Date(item.day+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{width:(item.members/max*100)+"%"}}/></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-500" style={{width:(item.posts/max*100)+"%"}}/></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-amber-500" style={{width:(item.comments/max*100)+"%"}}/></div></div>; })}</div>
+        <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-slate-500"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-indigo-500"/> Registrations</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500"/> Posts</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500"/> Comments</span></div>
+        <p className="mt-4 text-[11px] leading-5 text-slate-400">“Contributing members” means unique accounts with at least one post, comment or reaction in this period. It is not a daily-active-user or retention metric. Recent event queries are capped at 10,000 rows per source.</p>
+      </section>
       <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><UserCog size={18} className="text-indigo-600"/><h2 className="font-extrabold">People & role management</h2></div><p className="mt-1 text-xs text-slate-500">Role changes use protected database functions and automatically create audit records.</p>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search members by username or name" className="mt-4 min-h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"/>
