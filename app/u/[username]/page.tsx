@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CalendarDays, LoaderCircle, MessageCircle, UserMinus, UserPlus } from "lucide-react";
+import { ArrowLeft, CalendarDays, LoaderCircle, MessageCircle, UserMinus, UserPlus, ShieldBan } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -41,6 +41,7 @@ export default function PublicProfilePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,7 @@ export default function PublicProfilePage() {
       const viewer = auth.user?.id ?? null;
       setViewerId(viewer);
       setProfile(found);
-      const [{ data: postRows, error: postsError }, { count: followerCount, error: followerError }, { count: followingTotal, error: followingError }, { count: isFollowing, error: relationError }] = await Promise.all([
+      const [{ data: postRows, error: postsError }, { count: followerCount, error: followerError }, { count: followingTotal, error: followingError }, { count: isFollowing, error: relationError }, { count: isBlocked, error: blockError }] = await Promise.all([
         supabase.from("posts").select("id, title, body, type, created_at, community_id")
           .eq("author_id", found.id).eq("status", "published")
           .order("created_at", { ascending: false }).limit(30),
@@ -82,11 +83,11 @@ export default function PublicProfilePage() {
       if (postsError) throw postsError;
       if (followerError) throw followerError;
       if (followingError) throw followingError;
-      if (relationError) throw relationError;
+      if (relationError) throw relationError;\n      if (blockError) throw blockError;
       setPosts(postRows ?? []);
       setFollowers(followerCount ?? 0);
       setFollowingCount(followingTotal ?? 0);
-      setFollowing((isFollowing ?? 0) > 0);
+      setFollowing((isFollowing ?? 0) > 0);\n      setBlocked((isBlocked ?? 0) > 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load this profile.");
     } finally {
@@ -118,6 +119,27 @@ export default function PublicProfilePage() {
     setBusy(false);
   }
 
+  async function toggleBlock() {
+    if (!profile || !viewerId || busy || viewerId === profile.id) return;
+    const action = blocked ? "unblock" : "block";
+    if (!window.confirm((blocked ? "Unblock " : "Block ") + "@" + profile.username + "?")) return;
+    setBusy(true); setError("");
+    const supabase = createClient();
+    const result = blocked
+      ? await supabase.from("blocks").delete().eq("blocker_id", viewerId).eq("blocked_id", profile.id)
+      : await supabase.from("blocks").insert({ blocker_id: viewerId, blocked_id: profile.id });
+    if (result.error) setError(result.error.message);
+    else {
+      setBlocked(!blocked);
+      if (!blocked && following) {
+        await supabase.from("follows").delete().eq("follower_id", viewerId).eq("following_id", profile.id);
+        setFollowing(false);
+        setFollowers((count) => Math.max(0, count - 1));
+      }
+    }
+    setBusy(false);
+  }
+
   if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle className="animate-spin" size={18} /> Loading profile...</main>;
 
   if (!profile) return (
@@ -145,11 +167,11 @@ export default function PublicProfilePage() {
               {profile.avatar_url
                 ? <img src={profile.avatar_url} alt={profile.display_name} className="h-24 w-24 rounded-2xl border-4 border-white bg-white object-cover shadow-md" />
                 : <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-indigo-100 text-3xl font-black text-indigo-700 shadow-md">{profile.display_name.slice(0, 1).toUpperCase()}</div>}
-              {viewerId !== profile.id && <button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : following ? <UserMinus size={15} /> : <UserPlus size={15} />}{following ? "Following" : "Follow"}</button>}
+              {viewerId !== profile.id && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void toggleBlock()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:border-rose-200 hover:text-rose-700 disabled:opacity-60"><ShieldBan size={15} />{blocked ? "Unblock" : "Block"}</button><button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : following ? <UserMinus size={15} /> : <UserPlus size={15} />}{following ? "Following" : "Follow"}</button>}
             </div>
             <h1 className="mt-4 text-2xl font-black tracking-tight">{profile.display_name}</h1>
             <p className="mt-1 text-sm text-slate-500">@{profile.username}</p>
-            {profile.bio && <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-slate-700">{profile.bio}</p>}
+            {blocked && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">You have blocked this account. You can unblock it from here or in Settings.</p>}\n            {profile.bio && <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-slate-700">{profile.bio}</p>}
             <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
               <span><strong className="text-slate-900">{followers}</strong> followers</span>
               <span><strong className="text-slate-900">{followingCount}</strong> following</span>
