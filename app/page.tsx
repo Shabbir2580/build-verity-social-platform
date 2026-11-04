@@ -300,6 +300,7 @@ export default function HomePage() {
   const [isModerator, setIsModerator] = useState(false);
   const [isSupportStaff, setIsSupportStaff] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DbComment[]>>({});
@@ -380,6 +381,10 @@ export default function HomePage() {
       setUser(currentUser);
 
       if (currentUser) {
+        const { count: unreadCount, error: unreadError } = await supabase.from("notifications")
+          .select("id", { count: "exact", head: true }).eq("user_id", currentUser.id).is("read_at", null);
+        if (unreadError) throw unreadError;
+        setUnreadNotifications(unreadCount ?? 0);
         const { data: roleData } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
         setIsModerator(roleData?.role === "moderator" || roleData?.role === "admin");
         setIsSupportStaff(roleData?.role === "support" || roleData?.role === "moderator" || roleData?.role === "admin");
@@ -396,6 +401,7 @@ export default function HomePage() {
         setIsModerator(false);
         setIsSupportStaff(false);
         setIsAdmin(false);
+        setUnreadNotifications(0);
         setMembershipRoles({});
       }
 
@@ -1076,6 +1082,7 @@ export default function HomePage() {
                 <button key={name} type="button" onClick={() => { if (name === "Admin") router.push("/admin"); else if (name === "Moderation") router.push("/moderation"); else if (name === "Support queue") router.push("/support/staff"); else if (name === "Verify") router.push("/verify"); else if (name === "Questions") router.push("/questions"); else if (name === "Notifications") router.push("/notifications"); else if (name === "Settings") router.push("/settings"); else setActivePage(name); setMobileMenuOpen(false); }} className={`verity-nav-link group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${activePage === name ? "verity-nav-active bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80" : "text-slate-500 hover:bg-white hover:text-slate-900"}`}>
                   <Icon size={19} className={activePage === name ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600"} />
                   <span className="flex-1">{name}</span>
+                  {name === "Notifications" && unreadNotifications > 0 && <span className="min-w-5 rounded-full bg-rose-600 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}
                   {activePage === name && <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />}
                 </button>
               ))}
