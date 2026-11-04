@@ -1051,7 +1051,7 @@ export default function HomePage() {
             <p className="mb-3 mt-8 px-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Your space</p>
             <nav className="space-y-1">
               {NAV_ITEMS.map(({ name, icon: Icon }) => (
-                <button key={name} type="button" onClick={() => { if (name === "Verify") router.push("/verify"); else setActivePage(name); setMobileMenuOpen(false); }} className={`verity-nav-link group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${activePage === name ? "verity-nav-active bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80" : "text-slate-500 hover:bg-white hover:text-slate-900"}`}>
+                <button key={name} type="button" onClick={() => { if (name === "Verify") router.push("/verify"); else if (name === "Questions") router.push("/questions"); else setActivePage(name); setMobileMenuOpen(false); }} className={`verity-nav-link group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${activePage === name ? "verity-nav-active bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80" : "text-slate-500 hover:bg-white hover:text-slate-900"}`}>
                   <Icon size={19} className={activePage === name ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600"} />
                   <span className="flex-1">{name}</span>
                   {activePage === name && <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />}
