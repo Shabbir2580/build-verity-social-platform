@@ -39,8 +39,8 @@ export default function NotificationsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
     try {
       const supabase = createClient();
@@ -70,11 +70,31 @@ export default function NotificationsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load notifications.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClient();
+    let active = true;
+    const channel = supabase.channel(`notification-list-${userId}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${userId}`,
+      }, () => {
+        if (active) void load(true);
+      })
+      .subscribe();
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [userId, load]);
 
   async function markRead(id: string) {
     if (!userId) return;
