@@ -555,6 +555,31 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const supabase = createClient();
+    let active = true;
+    const refreshUnreadCount = async () => {
+      const { count, error: countError } = await supabase.from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .is("read_at", null);
+      if (!countError && active) setUnreadNotifications(count ?? 0);
+    };
+    const channel = supabase.channel(`feed-notifications-${user.id}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${user.id}`,
+      }, () => { void refreshUnreadCount(); })
+      .subscribe();
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   const visiblePosts = useMemo(() => {
     const query = search.trim().toLowerCase();
     const filtered = posts.filter((post) => {
