@@ -373,6 +373,8 @@ export default function HomePage() {
       setUser(currentUser);
 
       if (currentUser) {
+        const { data: roleData } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
+        setIsModerator(roleData?.role === "moderator" || roleData?.role === "admin");
         const { data: membershipData, error: membershipError } = await supabase
           .from("community_memberships")
           .select("community_id, role")
@@ -382,6 +384,7 @@ export default function HomePage() {
         for (const row of membershipData ?? []) roles[row.community_id] = row.role;
         setMembershipRoles(roles);
       } else {
+        setIsModerator(false);
         setMembershipRoles({});
       }
 
