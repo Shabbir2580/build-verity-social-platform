@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ClipboardList, LoaderCircle, RefreshCw, ShieldCheck, AlertTriangle, Clock3, CheckCircle2, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -44,6 +44,9 @@ export default function ModerationPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("active");
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const casesRef = useRef<CaseRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [reason, setReason] = useState("");
   const [labelValue, setLabelValue] = useState("");
@@ -56,8 +59,10 @@ export default function ModerationPage() {
   const selectedAppeals = appeals.filter((item) => item.case_id === selectedId);
   const filteredCases = useMemo(() => cases.filter((item) => filter === "mine" ? item.assigned_to === userId : filter === "unassigned" ? item.assigned_to === null && item.status !== "resolved" : filter === "active" ? item.status !== "resolved" : filter === "all" ? true : item.status === filter), [cases, filter, userId]);
 
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
+  const load = useCallback(async (append = false) => {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
+    setError("");
     try {
       const supabase = createClient();
       const { data: auth, error: authError } = await supabase.auth.getUser();
@@ -69,16 +74,26 @@ export default function ModerationPage() {
       if (!["moderator", "admin"].includes(me.role)) { setAuthorized(false); setChecking(false); return; }
       setUserRole(me.role as "moderator" | "admin");
       setAuthorized(true);
+      const offset = append ? casesRef.current.length : 0;
       const { data: caseRows, error: casesError } = await supabase.from("moderation_cases")
         .select("id, post_id, label_id, case_type, status, priority, assigned_to, opened_by, summary, resolution, needs_second_review, second_review_requested_by, due_at, created_at, updated_at, resolved_at")
-        .order("created_at", { ascending: false }).limit(100);
+        .order("created_at", { ascending: false }).range(offset, offset + 99);
       if (casesError) throw casesError;
-      const rows = (caseRows ?? []) as CaseRow[];
+      const fetchedRows = (caseRows ?? []) as CaseRow[];
+      setHasMore(fetchedRows.length === 100);
+      const rows = append
+        ? [...casesRef.current, ...fetchedRows.filter((item) => !casesRef.current.some((existing) => existing.id === item.id))]
+        : fetchedRows;
+      casesRef.current = rows;
       setCases(rows);
       const caseIds = rows.map((item) => item.id);
       const postIds = [...new Set(rows.map((item) => item.post_id).filter((id): id is string => Boolean(id)))];
       const labelIds = [...new Set(rows.map((item) => item.label_id).filter((id): id is string => Boolean(id)))];
-      if (!caseIds.length) { setReports([]); setAppeals([]); setPosts({}); setLabels({}); setProfiles({}); return; }
+      if (!caseIds.length) {
+        setReports([]); setAppeals([]); setPosts({}); setLabels({}); setProfiles({});
+        setActions([]); setSelectedId(null);
+        return;
+      }
       const [reportResult, appealResult, postResult, labelResult] = await Promise.all([
         supabase.from("reports").select("id, case_id, target_type, target_id, reason, details, status, reporter_id, created_at").in("case_id", caseIds).order("created_at", { ascending: false }),
         supabase.from("appeals").select("id, case_id, post_id, appellant_id, reason, evidence, status, created_at").in("case_id", caseIds).order("created_at", { ascending: false }),
@@ -108,8 +123,16 @@ export default function ModerationPage() {
       setProfiles(Object.fromEntries(people.map((item) => [item.id, { username: item.username, display_name: item.display_name }])));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load moderation queue.");
-    } finally { setLoading(false); setChecking(false); }
+    } finally {
+      if (append) setLoadingMore(false);
+      else { setLoading(false); setChecking(false); }
+    }
   }, []);
+
+  const loadMore = async () => {
+    if (loadingMore || loading || !hasMore) return;
+    await load(true);
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -186,6 +209,7 @@ export default function ModerationPage() {
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{statusLabels[item.status] ?? item.status}</span><span>{item.assigned_to ? `Assigned: @${profiles[item.assigned_to]?.username || "staff"}` : "Unassigned"}</span>{item.needs_second_review && <span className="font-bold text-rose-700">Second review</span>}<span>{reportCount} reports</span><span>{appealCount} appeals</span><span className="inline-flex items-center gap-1"><Clock3 size={12} />Due {new Date(item.due_at).toLocaleDateString()}</span></div>
               </button>;
             })}
+            {hasMore && <div className="flex justify-center pt-2"><button type="button" onClick={() => void loadMore()} disabled={loadingMore || loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 hover:border-indigo-200 hover:text-indigo-700 disabled:opacity-50">{loadingMore && <LoaderCircle size={14} className="animate-spin" />}{loadingMore ? "Loading more cases..." : "Load older cases"}</button></div>}
           </section>
           <section className="min-h-[420px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             {!selected ? <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center"><ClipboardList size={34} className="text-slate-300" /><h2 className="mt-3 font-extrabold">Select a case</h2><p className="mt-1 max-w-sm text-sm text-slate-500">Case evidence, linked reports, appeals, and previous decisions will appear here.</p></div> : <>
