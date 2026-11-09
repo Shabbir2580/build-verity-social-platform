@@ -40,3 +40,9 @@ jobs:
 
       - name: Check TypeScript
         run: pnpm typecheck
+
+      - name: Build production application
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
