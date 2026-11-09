@@ -86,18 +86,22 @@ export default function QuestionsPage() {
     setError("");
     try {
       const supabase = createClient();
-      const [{ data: authData, error: authError }, { data: questionRows, error: questionError }] = await Promise.all([
-        supabase.auth.getUser(),
+      const [{ data: sessionData, error: sessionError }, { data: questionRows, error: questionError }] = await Promise.all([
+        supabase.auth.getSession(),
         supabase.from("questions")
           .select("id, author_id, community_id, title, details, tags, references, accepted_answer_id, status, created_at")
           .eq("status", "published")
           .order("created_at", { ascending: false })
           .limit(60),
       ]);
-      // Supabase returns AuthSessionMissingError for anonymous visitors. Questions are public, so treat that as a guest session.
-      if (authError && authError.name !== "AuthSessionMissingError") throw authError;
+      if (sessionError) throw sessionError;
       if (questionError) throw questionError;
-      const currentUserId = authData.user?.id ?? null;
+      let currentUserId: string | null = null;
+      if (sessionData.session) {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        currentUserId = authData.user?.id ?? null;
+      }
       setUserId(currentUserId);
       const rows = questionRows ?? [];
       const authorIds = [...new Set(rows.map((row) => row.author_id))];
