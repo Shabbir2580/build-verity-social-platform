@@ -24,7 +24,7 @@ declare
   target_id uuid;
   matching_accounts integer;
 begin
-  select count(*), min(id)
+  select count(*), (array_agg(id))[1]
     into matching_accounts, target_id
   from auth.users
   where lower(email) = lower(trim('REPLACE_WITH_VERIFIED_ACCOUNT_EMAIL'))
