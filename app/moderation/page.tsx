@@ -11,7 +11,7 @@ type CaseRow = {
   status: "submitted" | "awaiting_review" | "under_review" | "awaiting_information" | "resolved" | "appealed";
   priority: "low" | "normal" | "high" | "urgent";
   assigned_to: string | null; opened_by: string | null; summary: string | null;
-  resolution: string | null; needs_second_review: boolean; due_at: string;
+  resolution: string | null; needs_second_review: boolean; second_review_requested_by: string | null; due_at: string;
   created_at: string; updated_at: string; resolved_at: string | null;
 };
 type ReportRow = { id: string; case_id: string | null; target_type: string; target_id: string; reason: string; details: string | null; status: string; reporter_id: string; created_at: string };
@@ -31,6 +31,7 @@ const priorityStyles: Record<string, string> = {
 
 export default function ModerationPage() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<"moderator" | "admin" | null>(null);
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
   const [cases, setCases] = useState<CaseRow[]>([]);
@@ -48,11 +49,12 @@ export default function ModerationPage() {
   const [labelValue, setLabelValue] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [assignee, setAssignee] = useState("");
 
   const selected = cases.find((item) => item.id === selectedId) ?? null;
   const selectedReports = reports.filter((item) => item.case_id === selectedId);
   const selectedAppeals = appeals.filter((item) => item.case_id === selectedId);
-  const filteredCases = useMemo(() => cases.filter((item) => filter === "all" || (filter === "active" ? !["resolved"].includes(item.status) : item.status === filter)), [cases, filter]);
+  const filteredCases = useMemo(() => cases.filter((item) => filter === "mine" ? item.assigned_to === userId : filter === "unassigned" ? item.assigned_to === null && item.status !== "resolved" : filter === "active" ? item.status !== "resolved" : filter === "all" ? true : item.status === filter), [cases, filter, userId]);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -65,9 +67,10 @@ export default function ModerationPage() {
       const { data: me, error: meError } = await supabase.from("profiles").select("role").eq("id", auth.user.id).single();
       if (meError) throw meError;
       if (!["moderator", "admin"].includes(me.role)) { setAuthorized(false); setChecking(false); return; }
+      setUserRole(me.role as "moderator" | "admin");
       setAuthorized(true);
       const { data: caseRows, error: casesError } = await supabase.from("moderation_cases")
-        .select("id, post_id, label_id, case_type, status, priority, assigned_to, opened_by, summary, resolution, needs_second_review, due_at, created_at, updated_at, resolved_at")
+        .select("id, post_id, label_id, case_type, status, priority, assigned_to, opened_by, summary, resolution, needs_second_review, second_review_requested_by, due_at, created_at, updated_at, resolved_at")
         .order("created_at", { ascending: false }).limit(100);
       if (casesError) throw casesError;
       const rows = (caseRows ?? []) as CaseRow[];
@@ -90,12 +93,19 @@ export default function ModerationPage() {
       setAppeals((appealResult.data ?? []) as AppealRow[]);
       setPosts(Object.fromEntries(((postResult.data ?? []) as PostRow[]).map((item) => [item.id, item])));
       setLabels(Object.fromEntries(((labelResult.data ?? []) as LabelRow[]).map((item) => [item.id, item])));
-      const actorIds = [...new Set([...rows.map((item) => item.opened_by), ...((reportResult.data ?? []) as ReportRow[]).map((item) => item.reporter_id), ...((appealResult.data ?? []) as AppealRow[]).map((item) => item.appellant_id)].filter((id): id is string => Boolean(id)))];
-      if (actorIds.length) {
-        const { data: people, error: peopleError } = await supabase.from("profiles").select("id, username, display_name").in("id", actorIds);
-        if (peopleError) throw peopleError;
-        setProfiles(Object.fromEntries((people ?? []).map((item) => [item.id, { username: item.username, display_name: item.display_name }])));
-      } else setProfiles({});
+      const actorIds = [...new Set([...rows.flatMap((item) => [item.opened_by, item.assigned_to, item.second_review_requested_by]), ...((reportResult.data ?? []) as ReportRow[]).map((item) => item.reporter_id), ...((appealResult.data ?? []) as AppealRow[]).map((item) => item.appellant_id)].filter((id): id is string => Boolean(id)))];
+      const peopleResult = actorIds.length
+        ? await supabase.from("profiles").select("id, username, display_name").in("id", actorIds)
+        : { data: [], error: null };
+      if (peopleResult.error) throw peopleResult.error;
+      let people = peopleResult.data ?? [];
+      if (me.role === "admin") {
+        const { data: staffPeople, error: staffError } = await supabase.from("profiles")
+          .select("id, username, display_name").in("role", ["moderator", "admin"]).eq("is_suspended", false);
+        if (staffError) throw staffError;
+        people = [...people, ...(staffPeople ?? [])];
+      }
+      setProfiles(Object.fromEntries(people.map((item) => [item.id, { username: item.username, display_name: item.display_name }])));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load moderation queue.");
     } finally { setLoading(false); setChecking(false); }
@@ -104,13 +114,26 @@ export default function ModerationPage() {
   useEffect(() => { void load(); }, [load]);
 
   const openCase = async (item: CaseRow) => {
-    setSelectedId(item.id); setReason(""); setLabelValue(""); setError(""); setNotice("");
+    setSelectedId(item.id); setReason(""); setLabelValue(""); setError(""); setNotice(""); setAssignee(item.assigned_to ?? "");
     const supabase = createClient();
     const { data, error: actionError } = await supabase.from("moderation_actions")
       .select("id, action, reason, actor_id, created_at").eq("case_id", item.id).order("created_at", { ascending: false });
     if (actionError) setError(actionError.message);
     else setActions((data ?? []) as ActionRow[]);
   };
+
+  async function assignCase() {
+    if (!selected || userRole !== "admin" || !assignee || saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const supabase = createClient();
+      const { error: rpcError } = await supabase.rpc("staff_decide_case", { p_case_id: selected.id, p_action: "assign", p_reason: reason.trim().length >= 5 ? reason.trim() : "Case assignment by administrator.", p_label_value: null, p_assign_to: assignee });
+      if (rpcError) throw rpcError;
+      setNotice("Case assigned. Assignment was recorded in the audit trail.");
+      await load();
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not assign this case."); }
+    finally { setSaving(false); }
+  }
 
   async function decide(action: string) {
     if (!selected || saving) return;
@@ -151,7 +174,7 @@ export default function ModerationPage() {
         </div>
         {error && <div role="alert" className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
         {notice && <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
-        <div className="mt-6 flex flex-wrap gap-2">{[["active","Active"],["awaiting_review","Awaiting review"],["under_review","Under review"],["awaiting_information","Awaiting information"],["resolved","Resolved"],["all","All cases"]].map(([value,label]) => <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-full px-4 py-2 text-xs font-bold ${filter === value ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-indigo-200"}`}>{label}</button>)}</div>
+        <div className="mt-6 flex flex-wrap gap-2">{[["active","Active"],["mine","Assigned to me"],["unassigned","Unassigned"],["awaiting_review","Awaiting review"],["under_review","Under review"],["awaiting_information","Awaiting information"],["resolved","Resolved"],["all","All cases"]].map(([value,label]) => <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-full px-4 py-2 text-xs font-bold ${filter === value ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-indigo-200"}`}>{label}</button>)}</div>
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <section className="space-y-3">
             {filteredCases.length === 0 ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">{loading ? "Loading cases..." : "No cases in this view."}</div> : filteredCases.map((item) => {
@@ -160,7 +183,7 @@ export default function ModerationPage() {
               return <button key={item.id} type="button" onClick={() => void openCase(item)} className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${selectedId === item.id ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200 bg-white hover:border-indigo-200"}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-extrabold uppercase tracking-wide text-indigo-700">{item.case_type.replace("_"," ")}</span><span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase ${priorityStyles[item.priority] ?? priorityStyles.normal}`}>{item.priority}</span></div>
                 <p className="mt-2 line-clamp-2 text-sm font-bold text-slate-900">{item.summary || "Review case"}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{statusLabels[item.status] ?? item.status}</span><span>{reportCount} reports</span><span>{appealCount} appeals</span><span className="inline-flex items-center gap-1"><Clock3 size={12} />Due {new Date(item.due_at).toLocaleDateString()}</span></div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{statusLabels[item.status] ?? item.status}</span><span>{item.assigned_to ? `Assigned: @${profiles[item.assigned_to]?.username || "staff"}` : "Unassigned"}</span>{item.needs_second_review && <span className="font-bold text-rose-700">Second review</span>}<span>{reportCount} reports</span><span>{appealCount} appeals</span><span className="inline-flex items-center gap-1"><Clock3 size={12} />Due {new Date(item.due_at).toLocaleDateString()}</span></div>
               </button>;
             })}
           </section>
@@ -171,7 +194,10 @@ export default function ModerationPage() {
               {selected.label_id && labels[selected.label_id] && <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4"><p className="text-xs font-extrabold uppercase text-indigo-700">Label under review · {labels[selected.label_id].dimension}</p><p className="mt-1 text-sm font-bold">{labels[selected.label_id].value}</p><p className="mt-1 text-xs text-slate-600">{labels[selected.label_id].basis} · {labels[selected.label_id].status}</p>{labels[selected.label_id].explanation && <p className="mt-2 text-sm text-slate-600">{labels[selected.label_id].explanation}</p>}</div>}
               {selectedReports.map((item) => <div key={item.id} className="mt-3 rounded-xl border border-slate-200 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Report · {item.target_type} · {item.reason}</p><p className="mt-1 text-sm">{item.details || "No additional details supplied."}</p><p className="mt-2 text-xs text-slate-500">Reported by @{profiles[item.reporter_id]?.username || "member"} · {item.status}</p></div>)}
               {selectedAppeals.map((item) => <div key={item.id} className="mt-3 rounded-xl border border-slate-200 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Appeal · {item.status}</p><p className="mt-1 text-sm">{item.reason}</p>{item.evidence && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-600">{item.evidence}</p>}<p className="mt-2 text-xs text-slate-500">Submitted by @{profiles[item.appellant_id]?.username || "member"}</p></div>)}
-              <div className="mt-5 border-t border-slate-100 pt-5"><h3 className="text-sm font-extrabold">Decision & case controls</h3><label className="mt-3 block text-xs font-bold text-slate-600">Reason for decision<textarea rows={3} maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Document the evidence and rationale (minimum 5 characters)." className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-400" /></label>
+              <div className="mt-5 border-t border-slate-100 pt-5"><h3 className="text-sm font-extrabold">Decision & case controls</h3>
+                <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><p><strong>Assigned reviewer:</strong> {selected.assigned_to ? `@${profiles[selected.assigned_to]?.username || "staff"}` : "Not assigned"}</p>{selected.needs_second_review && <p className="mt-1 font-bold text-rose-700">Independent second review required. Original reviewer: {selected.second_review_requested_by ? `@${profiles[selected.second_review_requested_by]?.username || "staff"}` : "Not recorded"}.</p>}</div>
+                {userRole === "admin" && selected.status !== "resolved" && <div className="mt-3 flex flex-wrap gap-2"><select aria-label="Assign reviewer" value={assignee} onChange={(event) => setAssignee(event.target.value)} className="min-h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">Select reviewer</option>{Object.entries(profiles).filter(([id]) => id !== selected.second_review_requested_by || !selected.needs_second_review).map(([id, person]) => <option key={id} value={id}>@{person.username} · {person.display_name}</option>)}</select><button type="button" onClick={() => void assignCase()} disabled={saving || !assignee} className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Assign case</button></div>}
+                <p className="mt-3 text-xs text-slate-500">Only the assigned reviewer can act on this case. Admins can assign or reassign reviewers.</p><label className="mt-3 block text-xs font-bold text-slate-600">Reason for decision<textarea rows={3} maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Document the evidence and rationale (minimum 5 characters)." className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-400" /></label>
                 {selected.label_id && <label className="mt-3 block text-xs font-bold text-slate-600">Corrected label value<input value={labelValue} onChange={(event) => setLabelValue(event.target.value)} maxLength={100} placeholder="Enter the exact value from the label taxonomy" className="mt-2 min-h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400" /></label>}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" onClick={() => void decide("start_review")} disabled={saving} className="rounded-xl bg-indigo-600 px-3 py-2.5 text-xs font-extrabold text-white disabled:opacity-50">Start review</button>
