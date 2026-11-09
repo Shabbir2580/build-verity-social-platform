@@ -306,7 +306,7 @@ export default function HomePage() {
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DbComment[]>>({});
 
   const [activePage, setActivePage] = useState<string>("Home");
-  const [filter, setFilter] = useState("For you");
+  const [filter, setFilter] = useState("Latest");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -600,9 +600,13 @@ export default function HomePage() {
       return true;
     });
 
-    // Posts are initially loaded newest-first. For You uses current engagement as a simple, explainable ranking.
-    if (filter === "For you") {
-      return [...filtered].sort((a, b) => (b.likes * 2 + b.comments) - (a.likes * 2 + a.comments));
+    // Popular is an engagement sort, not a personalized recommendation. Latest keeps the database order.
+    if (filter === "Popular") {
+      return [...filtered].sort((a, b) => {
+        const engagementDifference = (b.likes * 2 + b.comments) - (a.likes * 2 + a.comments);
+        if (engagementDifference !== 0) return engagementDifference;
+        return new Date(b.time).getTime() - new Date(a.time).getTime();
+      });
     }
     return filtered;
   }, [posts, search, activePage, filter, saved, membershipRoles]);
@@ -750,7 +754,7 @@ export default function HomePage() {
       setNewFiles([]);
       setNewAltText("");
       setActivePage("Home");
-      setFilter("For you");
+      setFilter("Latest");
       setNotice("Your post was published.");
       await loadFeed();
     } catch (err) {
@@ -1242,7 +1246,7 @@ export default function HomePage() {
 
               <div className="mb-5 mt-8 flex items-end justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-indigo-600">Your daily dose of curiosity</p><h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{pageTitleFor(activePage)}</h2><p className="mt-1.5 text-sm text-slate-500">Good conversations start with better questions.</p></div><button type="button" onClick={() => setCreateOpen(true)} className="hidden min-h-11 shrink-0 items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 sm:flex"><Plus size={17} /> Post</button></div>
 
-              <div className="mb-5 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">{[{ name: "For you", icon: Sparkles }, { name: "Latest", icon: Clock3 }, { name: "Questions", icon: CircleHelp }, { name: "Discussions", icon: MessageCircle }, { name: "Joined communities", icon: Users }].map(({ name, icon: Icon }) => <button key={name} type="button" onClick={() => setFilter(name)} className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition sm:text-sm ${filter === name ? "bg-slate-950 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}><Icon size={15} />{name}</button>)}</div>
+              <div className="mb-5 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">{[{ name: "Popular", icon: Flame }, { name: "Latest", icon: Clock3 }, { name: "Questions", icon: CircleHelp }, { name: "Discussions", icon: MessageCircle }, { name: "Joined communities", icon: Users }].map(({ name, icon: Icon }) => <button key={name} type="button" onClick={() => setFilter(name)} className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition sm:text-sm ${filter === name ? "bg-slate-950 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}><Icon size={15} />{name}</button>)}</div>
 
               {notice && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
               {error && <div role="alert" className="mb-4 break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{error}</div>}
