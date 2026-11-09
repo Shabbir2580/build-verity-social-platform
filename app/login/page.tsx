@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +15,38 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [oauthLoading, setOauthLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get("error");
+    if (authError === "oauth") {
+      setError("Google sign-in could not be completed. Please try again or use email and password.");
+    } else if (authError === "configuration") {
+      setError("Authentication is not configured correctly. Please contact support.");
+    } else if (authError === "confirmation") {
+      setError("The sign-in or confirmation link is invalid or expired. Request a new link and try again.");
+    }
+  }, []);
+
+  async function handleGoogleSignIn() {
+    setError("");
+    setNotice("");
+    setOauthLoading(true);
+    try {
+      const supabase = createClient();
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.searchParams.set("next", "/");
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: callbackUrl.toString() },
+      });
+      if (oauthError) throw oauthError;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+      setOauthLoading(false);
+    }
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -145,6 +177,21 @@ export default function LoginPage() {
               {notice}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => void handleGoogleSignIn()}
+            disabled={loading || oauthLoading}
+            className="mb-5 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span aria-hidden="true" className="text-lg font-black text-[#4285F4]">G</span>
+            {oauthLoading ? "Connecting to Google..." : "Continue with Google"}
+          </button>
+          <div className="mb-5 flex items-center gap-4">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs font-semibold text-slate-400">OR CONTINUE WITH EMAIL</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
             <label className="block">
