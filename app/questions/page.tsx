@@ -34,6 +34,24 @@ type Answer = {
   myVote: number;
 };
 
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function parseSourceUrls(value: string) {
+  const urls = value.split(/\r?\n/).map((url) => url.trim()).filter(Boolean);
+  if (urls.length > 10) return { urls: [], error: "Add no more than 10 source links." };
+  if (urls.some((url) => url.length > 2048 || !isHttpUrl(url))) {
+    return { urls: [], error: "Each source must be a valid http:// or https:// URL, one per line." };
+  }
+  return { urls, error: "" };
+}
+
 function timeAgo(value: string) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return "Recently";
@@ -59,7 +77,9 @@ export default function QuestionsPage() {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [tags, setTags] = useState("");
+  const [references, setReferences] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [citationDrafts, setCitationDrafts] = useState<Record<string, string>>({});
 
   const loadQuestions = useCallback(async () => {
     setLoading(true);
@@ -174,6 +194,11 @@ export default function QuestionsPage() {
       return;
     }
     const cleanTags = [...new Set(tags.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 8);
+    const parsedReferences = parseSourceUrls(references);
+    if (parsedReferences.error) {
+      setError(parsedReferences.error);
+      return;
+    }
     setBusy(true);
     try {
       const supabase = createClient();
@@ -182,13 +207,14 @@ export default function QuestionsPage() {
         title: title.trim(),
         details: details.trim(),
         tags: cleanTags,
-        references: [],
+        references: parsedReferences.urls,
         status: "published",
       });
       if (insertError) throw insertError;
       setTitle("");
       setDetails("");
       setTags("");
+      setReferences("");
       setShowComposer(false);
       setNotice("Your question has been published.");
       await loadQuestions();
@@ -213,6 +239,11 @@ export default function QuestionsPage() {
       setError("Your answer is too long (maximum 20,000 characters).");
       return;
     }
+    const parsedCitations = parseSourceUrls(citationDrafts[questionId] ?? "");
+    if (parsedCitations.error) {
+      setError(parsedCitations.error);
+      return;
+    }
     setBusy(true);
     try {
       const supabase = createClient();
@@ -220,11 +251,12 @@ export default function QuestionsPage() {
         question_id: questionId,
         author_id: userId,
         body,
-        citations: [],
+        citations: parsedCitations.urls,
         status: "published",
       });
       if (insertError) throw insertError;
       setDrafts((current) => ({ ...current, [questionId]: "" }));
+      setCitationDrafts((current) => ({ ...current, [questionId]: "" }));
       setNotice("Your answer has been added.");
       await loadQuestions();
     } catch (err) {
@@ -318,7 +350,9 @@ export default function QuestionsPage() {
             <label className="mb-2 block text-xs font-bold text-slate-600">Details (optional)</label>
             <textarea value={details} onChange={(event) => setDetails(event.target.value)} maxLength={10000} rows={4} placeholder="Add context, what you have tried, and what kind of answer would help..." className="mb-4 w-full rounded-xl border border-slate-200 p-4 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
             <label className="mb-2 block text-xs font-bold text-slate-600">Topics (comma-separated)</label>
-            <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="science, technology, media literacy" className="mb-5 min-h-11 w-full rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="science, technology, media literacy" className="mb-4 min-h-11 w-full rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            <label className="mb-2 block text-xs font-bold text-slate-600">Sources (optional, one URL per line; max 10)</label>
+            <textarea value={references} onChange={(event) => setReferences(event.target.value)} rows={2} placeholder="https://example.com/source" className="mb-5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
             <div className="flex flex-wrap justify-end gap-2">
               <button type="button" onClick={() => setShowComposer(false)} className="min-h-10 rounded-xl px-4 text-sm font-semibold text-slate-500 hover:bg-slate-100">Cancel</button>
               <button disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white disabled:opacity-60">{busy ? <LoaderCircle className="animate-spin" size={16} /> : <Send size={15} />} Publish question</button>
@@ -358,6 +392,7 @@ export default function QuestionsPage() {
                   <h3 className="mt-3 text-xl font-extrabold leading-snug tracking-tight">{question.title}</h3>
                   {question.details && <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600">{question.details}</p>}
                   {question.tags.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{question.tags.map((tag) => <span key={tag} className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">#{tag}</span>)}</div>}
+                  {question.references.length > 0 && <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3"><p className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Sources supplied by author</p><ul className="space-y-1">{question.references.map((reference, index) => <li key={index} className="break-all text-xs">{isHttpUrl(reference) ? <a href={reference} target="_blank" rel="noreferrer noopener" className="text-indigo-700 underline underline-offset-2 hover:text-indigo-900">{reference}</a> : <span className="text-slate-600">{reference}</span>}</li>)}</ul></div>}
 
                   <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs font-bold text-slate-500">
                     <MessageSquare size={15} /> {questionAnswers.length} {questionAnswers.length === 1 ? "answer" : "answers"}
@@ -371,7 +406,7 @@ export default function QuestionsPage() {
                         {answer.id === question.accepted_answer_id && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700"><Check size={13} /> Accepted</span>}
                       </div>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">{answer.body}</p>
-                      {answer.citations.length > 0 && <div className="mt-3 border-t border-slate-200 pt-3"><p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">References supplied by author</p>{answer.citations.map((citation, index) => <p key={index} className="break-all text-xs text-indigo-700">{citation}</p>)}</div>}
+                      {answer.citations.length > 0 && <div className="mt-3 border-t border-slate-200 pt-3"><p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">References supplied by author</p><ul className="space-y-1">{answer.citations.map((citation, index) => <li key={index} className="break-all text-xs">{isHttpUrl(citation) ? <a href={citation} target="_blank" rel="noreferrer noopener" className="text-indigo-700 underline underline-offset-2 hover:text-indigo-900">{citation}</a> : <span className="text-slate-600">{citation}</span>}</li>)}</ul></div>}
                       <div className="mt-3 flex items-center gap-2">
                         <button type="button" aria-label="Upvote answer" aria-pressed={answer.myVote === 1} onClick={() => void vote(answer, 1)} className={`inline-flex min-h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-bold ${answer.myVote === 1 ? "bg-indigo-100 text-indigo-700" : "bg-white text-slate-500 hover:text-indigo-700"}`}><ArrowUp size={14} /> Helpful · {answer.score}</button>
                         {userId === question.author_id && answer.id !== question.accepted_answer_id && <button type="button" onClick={() => void acceptAnswer(question, answer)} className="ml-auto inline-flex min-h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100"><Check size={14} /> Accept answer</button>}
@@ -382,6 +417,8 @@ export default function QuestionsPage() {
                   <form onSubmit={(event) => void submitAnswer(event, question.id)} className="mt-4">
                     <label className="mb-2 block text-xs font-bold text-slate-600">Add an answer</label>
                     <textarea value={drafts[question.id] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, [question.id]: event.target.value }))} rows={3} maxLength={20000} placeholder="Share a useful explanation. Include evidence where possible..." className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+                    <label className="mb-2 mt-3 block text-xs font-bold text-slate-600">Sources (optional, one URL per line; max 10)</label>
+                    <textarea value={citationDrafts[question.id] ?? ""} onChange={(event) => setCitationDrafts((current) => ({ ...current, [question.id]: event.target.value }))} rows={2} placeholder="https://example.com/evidence" className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
                     <div className="mt-2 flex justify-end"><button disabled={busy || !(drafts[question.id] ?? "").trim()} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-slate-900 px-3.5 text-xs font-bold text-white disabled:opacity-40"><Send size={13} /> Submit answer</button></div>
                   </form>
                 </article>
