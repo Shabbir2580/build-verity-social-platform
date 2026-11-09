@@ -26,6 +26,22 @@ type Preferences = {
   moderation: boolean;
 };
 
+function getOwnedAvatarPath(avatarUrl: string | null, userId: string): string | null {
+  if (!avatarUrl) return null;
+  try {
+    const marker = "/storage/v1/object/public/post-media/";
+    const pathname = new URL(avatarUrl).pathname;
+    const markerIndex = pathname.indexOf(marker);
+    if (markerIndex < 0) return null;
+    const path = decodeURIComponent(pathname.slice(markerIndex + marker.length));
+    const segments = path.split("/");
+    if (segments.length !== 3 || segments[0] !== userId || segments[1] !== "avatars" || !segments[2]) return null;
+    return path;
+  } catch {
+    return null;
+  }
+}
+
 const preferenceItems: Array<{ key: keyof Preferences; title: string; description: string }> = [
   { key: "follows", title: "New followers", description: "When someone follows your profile." },
   { key: "comments", title: "Comments and replies", description: "When someone responds to your posts or comments." },
@@ -143,6 +159,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
     const path = userId + "/avatars/" + crypto.randomUUID() + "." + extension;
+    const previousAvatarPath = getOwnedAvatarPath(profile.avatar_url, userId);
     try {
       const { error: uploadError } = await supabase.storage.from("post-media").upload(path, file, { contentType: file.type, upsert: false });
       if (uploadError) throw uploadError;
@@ -154,7 +171,14 @@ export default function SettingsPage() {
         throw updateError;
       }
       setProfile({ ...profile, avatar_url: avatarUrl });
-      setNotice("Profile photo updated.");
+      if (previousAvatarPath && previousAvatarPath !== path) {
+        const { error: cleanupError } = await supabase.storage.from("post-media").remove([previousAvatarPath]);
+        setNotice(cleanupError
+          ? "Profile photo updated. The previous image could not be cleaned up."
+          : "Profile photo updated.");
+      } else {
+        setNotice("Profile photo updated.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not upload your profile photo.");
     } finally {
