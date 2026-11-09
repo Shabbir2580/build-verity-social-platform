@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowUpRight,
   BookOpen,
-  CheckCircle2,
   Clock3,
   FileSearch,
   FileText,
@@ -491,6 +490,7 @@ export default function VerifyPage() {
 
                 <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-extrabold uppercase tracking-[0.16em] text-indigo-600">Current labels</p><h3 className="mt-1 text-lg font-black">Context labels</h3></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{labels.length}</span></div>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">Labels are recorded context, not proof. Check the stated basis, explanation and linked evidence before drawing conclusions.</p>
                   {labels.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-4"><p className="text-sm font-bold">No active labels</p><p className="mt-1 text-xs leading-5 text-slate-500">The post has no active stored origin, accuracy or intent label.</p></div> : <div className="mt-4 space-y-3">{labels.map((label) => <div key={label.id} className="rounded-2xl border border-slate-200 p-3.5"><div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-md bg-indigo-50 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-indigo-700">{pretty(label.dimension)}</span><span className="text-[10px] text-slate-400">{pretty(label.basis)}</span></div><p className="mt-2 break-words text-sm font-extrabold">{pretty(label.value)}</p>{label.explanation && <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-600">{label.explanation}</p>}</div>)}</div>}
                 </section>
               </div>
