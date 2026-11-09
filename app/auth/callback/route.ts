@@ -8,9 +8,24 @@ export async function GET(request: NextRequest) {
   const providerError = requestUrl.searchParams.get("error");
   const rawNext = requestUrl.searchParams.get("next") || "/";
 
-  // Only allow local application paths to prevent open redirects.
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  // Resolve the destination and verify its final origin. Checking only for a
+  // leading slash is insufficient because URL parsing normalizes backslashes.
   const origin = requestUrl.origin;
+  const isLocalPath =
+    rawNext.startsWith("/") &&
+    !rawNext.startsWith("//") &&
+    !rawNext.startsWith("/\\");
+  let next = "/";
+  if (isLocalPath) {
+    try {
+      const destination = new URL(rawNext, origin);
+      if (destination.origin === origin) {
+        next = `${destination.pathname}${destination.search}${destination.hash}`;
+      }
+    } catch {
+      next = "/";
+    }
+  }
 
   if (providerError) {
     return NextResponse.redirect(new URL("/login?error=oauth", origin));
