@@ -49,9 +49,14 @@ export default function NotificationsPage() {
     setError("");
     try {
       const supabase = createClient();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session) {
+        window.location.href = "/login?next=%2Fnotifications";
+        return;
+      }
       const { data: auth, error: authError } = await supabase.auth.getUser();
-      // A missing session is an expected unauthenticated state, not a page error.
-      if (authError && authError.name !== "AuthSessionMissingError") throw authError;
+      if (authError) throw authError;
       if (!auth.user) {
         window.location.href = "/login?next=%2Fnotifications";
         return;
