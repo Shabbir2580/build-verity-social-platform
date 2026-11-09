@@ -94,7 +94,8 @@ export default function QuestionsPage() {
           .order("created_at", { ascending: false })
           .limit(60),
       ]);
-      if (authError) throw authError;
+      // Supabase returns AuthSessionMissingError for anonymous visitors. Questions are public, so treat that as a guest session.
+      if (authError && authError.name !== "AuthSessionMissingError") throw authError;
       if (questionError) throw questionError;
       const currentUserId = authData.user?.id ?? null;
       setUserId(currentUserId);
