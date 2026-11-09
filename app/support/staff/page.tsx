@@ -21,6 +21,8 @@ export default function StaffSupportPage() {
   const [userId, setUserId] = useState("");
   const [role, setRole] = useState("");
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [selectedId, setSelectedId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -58,10 +60,11 @@ export default function StaffSupportPage() {
       setRole(me.role);
       const { data, error: ticketError } = await supabase.from("support_tickets")
         .select("id, ticket_number, user_id, category, subject, description, status, priority, assigned_team, assigned_to, response_due_at, created_at, updated_at")
-        .order("created_at", { ascending: false }).limit(200);
+        .order("created_at", { ascending: false }).order("id", { ascending: false }).range(0, 99);
       if (ticketError) throw ticketError;
       const rows = (data ?? []) as Ticket[];
       setTickets(rows);
+      setHasMore(rows.length === 100);
       const ids = [...new Set(rows.map((ticket) => ticket.user_id))];
       if (ids.length) {
         const { data: people, error: peopleError } = await supabase.from("profiles").select("id, username, display_name").in("id", ids);
@@ -72,6 +75,30 @@ export default function StaffSupportPage() {
       setError(err instanceof Error ? err.message : "Could not load the support queue.");
     } finally { setLoading(false); }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true); setError("");
+    try {
+      const supabase = createClient();
+      const start = tickets.length;
+      const { data, error: ticketError } = await supabase.from("support_tickets")
+        .select("id, ticket_number, user_id, category, subject, description, status, priority, assigned_team, assigned_to, response_due_at, created_at, updated_at")
+        .order("created_at", { ascending: false }).order("id", { ascending: false }).range(start, start + 99);
+      if (ticketError) throw ticketError;
+      const rows = (data ?? []) as Ticket[];
+      setTickets((current) => [...current, ...rows.filter((row) => !current.some((item) => item.id === row.id))]);
+      setHasMore(rows.length === 100);
+      const ids = [...new Set(rows.map((ticket) => ticket.user_id))];
+      if (ids.length) {
+        const { data: people, error: peopleError } = await supabase.from("profiles").select("id, username, display_name").in("id", ids);
+        if (peopleError) throw peopleError;
+        setProfiles((current) => ({ ...current, ...Object.fromEntries((people ?? []).map((person) => [person.id, { username: person.username, display_name: person.display_name }])) }));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load older tickets.");
+    } finally { setLoadingMore(false); }
+  }, [tickets.length, loading, loadingMore, hasMore]);
 
   const loadMessages = useCallback(async (ticketId: string) => {
     if (!ticketId) return;
@@ -135,6 +162,7 @@ export default function StaffSupportPage() {
             <p className="mt-2 font-bold">{ticket.subject}</p><p className="mt-1 text-xs text-slate-500">{person?.display_name || "Member"} · @{person?.username || "unknown"} · {pretty(ticket.category)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span className="font-bold">{pretty(ticket.priority)} priority</span><span>{pretty(ticket.assigned_team)}</span><span className="inline-flex items-center gap-1"><Clock3 size={12}/> Due {stamp(ticket.response_due_at)}</span></div>
           </button>; }) : <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{loading ? "Refreshing…" : "No tickets match these filters."}</div>}
+          {hasMore && <button onClick={() => void loadMore()} disabled={loadingMore || loading} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:border-indigo-300 disabled:opacity-50">{loadingMore ? "Loading older tickets…" : "Load older tickets"}</button>}
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           {!selected ? <div className="flex min-h-[380px] flex-col items-center justify-center text-center"><Headphones size={34} className="text-slate-300"/><h2 className="mt-3 font-extrabold">Select a ticket</h2><p className="mt-1 max-w-sm text-sm text-slate-500">The full customer conversation and staff controls will appear here.</p></div> : <>
