@@ -105,9 +105,9 @@ export default function StaffSupportPage() {
     const supabase = createClient();
     const { data, error: messageError } = await supabase.from("support_ticket_messages")
       .select("id, body, is_staff, is_internal, created_at, author_id")
-      .eq("ticket_id", ticketId).order("created_at", { ascending: true }).limit(200);
+      .eq("ticket_id", ticketId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(200);
     if (messageError) { setError(messageError.message); return; }
-    setMessages((data ?? []) as Message[]);
+    setMessages(((data ?? []) as Message[]).reverse());
   }, []);
 
   useEffect(() => { void load(); }, [load]);
