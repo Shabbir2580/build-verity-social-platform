@@ -77,17 +77,26 @@ export default function CommunityDetailPage() {
   useEffect(() => { void load(); }, [load]);
 
   async function toggleMembership() {
-    if (!community) return;
+    if (!community || working) return;
     if (!userId) { router.push("/login?next=" + encodeURIComponent("/communities/" + slug)); return; }
     if (role === "owner") return;
-    setWorking(true); setError("");
-    const supabase = createClient();
-    const result = role
-      ? await supabase.from("community_memberships").delete().eq("community_id", community.id).eq("user_id", userId)
-      : await supabase.from("community_memberships").insert({ community_id: community.id, user_id: userId, role: "member" });
-    if (result.error) setError(result.error.message);
-    else { setRole(role ? null : "member"); setMembers((count) => Math.max(0, count + (role ? -1 : 1))); }
-    setWorking(false);
+
+    setWorking(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const result = role
+        ? await supabase.from("community_memberships").delete().eq("community_id", community.id).eq("user_id", userId)
+        : await supabase.from("community_memberships").insert({ community_id: community.id, user_id: userId, role: "member" });
+
+      if (result.error) throw result.error;
+      setRole(role ? null : "member");
+      setMembers((count) => Math.max(0, count + (role ? -1 : 1)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update your community membership. Please try again.");
+    } finally {
+      setWorking(false);
+    }
   }
 
   if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle className="animate-spin" size={18} /> Loading community...</main>;
