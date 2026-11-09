@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Bell, Check, CheckCheck, CircleHelp, FileText, Headphones, LoaderCircle, MessageCircle, ShieldCheck, Users, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -33,6 +33,7 @@ function timeAgo(value: string) {
 
 export default function NotificationsPage() {
   const [rows, setRows] = useState<Notification[]>([]);
+  const rowsRef = useRef<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -40,6 +41,8 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
 
   const load = useCallback(async (silent = false, append = false) => {
     if (!silent) setLoading(true);
@@ -53,7 +56,7 @@ export default function NotificationsPage() {
         return;
       }
       setUserId(auth.user.id);
-      const offset = append ? rows.length : 0;
+      const offset = append ? rowsRef.current.length : 0;
       const { data, error: queryError } = await supabase.from("notifications")
         .select("id, actor_id, type, message, link, read_at, created_at")
         .eq("user_id", auth.user.id)
@@ -81,7 +84,7 @@ export default function NotificationsPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [rows.length]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
 
