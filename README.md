@@ -64,6 +64,14 @@ Requirements: Node.js compatible with the installed Next.js version and pnpm.
    pnpm build
    ```
 
+5. Run the production smoke checks after building:
+
+   ```bash
+   pnpm smoke
+   ```
+
+   This starts the built app on port `3100` and checks key routes, HTML responses and required browser security headers.
+
 ## Database
 
 Supabase migrations are stored in `supabase/migrations`. Review and apply migrations deliberately in the intended Supabase project. Do not assume that a migration committed to GitHub has already been applied to a live database.
