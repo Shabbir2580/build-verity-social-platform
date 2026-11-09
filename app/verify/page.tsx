@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -157,20 +157,20 @@ function evidenceItems(value: unknown): EvidenceItem[] {
 }
 
 function CheckStatus({ status, demo }: { status: string; demo: boolean }) {
-  const positive = status === "evidence_found";
+  const evidenceFound = status === "evidence_found";
   const uncertain = ["uncertain", "disputed", "not_checked", "provider_not_configured"].includes(status);
-  const style = positive
-    ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+  const style = evidenceFound
+    ? "bg-sky-50 text-sky-800 ring-sky-200"
     : uncertain
       ? "bg-amber-50 text-amber-800 ring-amber-200"
       : status === "failed"
         ? "bg-rose-50 text-rose-800 ring-rose-200"
-        : "bg-sky-50 text-sky-800 ring-sky-200";
+        : "bg-slate-100 text-slate-700 ring-slate-200";
 
   return (
     <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset ${style}`}>
-      {status === "failed" ? <ShieldAlert size={13} /> : positive ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
-      <span className="break-words">{pretty(status)}</span>
+      {status === "failed" ? <ShieldAlert size={13} /> : <Clock3 size={13} />}
+      <span className="break-words">{evidenceFound ? "Evidence found — not a verdict" : pretty(status)}</span>
       {demo && <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Demo</span>}
     </span>
   );
@@ -194,6 +194,7 @@ export default function VerifyPage() {
   const [reason, setReason] = useState("");
   const [evidenceNote, setEvidenceNote] = useState("");
   const [selectedLabelId, setSelectedLabelId] = useState("");
+  const detailsRequestId = useRef(0);
 
   const selectedPost = posts.find((post) => post.id === selectedPostId) || null;
 
@@ -306,10 +307,13 @@ export default function VerifyPage() {
   }
 
   async function loadDetails(postId: string) {
+    const requestId = ++detailsRequestId.current;
+    setChecks([]);
+    setLabels([]);
+    setSources([]);
+    setSelectedLabelId("");
     if (!postId) {
-      setChecks([]);
-      setLabels([]);
-      setSources([]);
+      setLoadingDetails(false);
       return;
     }
     setLoadingDetails(true);
@@ -337,17 +341,19 @@ export default function VerifyPage() {
           .order("created_at", { ascending: false })
           .limit(30),
       ]);
+      if (requestId !== detailsRequestId.current) return;
       if (checkResult.error) throw checkResult.error;
       if (labelResult.error) throw labelResult.error;
       if (sourceResult.error) throw sourceResult.error;
       setChecks((checkResult.data ?? []) as ContentCheck[]);
       setLabels((labelResult.data ?? []) as PostLabel[]);
       setSources((sourceResult.data ?? []) as PostSource[]);
-      setSelectedLabelId("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load evidence records.");
+      if (requestId === detailsRequestId.current) {
+        setError(err instanceof Error ? err.message : "Could not load evidence records.");
+      }
     } finally {
-      setLoadingDetails(false);
+      if (requestId === detailsRequestId.current) setLoadingDetails(false);
     }
   }
 
