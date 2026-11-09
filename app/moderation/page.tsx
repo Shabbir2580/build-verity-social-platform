@@ -94,11 +94,18 @@ export default function ModerationPage() {
       setPosts(Object.fromEntries(((postResult.data ?? []) as PostRow[]).map((item) => [item.id, item])));
       setLabels(Object.fromEntries(((labelResult.data ?? []) as LabelRow[]).map((item) => [item.id, item])));
       const actorIds = [...new Set([...rows.flatMap((item) => [item.opened_by, item.assigned_to, item.second_review_requested_by]), ...((reportResult.data ?? []) as ReportRow[]).map((item) => item.reporter_id), ...((appealResult.data ?? []) as AppealRow[]).map((item) => item.appellant_id)].filter((id): id is string => Boolean(id)))];
-      if (actorIds.length) {
-        const { data: people, error: peopleError } = await supabase.from("profiles").select("id, username, display_name").in("id", actorIds);
-        if (peopleError) throw peopleError;
-        setProfiles(Object.fromEntries((people ?? []).map((item) => [item.id, { username: item.username, display_name: item.display_name }])));
-      } else setProfiles({});
+      const peopleResult = actorIds.length
+        ? await supabase.from("profiles").select("id, username, display_name").in("id", actorIds)
+        : { data: [], error: null };
+      if (peopleResult.error) throw peopleResult.error;
+      let people = peopleResult.data ?? [];
+      if (me.role === "admin") {
+        const { data: staffPeople, error: staffError } = await supabase.from("profiles")
+          .select("id, username, display_name").in("role", ["moderator", "admin"]).eq("is_suspended", false);
+        if (staffError) throw staffError;
+        people = [...people, ...(staffPeople ?? [])];
+      }
+      setProfiles(Object.fromEntries(people.map((item) => [item.id, { username: item.username, display_name: item.display_name }])));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load moderation queue.");
     } finally { setLoading(false); setChecking(false); }
