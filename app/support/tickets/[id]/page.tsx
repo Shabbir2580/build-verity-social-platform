@@ -75,11 +75,12 @@ export default function SupportTicketPage({ params }: { params: Promise<{ id: st
         .select("id, author_id, body, is_staff, created_at")
         .eq("ticket_id", ticketId)
         .eq("is_internal", false)
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(200);
       if (messageError) throw messageError;
       setTicket(ticketData as Ticket);
-      setMessages((messageData ?? []) as TicketMessage[]);
+      setMessages(((messageData ?? []) as TicketMessage[]).reverse());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load this support ticket.");
     } finally {
