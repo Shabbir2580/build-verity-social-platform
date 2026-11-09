@@ -39,6 +39,11 @@ export default function AdminPage() {
     setLoading(true); setError("");
     try {
       const supabase = createClient();
+      // Check for a session before getUser(): anonymous visitors can otherwise
+      // surface an AuthSessionMissingError instead of reaching the login page.
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session) { window.location.href = "/login?next=%2Fadmin"; return; }
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
       if (!auth.user) { window.location.href = "/login?next=%2Fadmin"; return; }
