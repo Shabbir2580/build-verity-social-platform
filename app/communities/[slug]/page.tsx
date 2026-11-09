@@ -58,7 +58,7 @@ export default function CommunityDetailPage() {
         supabase.from("community_rules").select("id, position, title, body").eq("community_id", current.id).order("position", { ascending: true }),
         supabase.from("community_memberships").select("user_id", { count: "exact", head: true }).eq("community_id", current.id),
         supabase.from("posts").select("id, author_id, title, body, declared_category, created_at").eq("community_id", current.id).eq("status", "published").order("created_at", { ascending: false }).limit(50),
-        auth.user ? supabase.from("community_memberships").select("role").eq("community_id", current.id).eq("user_id", auth.user.id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        currentUserId ? supabase.from("community_memberships").select("role").eq("community_id", current.id).eq("user_id", currentUserId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       ]);
       if (ruleResult.error) throw ruleResult.error;
       if (memberResult.error) throw memberResult.error;
