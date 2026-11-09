@@ -77,7 +77,8 @@ export default function SettingsPage() {
     try {
       const supabase = createClient();
       const { data: auth, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
+      // A missing session should send visitors to sign-in instead of leaving a permanent settings error.
+      if (authError && authError.name !== "AuthSessionMissingError") throw authError;
       if (!auth.user) {
         window.location.href = "/login?next=%2Fsettings";
         return;
