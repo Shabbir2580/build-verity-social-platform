@@ -24,6 +24,10 @@ export default function SignupPage() {
   async function handleGoogleSignUp() {
     setError("");
     setSuccess("");
+    if (!acceptedTerms) {
+      setError("Please accept the Terms and Privacy Policy before continuing with Google.");
+      return;
+    }
     setOauthLoading(true);
     try {
       const supabase = createClient();
