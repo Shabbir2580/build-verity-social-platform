@@ -38,10 +38,15 @@ export default function CommunityDetailPage() {
     setLoading(true); setError("");
     try {
       const supabase = createClient();
-      const { data: auth, error: authError } = await supabase.auth.getUser();
-      // Community pages are public; an absent session simply means a guest visitor.
-      if (authError && authError.name !== "AuthSessionMissingError") throw authError;
-      setUserId(auth.user?.id ?? null);
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      let currentUserId: string | null = null;
+      if (sessionData.session) {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        currentUserId = auth.user?.id ?? null;
+      }
+      setUserId(currentUserId);
       const { data: communityData, error: communityError } = await supabase.from("communities")
         .select("id, slug, name, description, topic, creator_id, created_at").eq("slug", slug).maybeSingle();
       if (communityError) throw communityError;
