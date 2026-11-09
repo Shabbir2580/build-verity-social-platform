@@ -207,10 +207,39 @@ export default function SignupPage() {
             </div>
           )}
 
+            <label className="flex cursor-pointer items-start gap-3 pt-1 text-sm leading-6 text-slate-600">
+              <input
+                required
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(event) =>
+                  setAcceptedTerms(event.target.checked)
+                }
+                className="mt-1 h-4 w-4 accent-indigo-600"
+              />
+              <span>
+                I agree to the{" "}
+                <Link
+                  href="/terms"
+                  className="font-semibold text-indigo-700 underline"
+                >
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy"
+                  className="font-semibold text-indigo-700 underline"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+
           <button
             type="button"
             onClick={() => void handleGoogleSignUp()}
-            disabled={loading || oauthLoading || Boolean(success)}
+            disabled={loading || oauthLoading || Boolean(success) || !acceptedTerms}
             className="mb-5 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span aria-hidden="true" className="text-lg font-black text-[#4285F4]">G</span>
@@ -321,35 +350,6 @@ export default function SignupPage() {
             >
               {showPassword ? "Hide passwords" : "Show passwords"}
             </button>
-
-            <label className="flex cursor-pointer items-start gap-3 pt-1 text-sm leading-6 text-slate-600">
-              <input
-                required
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(event) =>
-                  setAcceptedTerms(event.target.checked)
-                }
-                className="mt-1 h-4 w-4 accent-indigo-600"
-              />
-              <span>
-                I agree to the{" "}
-                <Link
-                  href="/terms"
-                  className="font-semibold text-indigo-700 underline"
-                >
-                  Terms
-                </Link>{" "}
-                and{" "}
-                <Link
-                  href="/privacy"
-                  className="font-semibold text-indigo-700 underline"
-                >
-                  Privacy Policy
-                </Link>
-                .
-              </span>
-            </label>
 
             <button
               type="submit"
