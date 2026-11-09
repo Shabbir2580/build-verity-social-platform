@@ -20,7 +20,9 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const authError = params.get("error");
-    if (authError === "oauth") {
+    if (authError === "suspended") {
+      setError("This account has been suspended. Contact Verity support if you believe this is a mistake.");
+    } else if (authError === "oauth") {
       setError("Google sign-in could not be completed. Please try again or use email and password.");
     } else if (authError === "configuration") {
       setError("Authentication is not configured correctly. Please contact support.");
