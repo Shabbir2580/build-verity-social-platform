@@ -374,10 +374,18 @@ export default function HomePage() {
 
     try {
       const supabase = createClient();
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
+      // Anonymous visitors have no session; validate a user only when a session exists.
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
 
-      const currentUser = authData.user ? { id: authData.user.id, email: authData.user.email } : null;
+      let authUser = null;
+      if (sessionData.session) {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        authUser = authData.user;
+      }
+
+      const currentUser = authUser ? { id: authUser.id, email: authUser.email } : null;
       setUser(currentUser);
 
       if (currentUser) {
