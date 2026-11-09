@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { AccountStatusGuard } from '@/components/account-status-guard'
 
 const siteDescription =
   'A community platform for thoughtful discussions, shared knowledge and clearer context around the content we see online.'
@@ -54,6 +55,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         {children}
+        <AccountStatusGuard />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
