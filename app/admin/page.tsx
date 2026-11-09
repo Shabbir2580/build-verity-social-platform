@@ -91,7 +91,7 @@ export default function AdminPage() {
       setEngagement({ comments: recentComments?.data?.length ?? 0, reactions: recentReactions?.data?.length ?? 0, communities: recentMemberships?.data?.length ?? 0, contributors: contributors.size });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
     finally { setLoading(false); setChecking(false); }
-  }, []);
+  }, [peoplePage]);
 
   useEffect(() => { void load(); }, [load]);
 
