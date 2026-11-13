@@ -69,9 +69,26 @@ export async function POST(request: NextRequest) {
     .eq("post_id", body.postId)
     .maybeSingle();
   if (mediaError || !media) return jsonError("Media item not found.", 404);
-  if (!ALLOWED_MIME.has(media.mime_type)) return jsonError("This media format is not supported for analysis.", 415);
+
+  const recordFailure = async (message: string, status: number) => {
+    const explanation = ("Automatic media assessment failed: " + message).slice(0, 4000);
+    const { error: checkError } = await supabase.from("content_checks").insert({
+      post_id: post.id, provider: `Google Gemini / ${MODEL}`, check_type: "media_origin",
+      status: "failed", claim: null, signals: [], supporting: [], contradicting: [],
+      explanation, uncertainty: "No AI-generation, manipulation, deepfake, or authenticity conclusion was produced. Human review is required.",
+      is_demo: false, assessed_at: null,
+    });
+    if (checkError) console.error("Could not record failed media assessment:", checkError.message);
+    const { error: caseError } = await supabase.from("moderation_cases").insert({
+      post_id: post.id, case_type: "label_review", status: "awaiting_review", priority: "normal",
+      opened_by: authData.user.id, summary: explanation + " Human review is required.",
+    });
+    if (caseError) console.error("Could not queue failed media assessment:", caseError.message);
+    return jsonError(message, status);
+  };
+  if (!ALLOWED_MIME.has(media.mime_type)) return recordFailure("This media format is not supported for analysis.", 415);
   const maxBytes = media.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
-  if (media.size_bytes > maxBytes) return jsonError(`This ${media.kind} exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB analysis limit.`, 413);
+  if (media.size_bytes > maxBytes) return recordFailure(`This ${media.kind} exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB analysis limit.`, 413);
 
   if (!apiKey) {
     const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
@@ -101,16 +118,16 @@ export async function POST(request: NextRequest) {
   const { data: signed, error: signedError } = await supabase.storage
     .from("post-media")
     .createSignedUrl(media.storage_path, 60);
-  if (signedError || !signed?.signedUrl) return jsonError("Could not securely retrieve this media.", 502);
+  if (signedError || !signed?.signedUrl) return recordFailure("Could not securely retrieve this media.", 502);
 
   try {
     const mediaResponse = await fetch(signed.signedUrl, { signal: AbortSignal.timeout(15000) });
-    if (!mediaResponse.ok) return jsonError("Could not retrieve the uploaded media.", 502);
+    if (!mediaResponse.ok) return recordFailure("Could not retrieve the uploaded media.", 502);
     const buffer = Buffer.from(await mediaResponse.arrayBuffer());
-    if (buffer.byteLength === 0 || buffer.byteLength > maxBytes) return jsonError("The uploaded media size is invalid for analysis.", 413);
+    if (buffer.byteLength === 0 || buffer.byteLength > maxBytes) return recordFailure("The uploaded media size is invalid for analysis.", 413);
 
     if (media.kind === "video" && buffer.byteLength > 20 * 1024 * 1024) {
-      return jsonError("Video is too large for the current inline analysis route.", 413);
+      return recordFailure("Video is too large for the current inline analysis route.", 413);
     }
 
     const prompt = [
@@ -146,10 +163,10 @@ export async function POST(request: NextRequest) {
     if (!geminiResponse.ok) {
       const providerPayload = await geminiResponse.json().catch(() => ({}));
       const providerMessage = typeof providerPayload?.error?.message === "string" ? providerPayload.error.message : "";
-      if (geminiResponse.status === 429) return jsonError("Gemini free-tier quota is currently exhausted. Try again later.", 429);
-      if (geminiResponse.status === 400) return jsonError("Gemini rejected this media format or request.", 422);
+      if (geminiResponse.status === 429) return recordFailure("Gemini free-tier quota is currently exhausted. Try again later.", 429);
+      if (geminiResponse.status === 400) return recordFailure("Gemini rejected this media format or request.", 422);
       console.error("Gemini media assessment failed:", geminiResponse.status, providerMessage.slice(0, 300));
-      return jsonError("Gemini could not complete this assessment. No result was stored.", 502);
+      return recordFailure("Gemini could not complete this assessment. No result was stored.", 502);
     }
 
     const payload = await geminiResponse.json();
@@ -157,20 +174,20 @@ export async function POST(request: NextRequest) {
       ?.map((part: { text?: string }) => part.text || "")
       .join("")
       .trim();
-    if (!rawText) return jsonError("Gemini returned no assessment. No result was stored.", 502);
+    if (!rawText) return recordFailure("Gemini returned no assessment. No result was stored.", 502);
 
     let assessment: GeminiAssessment;
     try {
       assessment = JSON.parse(rawText) as GeminiAssessment;
     } catch {
-      return jsonError("Gemini returned an unreadable assessment. No result was stored.", 502);
+      return recordFailure("Gemini returned an unreadable assessment. No result was stored.", 502);
     }
     if (
       typeof assessment.summary !== "string" ||
       typeof assessment.visible_content !== "string" ||
       !Array.isArray(assessment.origin_indicators) ||
       !Array.isArray(assessment.limitations)
-    ) return jsonError("Gemini returned an incomplete assessment. No result was stored.", 502);
+    ) return recordFailure("Gemini returned an incomplete assessment. No result was stored.", 502);
 
     const explanation = [assessment.summary, "", "Visible content: " + assessment.visible_content].join("\n").slice(0, 4000);
     const uncertainty = [
@@ -214,6 +231,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ assessment: saved, queuedForHumanReview: !caseError }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("Gemini media route error:", error instanceof Error ? error.message : "unknown error");
-    return jsonError("Media analysis timed out or failed. No assessment was recorded.", 502);
+    return recordFailure("Media analysis timed out or failed.", 502);
   }
 }
