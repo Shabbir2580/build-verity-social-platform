@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GeminiMediaCheck } from "@/components/verify/gemini-media-check";
+import { GeminiClaimCheck } from "@/components/verify/gemini-claim-check";
 
 type PostMedia = {
   id: string;
@@ -581,6 +582,8 @@ export default function VerifyPage() {
                 <a href="https://toolbox.google.com/factcheck/explorer" target="_blank" rel="noreferrer noopener" className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">Search published fact-checks in Google Fact Check Explorer <ArrowUpRight size={13} /></a>
                 <p className="mt-2 text-[11px] leading-5 text-slate-400">Google Fact Check Explorer can find published reviews of claims and images. It only covers fact-checks that participating publishers have published and marked up; no result does not mean a claim is true.</p>
               </section>
+
+              {user && selectedPost.author_id === user.id && <GeminiClaimCheck postId={selectedPost.id} claim={coverageQuery.trim() || selectedPost.title || selectedPost.body} />}
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
