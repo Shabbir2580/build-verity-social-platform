@@ -119,7 +119,14 @@ export async function POST(request: NextRequest) {
       is_demo: false, assessed_at: new Date().toISOString(),
     }).select("id, post_id, provider, check_type, status, claim, supporting, contradicting, explanation, uncertainty, assessed_at, created_at").single();
     if (saveError || !saved) { console.error("Could not save Gemini claim assessment:", saveError?.message); return NextResponse.json({ error: "The analysis completed but could not be safely recorded." }, { status: 500 }); }
-    return NextResponse.json({ assessment: saved, sourcesFound: evidenceContext.length }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+    const { error: caseError } = await supabase.from("moderation_cases").insert({
+      post_id: post.id, case_type: "label_review", status: "awaiting_review", priority: "normal",
+      opened_by: authData.user.id,
+      summary: "Automatic Gemini news claim review requires human assessment. " + result.summary.slice(0, 1500),
+    });
+    if (caseError) console.error("Could not queue claim assessment for human review:", caseError.message);
+
+    return NextResponse.json({ assessment: saved, sourcesFound: evidenceContext.length, queuedForHumanReview: !caseError }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("Gemini claim route error:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Claim analysis timed out or failed. No assessment was recorded." }, { status: 502 });
