@@ -95,7 +95,7 @@ try {
   if (invalidCoverageResponse.status !== 400 || typeof invalidCoveragePayload.error !== "string") {
     throw new Error("News discovery API did not reject an undersized query safely.");
   }
-  process.stdout.write("PASS /api/verify/news rejects invalid queries (400)\\n");
+  process.stdout.write("PASS /api/verify/news rejects invalid queries (400)\n");
 
   process.stdout.write(`\nSmoke test passed for ${routes.length} production routes.\n`);
 } finally {
