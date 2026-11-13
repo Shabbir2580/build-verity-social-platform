@@ -88,6 +88,15 @@ try {
     process.stdout.write(`PASS ${path} (${response.status})\n`);
   }
 
+  const invalidCoverageResponse = await fetch(new URL("/api/verify/news?q=short", origin), {
+    signal: AbortSignal.timeout(5000),
+  });
+  const invalidCoveragePayload = await invalidCoverageResponse.json();
+  if (invalidCoverageResponse.status !== 400 || typeof invalidCoveragePayload.error !== "string") {
+    throw new Error("News discovery API did not reject an undersized query safely.");
+  }
+  process.stdout.write("PASS /api/verify/news rejects invalid queries (400)\\n");
+
   process.stdout.write(`\nSmoke test passed for ${routes.length} production routes.\n`);
 } finally {
   if (server.pid) {
