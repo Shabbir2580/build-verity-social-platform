@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (typeof result.summary !== "string" || !Array.isArray(result.supporting_indices) || !Array.isArray(result.contradicting_indices)) {
       return NextResponse.json({ error: "Gemini returned an incomplete assessment. No result was stored." }, { status: 502 });
     }
-    const selectSources = (indices: number[]) => indices.slice(0, 6).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: \`Headline from \${item!.publisher || "publisher not identified"}; headlines are leads, not verified evidence.\`, url: item!.url }));
+    const selectSources = (indices: number[]) => indices.slice(0, 6).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: "Headline from " + (item!.publisher || "publisher not identified") + "; headlines are leads, not verified evidence.", url: item!.url }));
     const { data: saved, error: saveError } = await supabase.from("content_checks").insert({
       post_id: post.id, provider: "Google Gemini / gemini-2.5-flash", check_type: "claim", status: "uncertain",
       claim: claim.slice(0, 1000), signals: [{ kind: "claim_analysis", source_count: evidenceContext.length, method: "Google News RSS headlines reviewed by Gemini" }],
