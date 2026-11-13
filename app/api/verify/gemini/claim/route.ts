@@ -57,6 +57,23 @@ export async function POST(request: NextRequest) {
   if (!post) return NextResponse.json({ error: "Post not found." }, { status: 404 });
   if (post.author_id !== authData.user.id) return NextResponse.json({ error: "Only the post author can submit its claim for external AI analysis." }, { status: 403 });
 
+  const recordFailure = async (message: string, status: number) => {
+    const explanation = ("Automatic news claim assessment failed: " + message).slice(0, 4000);
+    const { error: checkError } = await supabase.from("content_checks").insert({
+      post_id: post.id, provider: "Google Gemini / gemini-2.5-flash", check_type: "claim",
+      status: "failed", claim: claim.slice(0, 1000), signals: [], supporting: [], contradicting: [],
+      explanation, uncertainty: "No true/false conclusion was produced. Search-result headlines are not sufficient proof; human review is required.",
+      is_demo: false, assessed_at: null,
+    });
+    if (checkError) console.error("Could not record failed news claim assessment:", checkError.message);
+    const { error: caseError } = await supabase.from("moderation_cases").insert({
+      post_id: post.id, case_type: "label_review", status: "awaiting_review", priority: "normal",
+      opened_by: authData.user.id, summary: explanation + " Human review is required.",
+    });
+    if (caseError) console.error("Could not queue failed news claim assessment:", caseError.message);
+    return NextResponse.json({ error: message, queuedForHumanReview: !caseError }, { status });
+  };
+
   if (!apiKey) {
     const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
       post_id: post.id, provider: "Google Gemini (not configured)", check_type: "claim",
@@ -84,7 +101,8 @@ export async function POST(request: NextRequest) {
     feedUrl.searchParams.set("q", claim.slice(0, 240));
     feedUrl.searchParams.set("hl", "en-IN"); feedUrl.searchParams.set("gl", "IN"); feedUrl.searchParams.set("ceid", "IN:en");
     const newsResponse = await fetch(feedUrl, { headers: { Accept: "application/rss+xml, application/xml" }, signal: AbortSignal.timeout(9000) });
-    const news = newsResponse.ok ? parseNews(await newsResponse.text()) : [];
+    if (!newsResponse.ok) return recordFailure("Google News search is temporarily unavailable.", 502);
+    const news = parseNews(await newsResponse.text());
     const evidenceContext = news.map((item, index) => ({ index: index + 1, title: item.title, publisher: item.publisher, publishedAt: item.publishedAt, url: item.url }));
     const prompt = [
       "You assist a human fact-check reviewer. Assess the precise claim using ONLY the supplied Google News search-result headlines and metadata.",
@@ -103,16 +121,16 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) {
-      if (response.status === 429) return NextResponse.json({ error: "Gemini free-tier quota is currently exhausted. Try again later." }, { status: 429 });
+      if (response.status === 429) return recordFailure("Gemini free-tier quota is currently exhausted. Try again later.", 429);
       console.error("Gemini claim assessment failed:", response.status);
-      return NextResponse.json({ error: "Gemini could not complete this assessment. No result was stored." }, { status: 502 });
+      return recordFailure("Gemini could not complete this assessment. No result was stored.", 502);
     }
     const payload = await response.json();
     const raw = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim();
     let result: { claim?: string; summary?: string; supporting_indices?: number[]; contradicting_indices?: number[]; uncertainty?: string };
-    try { result = JSON.parse(raw || ""); } catch { return NextResponse.json({ error: "Gemini returned an unreadable assessment. No result was stored." }, { status: 502 }); }
+    try { result = JSON.parse(raw || ""); } catch { return recordFailure("Gemini returned an unreadable assessment. No result was stored.", 502); }
     if (typeof result.summary !== "string" || !Array.isArray(result.supporting_indices) || !Array.isArray(result.contradicting_indices)) {
-      return NextResponse.json({ error: "Gemini returned an incomplete assessment. No result was stored." }, { status: 502 });
+      return recordFailure("Gemini returned an incomplete assessment. No result was stored.", 502);
     }
     const selectSources = (indices: number[]) => indices.slice(0, 6).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: "Headline from " + (item!.publisher || "publisher not identified") + "; headlines are leads, not verified evidence.", url: item!.url }));
     const { data: saved, error: saveError } = await supabase.from("content_checks").insert({
@@ -134,6 +152,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ assessment: saved, sourcesFound: evidenceContext.length, queuedForHumanReview: !caseError }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("Gemini claim route error:", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.json({ error: "Claim analysis timed out or failed. No assessment was recorded." }, { status: 502 });
+    return recordFailure("Claim analysis timed out or failed.", 502);
   }
 }
