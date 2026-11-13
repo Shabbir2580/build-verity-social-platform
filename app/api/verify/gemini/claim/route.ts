@@ -13,7 +13,7 @@ function decodeXml(value: string) {
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'").trim();
 }
 function value(xml: string, tag: string) {
-  const match = xml.match(new RegExp("<" + tag + "(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</" + tag + ">", "i"));
+  const match = xml.match(new RegExp("<" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)</" + tag + ">", "i"));
   return match ? decodeXml(match[1].replace(/<[^>]+>/g, "")) : null;
 }
 function parseNews(xml: string): NewsItem[] {
