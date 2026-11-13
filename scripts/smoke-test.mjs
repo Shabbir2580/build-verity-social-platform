@@ -103,10 +103,10 @@ try {
     body: JSON.stringify({ postId: "00000000-0000-0000-0000-000000000000", mediaId: "00000000-0000-0000-0000-000000000000", consent: true }),
     signal: AbortSignal.timeout(5000),
   });
-  if (geminiUnavailableResponse.status !== 503) {
-    throw new Error("Gemini API should fail closed when no server API key is configured in CI.");
+  if (geminiUnavailableResponse.status !== 401) {
+    throw new Error("Gemini media API must reject unauthenticated requests.");
   }
-  process.stdout.write("PASS /api/verify/gemini fails closed without a configured API key (503)\\n");
+  process.stdout.write("PASS /api/verify/gemini rejects unauthenticated requests (401)\\n");
 
   const geminiClaimUnavailableResponse = await fetch(new URL("/api/verify/gemini/claim", origin), {
     method: "POST",
@@ -114,10 +114,10 @@ try {
     body: JSON.stringify({ postId: "00000000-0000-0000-0000-000000000000", claim: "A sufficiently long sample claim for the CI test.", consent: true }),
     signal: AbortSignal.timeout(5000),
   });
-  if (geminiClaimUnavailableResponse.status !== 503) {
-    throw new Error("Gemini claim API should fail closed when no server API key is configured in CI.");
+  if (geminiClaimUnavailableResponse.status !== 401) {
+    throw new Error("Gemini claim API must reject unauthenticated requests.");
   }
-  process.stdout.write("PASS /api/verify/gemini/claim fails closed without a configured API key (503)\\n");
+  process.stdout.write("PASS /api/verify/gemini/claim rejects unauthenticated requests (401)\\n");
 
   process.stdout.write(`\nSmoke test passed for ${routes.length} production routes.\n`);
 } finally {
