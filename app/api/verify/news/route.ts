@@ -41,13 +41,13 @@ function safeUrl(value: string | null): string | null {
 
 function parseItems(xml: string): CoverageItem[] {
   const items: CoverageItem[] = [];
-  const matches = xml.matchAll(/<item(?:\\s[^>]*)?>([\\s\\S]*?)</item>/gi);
+  const matches = xml.matchAll(/<item(?:\\s[^>]*)?>([\\s\\S]*?)<\\/item>/gi);
   for (const match of matches) {
     const item = match[1];
     const title = tagValue(item, "title");
     const url = safeUrl(tagValue(item, "link"));
     const rawDate = tagValue(item, "pubDate");
-    const publisherMatch = item.match(/<source(?:\\s+url="([^"]*)")?[^>]*>([\\s\\S]*?)</source>/i);
+    const publisherMatch = item.match(/<source(?:\\s+url="([^"]*)")?[^>]*>([\\s\\S]*?)<\\/source>/i);
     const publisher = publisherMatch ? decodeXml(publisherMatch[2].replace(/<[^>]+>/g, "")) : null;
     const publisherUrl = publisherMatch ? safeUrl(decodeXml(publisherMatch[1] || "")) : null;
     const parsedDate = rawDate ? new Date(rawDate) : null;
