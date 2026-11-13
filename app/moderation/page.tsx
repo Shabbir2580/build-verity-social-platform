@@ -19,6 +19,7 @@ type AppealRow = { id: string; case_id: string | null; post_id: string; appellan
 type PostRow = { id: string; title: string | null; body: string; author_id: string; status: string; removal_reason: string | null };
 type LabelRow = { id: string; dimension: string; value: string; basis: string; explanation: string | null; status: string };
 type ActionRow = { id: string; action: string; reason: string; actor_id: string | null; created_at: string };
+type CheckRow = { id: string; post_id: string; provider: string; check_type: string; status: string; explanation: string | null; uncertainty: string | null; created_at: string };
 
 const statusLabels: Record<string, string> = {
   submitted: "Submitted", awaiting_review: "Awaiting review", under_review: "Under review",
@@ -39,6 +40,7 @@ export default function ModerationPage() {
   const [appeals, setAppeals] = useState<AppealRow[]>([]);
   const [posts, setPosts] = useState<Record<string, PostRow>>({});
   const [labels, setLabels] = useState<Record<string, LabelRow>>({});
+  const [checks, setChecks] = useState<CheckRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, { username: string; display_name: string }>>({});
   const [actions, setActions] = useState<ActionRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -57,6 +59,7 @@ export default function ModerationPage() {
   const selected = cases.find((item) => item.id === selectedId) ?? null;
   const selectedReports = reports.filter((item) => item.case_id === selectedId);
   const selectedAppeals = appeals.filter((item) => item.case_id === selectedId);
+  const selectedChecks = selected?.post_id ? checks.filter((item) => item.post_id === selected.post_id) : [];
   const filteredCases = useMemo(() => cases.filter((item) => filter === "mine" ? item.assigned_to === userId : filter === "unassigned" ? item.assigned_to === null && item.status !== "resolved" : filter === "active" ? item.status !== "resolved" : filter === "all" ? true : item.status === filter), [cases, filter, userId]);
 
   const load = useCallback(async (append = false) => {
@@ -90,24 +93,27 @@ export default function ModerationPage() {
       const postIds = [...new Set(rows.map((item) => item.post_id).filter((id): id is string => Boolean(id)))];
       const labelIds = [...new Set(rows.map((item) => item.label_id).filter((id): id is string => Boolean(id)))];
       if (!caseIds.length) {
-        setReports([]); setAppeals([]); setPosts({}); setLabels({}); setProfiles({});
+        setReports([]); setAppeals([]); setPosts({}); setLabels({}); setChecks([]); setProfiles({});
         setActions([]); setSelectedId(null);
         return;
       }
-      const [reportResult, appealResult, postResult, labelResult] = await Promise.all([
+      const [reportResult, appealResult, postResult, labelResult, checkResult] = await Promise.all([
         supabase.from("reports").select("id, case_id, target_type, target_id, reason, details, status, reporter_id, created_at").in("case_id", caseIds).order("created_at", { ascending: false }),
         supabase.from("appeals").select("id, case_id, post_id, appellant_id, reason, evidence, status, created_at").in("case_id", caseIds).order("created_at", { ascending: false }),
         postIds.length ? supabase.from("posts").select("id, title, body, author_id, status, removal_reason").in("id", postIds) : Promise.resolve({ data: [], error: null }),
         labelIds.length ? supabase.from("post_labels").select("id, dimension, value, basis, explanation, status").in("id", labelIds) : Promise.resolve({ data: [], error: null }),
+        postIds.length ? supabase.from("content_checks").select("id, post_id, provider, check_type, status, explanation, uncertainty, created_at").in("post_id", postIds).order("created_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
       ]);
       if (reportResult.error) throw reportResult.error;
       if (appealResult.error) throw appealResult.error;
       if (postResult.error) throw postResult.error;
       if (labelResult.error) throw labelResult.error;
+      if (checkResult.error) throw checkResult.error;
       setReports((reportResult.data ?? []) as ReportRow[]);
       setAppeals((appealResult.data ?? []) as AppealRow[]);
       setPosts(Object.fromEntries(((postResult.data ?? []) as PostRow[]).map((item) => [item.id, item])));
       setLabels(Object.fromEntries(((labelResult.data ?? []) as LabelRow[]).map((item) => [item.id, item])));
+      setChecks((checkResult.data ?? []) as CheckRow[]);
       const actorIds = [...new Set([...rows.flatMap((item) => [item.opened_by, item.assigned_to, item.second_review_requested_by]), ...((reportResult.data ?? []) as ReportRow[]).map((item) => item.reporter_id), ...((appealResult.data ?? []) as AppealRow[]).map((item) => item.appellant_id)].filter((id): id is string => Boolean(id)))];
       const peopleResult = actorIds.length
         ? await supabase.from("profiles").select("id, username, display_name").in("id", actorIds)
@@ -216,6 +222,7 @@ export default function ModerationPage() {
               <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-extrabold uppercase tracking-wider text-indigo-600">{selected.case_type.replace("_"," ")} · {selected.id.slice(0,8)}</p><h2 className="mt-1 text-xl font-black">{selected.summary || "Moderation case"}</h2><p className="mt-1 text-xs text-slate-500">Opened {new Date(selected.created_at).toLocaleString()} · {statusLabels[selected.status] ?? selected.status}</p></div><span className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase ${priorityStyles[selected.priority] ?? priorityStyles.normal}`}>{selected.priority}</span></div>
               {selected.post_id && posts[selected.post_id] && <div className="mt-5 rounded-xl bg-slate-50 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Related post · {posts[selected.post_id].status}</p><p className="mt-2 whitespace-pre-wrap text-sm font-semibold">{posts[selected.post_id].title || posts[selected.post_id].body.slice(0,1000)}</p>{posts[selected.post_id].removal_reason && <p className="mt-2 text-xs text-rose-700">Moderation note: {posts[selected.post_id].removal_reason}</p>}</div>}
               {selected.label_id && labels[selected.label_id] && <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4"><p className="text-xs font-extrabold uppercase text-indigo-700">Label under review · {labels[selected.label_id].dimension}</p><p className="mt-1 text-sm font-bold">{labels[selected.label_id].value}</p><p className="mt-1 text-xs text-slate-600">{labels[selected.label_id].basis} · {labels[selected.label_id].status}</p>{labels[selected.label_id].explanation && <p className="mt-2 text-sm text-slate-600">{labels[selected.label_id].explanation}</p>}</div>}
+               {selectedChecks.map((check) => <div key={check.id} className="mt-3 rounded-xl border border-violet-200 bg-violet-50/60 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-extrabold uppercase text-violet-800">Automated {check.check_type.replace("_", " ")} · {check.provider}</p><span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase text-violet-800">{check.status.replaceAll("_", " ")}</span></div>{check.explanation && <p className="mt-2 text-sm text-slate-800">{check.explanation}</p>}{check.uncertainty && <p className="mt-2 text-xs leading-5 text-slate-600">{check.uncertainty}</p>}<p className="mt-2 text-[10px] text-slate-500">{new Date(check.created_at).toLocaleString()}</p></div>)}
               {selectedReports.map((item) => <div key={item.id} className="mt-3 rounded-xl border border-slate-200 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Report · {item.target_type} · {item.reason}</p><p className="mt-1 text-sm">{item.details || "No additional details supplied."}</p><p className="mt-2 text-xs text-slate-500">Reported by @{profiles[item.reporter_id]?.username || "member"} · {item.status}</p></div>)}
               {selectedAppeals.map((item) => <div key={item.id} className="mt-3 rounded-xl border border-slate-200 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Appeal · {item.status}</p><p className="mt-1 text-sm">{item.reason}</p>{item.evidence && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-600">{item.evidence}</p>}<p className="mt-2 text-xs text-slate-500">Submitted by @{profiles[item.appellant_id]?.username || "member"}</p></div>)}
               <div className="mt-5 border-t border-slate-100 pt-5"><h3 className="text-sm font-extrabold">Decision & case controls</h3>
