@@ -327,6 +327,10 @@ export default function HomePage() {
   const [newAltText, setNewAltText] = useState("");
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ file: File; url: string | null }>>([]);
   const [commentDraft, setCommentDraft] = useState("");
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
   const [verifyUrl, setVerifyUrl] = useState("");
   const [verifyMessage, setVerifyMessage] = useState("");
 
@@ -814,6 +818,25 @@ export default function HomePage() {
     } finally {
       setActionLoading(false);
     }
+  }
+
+  async function savePostEdit(postId: string) {
+    if (!user || editSaving) return;
+    if (editBody.trim().length < 1) { setError("Post text cannot be empty."); return; }
+    if (editTitle.trim().length > 300 || editBody.trim().length > 20000) { setError("The title or post text is too long."); return; }
+    setEditSaving(true); setError(""); setNotice("");
+    try {
+      const supabase = createClient();
+      const { error: updateError } = await supabase.from("posts")
+        .update({ title: editTitle.trim() || null, body: editBody.trim(), edited_at: new Date().toISOString() })
+        .eq("id", postId).eq("author_id", user.id).eq("status", "published");
+      if (updateError) throw updateError;
+      setPosts((current) => current.map((post) => post.id === postId
+        ? { ...post, title: editTitle.trim() || "Untitled post", body: editBody.trim() } : post));
+      setEditingPostId(null); setNotice("Post updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update this post.");
+    } finally { setEditSaving(false); }
   }
 
   async function deletePost(postId: string) {
@@ -1334,8 +1357,8 @@ export default function HomePage() {
                 const isSaved = saved.includes(post.id);
                 const postComments = commentsByPost[post.id] || [];
                 const artTone = post.category.includes("meme") || post.category.includes("satire") || post.category.includes("parody") ? "rose" : post.category.includes("question") ? "cyan" : post.category.includes("ai") || post.category.includes("educational") ? "violet" : null;
-                return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><Link href={`/u/${encodeURIComponent(post.username)}`} className="block truncate text-sm font-extrabold hover:text-indigo-700">{post.author}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><Link href={`/u/${encodeURIComponent(post.username)}`} className="hover:text-indigo-700">@{post.username}</Link><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div>{user?.id === post.author_id ? <button type="button" onClick={() => void deletePost(post.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your post" title="Delete your post"><Trash2 size={16} /></button> : <button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button>}</div>
-                  <h3 className="mt-4 break-words text-[17px] font-extrabold leading-7 tracking-tight text-slate-900 sm:text-lg">{post.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{post.body}</p>
+                return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><Link href={`/u/${encodeURIComponent(post.username)}`} className="block truncate text-sm font-extrabold hover:text-indigo-700">{post.author}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><Link href={`/u/${encodeURIComponent(post.username)}`} className="hover:text-indigo-700">@{post.username}</Link><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div>{user?.id === post.author_id ? <><button type="button" onClick={() => { setEditingPostId(post.id); setEditTitle(post.title === "Untitled post" ? "" : post.title); setEditBody(post.body); setError(""); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-700" aria-label="Edit your post" title="Edit your post"><FileSearch size={16} /></button><button type="button" onClick={() => void deletePost(post.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your post" title="Delete your post"><Trash2 size={16} /></button></> : <button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button>}</div>
+                  {editingPostId === post.id ? <form onSubmit={(event) => { event.preventDefault(); void savePostEdit(post.id); }} className="mt-4 space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4"><label className="block text-xs font-bold text-slate-600">Title<input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={300} className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="Optional title"/></label><label className="block text-xs font-bold text-slate-600">Post text<textarea required value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={20000} rows={5} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-indigo-400"/></label><div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingPostId(null)} disabled={editSaving} className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold">Cancel</button><button type="submit" disabled={editSaving || !editBody.trim()} className="min-h-9 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white disabled:opacity-50">{editSaving ? "Saving…" : "Save changes"}</button></div></form> : <><h3 className="mt-4 break-words text-[17px] font-extrabold leading-7 tracking-tight text-slate-900 sm:text-lg">{post.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{post.body}</p></>}
                   {artTone && <Artwork tone={artTone} />}
                   {post.media.length > 0 && <div className={`verity-post-media mt-4 grid gap-2 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{post.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[560px] w-full rounded-2xl bg-slate-950 object-contain" aria-label="Post video"><source src={media.url} type={media.mime_type} />Your browser does not support HTML video.</video> : <img key={media.id} src={media.url} alt={media.alt_text || `Image shared by ${post.author}`} loading="lazy" className={`w-full rounded-2xl border border-slate-100 object-cover ${post.media.length === 1 ? "max-h-[560px]" : "aspect-square"}`} />)}</div>}
                   {post.link_url && <a href={post.link_url} target="_blank" rel="noreferrer noopener" className="mt-4 inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"><span className="break-all">Open linked content</span><ArrowUpRight size={15} className="shrink-0" /></a>}
