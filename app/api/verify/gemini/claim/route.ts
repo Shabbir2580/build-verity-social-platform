@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     .eq("post_id", post.id).eq("provider", "Google Gemini / gemini-2.5-flash")
     .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
   if (countError) return NextResponse.json({ error: "Could not verify the assessment usage limit." }, { status: 503 });
-  if ((count ?? 0) >= 3) return NextResponse.json({ error: "This post has reached its limit of 3 Gemini assessments per hour." }, { status: 429 });
+  if ((count ?? 0) >= 6) return NextResponse.json({ error: "This post has reached its limit of 6 Gemini assessments per hour." }, { status: 429 });
 
   try {
     const feedUrl = new URL("https://news.google.com/rss/search");
