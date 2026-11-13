@@ -20,6 +20,7 @@ import {
   Video,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { GeminiMediaCheck } from "@/components/verify/gemini-media-check";
 
 type PostMedia = {
   id: string;
@@ -530,6 +531,7 @@ export default function VerifyPage() {
                 <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{selectedPost.body || "This post has no description."}</p>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500"><span>Posted by <strong className="text-slate-700">{selectedPost.author_name}</strong> (@{selectedPost.author_username})</span><span>·</span><span>{timeLabel(selectedPost.created_at)}</span></div>
                 {selectedPost.media.length > 0 && <div className={`mt-5 grid gap-3 ${selectedPost.media.length > 1 ? "sm:grid-cols-2" : "grid-cols-1"}`}>{selectedPost.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[420px] w-full rounded-2xl bg-slate-950 object-contain"><source src={media.url} type={media.mime_type} />Video playback is not supported in this browser.</video> : <img key={media.id} src={media.url} alt={media.alt_text || "Media attached to this post"} className="max-h-[420px] w-full rounded-2xl border border-slate-100 object-contain" loading="lazy" />)}</div>}
+                {user && selectedPost.author_id === user.id && selectedPost.media.length > 0 && <GeminiMediaCheck postId={selectedPost.id} media={selectedPost.media.map(({ id, kind }) => ({ id, kind }))} />}
                 {(selectedPost.link_url || selectedPost.source_url || selectedPost.video_url) && <div className="mt-4 flex flex-wrap gap-2">{[["Open linked content", selectedPost.link_url], ["Original source", selectedPost.source_url], ["Video source", selectedPost.video_url]].map(([label, rawUrl]) => { const url = safeHttpUrl(rawUrl); return url ? <a key={label} href={url} target="_blank" rel="noreferrer noopener" className="inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><span className="break-all">{label}</span><ArrowUpRight size={14} className="shrink-0" /></a> : null; })}</div>}
               </article>
 
