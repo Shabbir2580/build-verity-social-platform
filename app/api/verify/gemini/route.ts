@@ -199,7 +199,14 @@ export async function POST(request: NextRequest) {
       return jsonError("The analysis completed but could not be safely recorded. Please retry later.", 500);
     }
 
-    return NextResponse.json({ assessment: saved }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+    const { error: caseError } = await supabase.from("moderation_cases").insert({
+      post_id: post.id, case_type: "label_review", status: "awaiting_review", priority: "normal",
+      opened_by: authData.user.id,
+      summary: "Automatic Gemini media review requires human assessment. " + assessment.summary.slice(0, 1500),
+    });
+    if (caseError) console.error("Could not queue media assessment for human review:", caseError.message);
+
+    return NextResponse.json({ assessment: saved, queuedForHumanReview: !caseError }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("Gemini media route error:", error instanceof Error ? error.message : "unknown error");
     return jsonError("Media analysis timed out or failed. No assessment was recorded.", 502);
