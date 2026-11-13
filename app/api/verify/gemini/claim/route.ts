@@ -8,17 +8,17 @@ export const maxDuration = 30;
 type NewsItem = { title: string; url: string; publisher: string | null; publishedAt: string | null };
 
 function decodeXml(value: string) {
-  return value.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1")
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'").trim();
 }
 function value(xml: string, tag: string) {
-  const match = xml.match(new RegExp(`<${tag}(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</${tag}>`, "i"));
+  const match = xml.match(new RegExp(\`<\${tag}(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</\${tag}>\`, "i"));
   return match ? decodeXml(match[1].replace(/<[^>]+>/g, "")) : null;
 }
 function parseNews(xml: string): NewsItem[] {
   const items: NewsItem[] = [];
-  for (const match of xml.matchAll(/<item(?:\\s[^>]*)?>([\\s\\S]*?)<\\/item>/gi)) {
+  for (const match of xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)) {
     const item = match[1];
     const title = value(item, "title");
     const rawUrl = value(item, "link");
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   let body: { postId?: unknown; claim?: unknown; consent?: unknown };
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400 }); }
-  const claim = typeof body.claim === "string" ? body.claim.replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim() : "";
+  const claim = typeof body.claim === "string" ? body.claim.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim() : "";
   if (body.consent !== true) return NextResponse.json({ error: "Explicit consent to send this claim to Google is required." }, { status: 400 });
   if (typeof body.postId !== "string" || claim.length < 12 || claim.length > 1000) return NextResponse.json({ error: "Provide a claim between 12 and 1,000 characters." }, { status: 400 });
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       "Explain that source headlines alone are insufficient and original reports must be read.",
       "Claim: " + claim,
       "Search results: " + JSON.stringify(evidenceContext),
-    ].join("\\n");
+    ].join("\n");
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (typeof result.summary !== "string" || !Array.isArray(result.supporting_indices) || !Array.isArray(result.contradicting_indices)) {
       return NextResponse.json({ error: "Gemini returned an incomplete assessment. No result was stored." }, { status: 502 });
     }
-    const selectSources = (indices: number[]) => indices.slice(0, 6).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: `Headline from ${item!.publisher || "publisher not identified"}; headlines are leads, not verified evidence.`, url: item!.url }));
+    const selectSources = (indices: number[]) => indices.slice(0, 6).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: \`Headline from \${item!.publisher || "publisher not identified"}; headlines are leads, not verified evidence.\`, url: item!.url }));
     const { data: saved, error: saveError } = await supabase.from("content_checks").insert({
       post_id: post.id, provider: "Google Gemini / gemini-2.5-flash", check_type: "claim", status: "uncertain",
       claim: claim.slice(0, 1000), signals: [{ kind: "claim_analysis", source_count: evidenceContext.length, method: "Google News RSS headlines reviewed by Gemini" }],
