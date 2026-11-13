@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     .eq("provider", `Google Gemini / ${MODEL}`)
     .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
   if (countError) return jsonError("Could not verify the assessment usage limit.", 503);
-  if ((count ?? 0) >= 3) return jsonError("This post has reached its limit of 3 Gemini assessments per hour.", 429);
+  if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 Gemini assessments per hour.", 429);
 
   const { data: signed, error: signedError } = await supabase.storage
     .from("post-media")
