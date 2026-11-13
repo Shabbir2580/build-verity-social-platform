@@ -97,6 +97,17 @@ try {
   }
   process.stdout.write("PASS /api/verify/news rejects invalid queries (400)\n");
 
+  const geminiUnavailableResponse = await fetch(new URL("/api/verify/gemini", origin), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ postId: "00000000-0000-0000-0000-000000000000", mediaId: "00000000-0000-0000-0000-000000000000", consent: true }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (geminiUnavailableResponse.status !== 503) {
+    throw new Error("Gemini API should fail closed when no server API key is configured in CI.");
+  }
+  process.stdout.write("PASS /api/verify/gemini fails closed without a configured API key (503)\\n");
+
   process.stdout.write(`\nSmoke test passed for ${routes.length} production routes.\n`);
 } finally {
   if (server.pid) {
