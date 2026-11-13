@@ -111,6 +111,14 @@ type EvidenceItem = {
   url: string | null;
 };
 
+type CoverageResult = {
+  title: string;
+  url: string;
+  publisher: string | null;
+  publisherUrl: string | null;
+  publishedAt: string | null;
+};
+
 function safeHttpUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
@@ -193,6 +201,11 @@ export default function VerifyPage() {
   const [reason, setReason] = useState("");
   const [evidenceNote, setEvidenceNote] = useState("");
   const [selectedLabelId, setSelectedLabelId] = useState("");
+  const [coverageQuery, setCoverageQuery] = useState("");
+  const [coverageResults, setCoverageResults] = useState<CoverageResult[]>([]);
+  const [coverageCheckedAt, setCoverageCheckedAt] = useState("");
+  const [coverageLoading, setCoverageLoading] = useState(false);
+  const [coverageError, setCoverageError] = useState("");
   const detailsRequestId = useRef(0);
 
   const selectedPost = posts.find((post) => post.id === selectedPostId) || null;
@@ -368,6 +381,14 @@ export default function VerifyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPostId]);
 
+  useEffect(() => {
+    const post = posts.find((item) => item.id === selectedPostId);
+    setCoverageQuery((post?.title || post?.body || "").slice(0, 240));
+    setCoverageResults([]);
+    setCoverageCheckedAt("");
+    setCoverageError("");
+  }, [selectedPostId, posts]);
+
   const filteredPosts = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return posts;
@@ -378,6 +399,37 @@ export default function VerifyPage() {
         .includes(query),
     );
   }, [posts, search]);
+
+  async function findRelatedCoverage() {
+    if (!selectedPost) return;
+    const query = (coverageQuery.trim() || selectedPost.title || selectedPost.body).slice(0, 240);
+    if (query.length < 12) {
+      setCoverageError("Add at least 12 characters describing the claim or event.");
+      return;
+    }
+
+    setCoverageLoading(true);
+    setCoverageError("");
+    setCoverageResults([]);
+    setCoverageCheckedAt("");
+    try {
+      const response = await fetch(`/api/verify/news?q=${encodeURIComponent(query)}`, {
+        headers: { Accept: "application/json" },
+      });
+      const payload = await response.json() as {
+        error?: string;
+        checkedAt?: string;
+        results?: CoverageResult[];
+      };
+      if (!response.ok) throw new Error(payload.error || "Could not search related coverage.");
+      setCoverageResults(payload.results ?? []);
+      setCoverageCheckedAt(payload.checkedAt ?? new Date().toISOString());
+    } catch (err) {
+      setCoverageError(err instanceof Error ? err.message : "Could not search related coverage.");
+    } finally {
+      setCoverageLoading(false);
+    }
+  }
 
   async function requestHumanReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -480,6 +532,51 @@ export default function VerifyPage() {
                 {selectedPost.media.length > 0 && <div className={`mt-5 grid gap-3 ${selectedPost.media.length > 1 ? "sm:grid-cols-2" : "grid-cols-1"}`}>{selectedPost.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[420px] w-full rounded-2xl bg-slate-950 object-contain"><source src={media.url} type={media.mime_type} />Video playback is not supported in this browser.</video> : <img key={media.id} src={media.url} alt={media.alt_text || "Media attached to this post"} className="max-h-[420px] w-full rounded-2xl border border-slate-100 object-contain" loading="lazy" />)}</div>}
                 {(selectedPost.link_url || selectedPost.source_url || selectedPost.video_url) && <div className="mt-4 flex flex-wrap gap-2">{[["Open linked content", selectedPost.link_url], ["Original source", selectedPost.source_url], ["Video source", selectedPost.video_url]].map(([label, rawUrl]) => { const url = safeHttpUrl(rawUrl); return url ? <a key={label} href={url} target="_blank" rel="noreferrer noopener" className="inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><span className="break-all">{label}</span><ArrowUpRight size={14} className="shrink-0" /></a> : null; })}</div>}
               </article>
+
+              <section className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-sky-700">Live source discovery</p>
+                    <h3 className="mt-1 text-lg font-black">Find related news coverage</h3>
+                    <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-500">Searches Google News for reporting related to this post. This is source discovery, not an AI fact-check or a truth verdict.</p>
+                  </div>
+                  <span className="rounded-full bg-sky-50 px-3 py-1.5 text-[10px] font-extrabold text-sky-800">No API key required</span>
+                </div>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={coverageQuery}
+                    onChange={(event) => setCoverageQuery(event.target.value.slice(0, 240))}
+                    maxLength={240}
+                    placeholder="Enter the exact claim, event or headline to investigate"
+                    className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void findRelatedCoverage()}
+                    disabled={coverageLoading || coverageQuery.trim().length < 12}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-extrabold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {coverageLoading ? <LoaderCircle size={15} className="animate-spin" /> : <Search size={15} />}
+                    {coverageLoading ? "Searching…" : "Search coverage"}
+                  </button>
+                </div>
+                {coverageError && <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800">{coverageError}</p>}
+                {coverageCheckedAt && <p className="mt-3 text-[11px] text-slate-400">Provider: Google News RSS · Searched {timeLabel(coverageCheckedAt)}</p>}
+                {coverageCheckedAt && coverageResults.length === 0 && <p className="mt-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No related articles were returned for this search. That does not mean the claim is true or false.</p>}
+                {coverageResults.length > 0 && <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {coverageResults.map((item, index) => (
+                    <article key={item.url + index} className="min-w-0 rounded-2xl border border-slate-200 p-4">
+                      <p className="break-words text-sm font-bold leading-6">{item.title}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                        {item.publisher && <span className="font-semibold text-slate-700">{item.publisher}</span>}
+                        {item.publishedAt && <time>{timeLabel(item.publishedAt)}</time>}
+                      </div>
+                      <a href={item.url} target="_blank" rel="noreferrer noopener" className="mt-3 inline-flex min-h-9 items-center gap-1 text-xs font-bold text-sky-800 underline underline-offset-2">Read original report <ArrowUpRight size={13} /></a>
+                    </article>
+                  ))}
+                </div>}
+                <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-[11px] leading-5 text-amber-900">Search ranking is not evidence quality. Check the original publisher, publication date, primary documents and whether the article addresses the exact claim. Related coverage may repeat the same source or contain errors.</p>
+              </section>
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
