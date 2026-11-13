@@ -816,6 +816,44 @@ export default function HomePage() {
     }
   }
 
+  async function deletePost(postId: string) {
+    if (!user || !window.confirm("Delete this post? It will disappear from the feed. Moderation records are preserved.")) return;
+    setError(""); setNotice("");
+    const supabase = createClient();
+    const { error: deleteError } = await supabase.from("posts")
+      .update({ status: "removed", removal_reason: "Deleted by the author" })
+      .eq("id", postId).eq("author_id", user.id).eq("status", "published");
+    if (deleteError) {
+      setError("Could not delete this post: " + deleteError.message);
+      return;
+    }
+    setPosts((current) => current.filter((post) => post.id !== postId));
+    setLiked((current) => current.filter((id) => id !== postId));
+    setSaved((current) => current.filter((id) => id !== postId));
+    setCommentsByPost((current) => { const next = { ...current }; delete next[postId]; return next; });
+    if (openComments === postId) setOpenComments(null);
+    setNotice("Your post was removed from the feed. Its moderation history is retained.");
+  }
+
+  async function deleteComment(comment: DbComment) {
+    if (!user || comment.author_id !== user.id || !window.confirm("Delete this comment?")) return;
+    setError("");
+    const supabase = createClient();
+    const { error: deleteError } = await supabase.from("comments")
+      .update({ is_deleted: true })
+      .eq("id", comment.id).eq("author_id", user.id).eq("is_deleted", false);
+    if (deleteError) {
+      setError("Could not delete this comment: " + deleteError.message);
+      return;
+    }
+    setCommentsByPost((current) => ({
+      ...current,
+      [comment.post_id]: (current[comment.post_id] || []).filter((item) => item.id !== comment.id),
+    }));
+    setPosts((current) => current.map((post) => post.id === comment.post_id
+      ? { ...post, comments: Math.max(0, post.comments - 1) } : post));
+  }
+
   async function toggleLike(postId: string) {
     setError("");
     if (!user) {
@@ -1296,7 +1334,7 @@ export default function HomePage() {
                 const isSaved = saved.includes(post.id);
                 const postComments = commentsByPost[post.id] || [];
                 const artTone = post.category.includes("meme") || post.category.includes("satire") || post.category.includes("parody") ? "rose" : post.category.includes("question") ? "cyan" : post.category.includes("ai") || post.category.includes("educational") ? "violet" : null;
-                return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><Link href={`/u/${encodeURIComponent(post.username)}`} className="block truncate text-sm font-extrabold hover:text-indigo-700">{post.author}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><Link href={`/u/${encodeURIComponent(post.username)}`} className="hover:text-indigo-700">@{post.username}</Link><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div><button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button></div>
+                return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><Link href={`/u/${encodeURIComponent(post.username)}`} className="block truncate text-sm font-extrabold hover:text-indigo-700">{post.author}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><Link href={`/u/${encodeURIComponent(post.username)}`} className="hover:text-indigo-700">@{post.username}</Link><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div>{user?.id === post.author_id ? <button type="button" onClick={() => void deletePost(post.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your post" title="Delete your post"><Trash2 size={16} /></button> : <button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button>}</div>
                   <h3 className="mt-4 break-words text-[17px] font-extrabold leading-7 tracking-tight text-slate-900 sm:text-lg">{post.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{post.body}</p>
                   {artTone && <Artwork tone={artTone} />}
                   {post.media.length > 0 && <div className={`verity-post-media mt-4 grid gap-2 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{post.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[560px] w-full rounded-2xl bg-slate-950 object-contain" aria-label="Post video"><source src={media.url} type={media.mime_type} />Your browser does not support HTML video.</video> : <img key={media.id} src={media.url} alt={media.alt_text || `Image shared by ${post.author}`} loading="lazy" className={`w-full rounded-2xl border border-slate-100 object-cover ${post.media.length === 1 ? "max-h-[560px]" : "aspect-square"}`} />)}</div>}
@@ -1304,7 +1342,7 @@ export default function HomePage() {
                   {post.source_url && <a href={post.source_url} target="_blank" rel="noreferrer noopener" className="mt-3 block break-all text-xs text-slate-500 underline underline-offset-2 hover:text-indigo-700">Original source</a>}
                   <div className="mt-4 flex flex-wrap items-center gap-2"><ContentBadge label={post.label} tone={post.tone} /><button type="button" onClick={() => router.push(`/verify?post=${encodeURIComponent(post.id)}`)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><ShieldCheck size={13} /> Content context</button></div>
                   <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-3 sm:gap-5"><button type="button" onClick={() => void toggleLike(post.id)} className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-1 text-sm font-bold ${isLiked ? "text-rose-600" : "text-slate-500 hover:text-rose-600"}`} aria-label={isLiked ? "Unlike post" : "Like post"}><Heart size={18} fill={isLiked ? "currentColor" : "none"} />{post.likes}</button><button type="button" onClick={() => { const isOpening = openComments !== post.id; setOpenComments(isOpening ? post.id : null); if (isOpening) void loadComments(post.id); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-slate-500 hover:text-indigo-600"><MessageCircle size={18} />{post.comments}</button><button type="button" onClick={() => void toggleBookmark(post.id)} className={`ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg px-1 text-sm font-bold ${isSaved ? "text-indigo-700" : "text-slate-400 hover:text-indigo-700"}`} aria-label={isSaved ? "Remove bookmark" : "Bookmark post"}><Bookmark size={18} fill={isSaved ? "currentColor" : "none"} /><span className="hidden sm:inline">{isSaved ? "Saved" : "Save"}</span></button><button type="button" onClick={async () => { try { await navigator.clipboard.writeText(`${window.location.origin}/?post=${post.id}`); setNotice("Post link copied."); } catch { setNotice("Copy the current page URL from your browser."); } }} aria-label="Share post" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-indigo-700"><Share2 size={17} /></button></div>
-                  {openComments === post.id && <div className="mt-4 border-t border-slate-100 pt-4"><form onSubmit={(event) => void handleAddComment(event, post.id)} className="flex gap-2"><input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Add a thoughtful comment..." aria-label="Write a comment" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm" /><button type="submit" aria-label="Send comment" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"><Send size={16} /></button></form>{postComments.map((comment) => <div key={comment.id} className="mt-3 rounded-xl bg-slate-50 p-3"><p className="text-xs font-bold text-slate-700">{comment.display_name} <span className="font-normal text-slate-400">@{comment.username}</span></p><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{comment.body}</p></div>)}{postComments.length === 0 && <p className="mt-4 text-sm text-slate-400">No comments yet. Start the conversation.</p>}</div>}
+                  {openComments === post.id && <div className="mt-4 border-t border-slate-100 pt-4"><form onSubmit={(event) => void handleAddComment(event, post.id)} className="flex gap-2"><input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Add a thoughtful comment..." aria-label="Write a comment" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm" /><button type="submit" aria-label="Send comment" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"><Send size={16} /></button></form>{postComments.map((comment) => <div key={comment.id} className="mt-3 rounded-xl bg-slate-50 p-3"><div className="flex items-start justify-between gap-2"><p className="text-xs font-bold text-slate-700">{comment.display_name} <span className="font-normal text-slate-400">@{comment.username}</span></p>{user?.id === comment.author_id && <button type="button" onClick={() => void deleteComment(comment)} className="inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your comment" title="Delete your comment"><Trash2 size={13}/>Delete</button>}</div><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{comment.body}</p></div>)}{postComments.length === 0 && <p className="mt-4 text-sm text-slate-400">No comments yet. Start the conversation.</p>}</div>}
                 </div></article>;
               })}</div>}
 
