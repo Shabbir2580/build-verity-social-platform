@@ -82,6 +82,11 @@ export async function POST(request: NextRequest) {
       is_demo: false, assessed_at: null,
     });
     if (unavailableSaveError) console.error("Could not record unavailable media check:", unavailableSaveError.message);
+    const { error: caseError } = await supabase.from("moderation_cases").insert({
+      post_id: post.id, case_type: "label_review", status: "awaiting_review", priority: "normal", opened_by: authData.user.id,
+      summary: "Automatic media review unavailable: Gemini is not configured. Human review is required if this content needs assessment.",
+    });
+    if (caseError) console.error("Could not queue unconfigured media for human review:", caseError.message);
     return jsonError("Gemini is not configured on the server. The media remains unchecked.", 503);
   }
   const { count, error: countError } = await supabase
