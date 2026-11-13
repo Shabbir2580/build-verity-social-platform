@@ -25,6 +25,39 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
+async function readBoundedBody(response: Response, maxBytes: number): Promise<Buffer> {
+  const declaredLength = Number(response.headers.get("content-length") || 0);
+  if (declaredLength > maxBytes) throw new Error("MEDIA_TOO_LARGE");
+  if (!response.body) throw new Error("MEDIA_BODY_MISSING");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new Error("MEDIA_TOO_LARGE");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
+}
+
+function matchesDeclaredMime(buffer: Buffer, mime: string): boolean {
+  if (mime === "image/jpeg") return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  if (mime === "image/png") return buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (mime === "image/webp") return buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP";
+  if (mime === "video/webm") return buffer.length >= 4 && buffer.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+  if (mime === "video/mp4" || mime === "video/quicktime") return buffer.length >= 12 && buffer.toString("ascii", 4, 8) === "ftyp";
+  return false;
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -123,11 +156,18 @@ export async function POST(request: NextRequest) {
   try {
     const mediaResponse = await fetch(signed.signedUrl, { signal: AbortSignal.timeout(15000) });
     if (!mediaResponse.ok) return recordFailure("Could not retrieve the uploaded media.", 502);
-    const buffer = Buffer.from(await mediaResponse.arrayBuffer());
-    if (buffer.byteLength === 0 || buffer.byteLength > maxBytes) return recordFailure("The uploaded media size is invalid for analysis.", 413);
-
-    if (media.kind === "video" && buffer.byteLength > 20 * 1024 * 1024) {
-      return recordFailure("Video is too large for the current inline analysis route.", 413);
+    let buffer: Buffer;
+    try {
+      buffer = await readBoundedBody(mediaResponse, maxBytes);
+    } catch (error) {
+      if (error instanceof Error && error.message === "MEDIA_TOO_LARGE") {
+        return recordFailure("The uploaded media exceeds the enforced download limit.", 413);
+      }
+      return recordFailure("The uploaded media response could not be read safely.", 502);
+    }
+    if (buffer.byteLength === 0) return recordFailure("The uploaded media is empty.", 422);
+    if (!matchesDeclaredMime(buffer, media.mime_type)) {
+      return recordFailure("The file contents do not match the declared media format.", 415);
     }
 
     const prompt = [
