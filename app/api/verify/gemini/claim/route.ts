@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseSecret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Gemini is not configured on the server." }, { status: 503 });
   if (!supabaseUrl || !supabaseSecret) return NextResponse.json({ error: "Secure database access is not configured." }, { status: 503 });
 
   const authorization = request.headers.get("authorization") || "";
@@ -58,6 +57,17 @@ export async function POST(request: NextRequest) {
   if (!post) return NextResponse.json({ error: "Post not found." }, { status: 404 });
   if (post.author_id !== authData.user.id) return NextResponse.json({ error: "Only the post author can submit its claim for external AI analysis." }, { status: 403 });
 
+  if (!apiKey) {
+    const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
+      post_id: post.id, provider: "Google Gemini (not configured)", check_type: "claim",
+      status: "provider_not_configured", claim: claim.slice(0, 1000), signals: [], supporting: [], contradicting: [],
+      explanation: "Automatic news claim review was requested after publishing, but the server has no Gemini API key configured. No claim analysis was performed.",
+      uncertainty: "This news claim has not been checked. No truth or falsehood assessment is available.",
+      is_demo: false, assessed_at: null,
+    });
+    if (unavailableSaveError) console.error("Could not record unavailable claim check:", unavailableSaveError.message);
+    return NextResponse.json({ error: "Gemini is not configured on the server. The claim remains unchecked." }, { status: 503 });
+  }
   const { count, error: countError } = await supabase.from("content_checks").select("id", { count: "exact", head: true })
     .eq("post_id", post.id).eq("provider", "Google Gemini / gemini-2.5-flash")
     .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
