@@ -78,7 +78,11 @@ Supabase migrations are stored in `supabase/migrations`. Review and apply migrat
 
 ## Verification status and product limitations
 
-The current Trust Center reads assessment, label, source and review-request records already stored in Supabase. A live AI-media detection provider and live fact-checking/search provider are not yet integrated. Do not present those checks as active until the providers, server-side orchestration, evidence handling and failure/uncertainty states are implemented and tested.
+The Trust Center has a live related-news discovery search powered by Google News RSS. It returns links to reporting that matches a query. This is source discovery only: search ranking is not evidence quality, the result is not a fact-check or truth verdict, and results are not written as persistent assessments.
+
+A live AI-generated image/video or deepfake detector, cryptographic C2PA manifest verification, and a dedicated fact-check claim-search provider are not yet integrated. Do not label media as AI-generated or claims as true/false until a real provider is configured, its terms and costs are checked, server-side orchestration and evidence handling are implemented, and uncertainty/failure states are tested. No heuristic, creator disclosure, metadata field or language-model answer should be presented as detector proof.
+
+Verity's operating constraint is to avoid paid services, APIs, subscriptions and hidden billing. Some commercial media detectors offer free testing only or charge for production/video usage; do not enable them on a production route unless a genuinely no-cost plan with enforceable usage limits and appropriate production rights is confirmed. Open-source models need a suitable inference host and a licence that permits this use; Vercel serverless functions are not a free GPU inference service.
 
 Several database foundations (including structured Q&A, polls, follows, notifications and staff workflows) are ahead of their user-facing interfaces. Database tables alone do not mean those product features are complete.
 
