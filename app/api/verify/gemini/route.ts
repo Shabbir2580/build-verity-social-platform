@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseSecret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!apiKey) return jsonError("Gemini is not configured on the server.", 503);
   if (!supabaseUrl || !supabaseSecret) return jsonError("Secure database access is not configured.", 503);
 
   const authorization = request.headers.get("authorization") || "";
@@ -74,6 +73,17 @@ export async function POST(request: NextRequest) {
   const maxBytes = media.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
   if (media.size_bytes > maxBytes) return jsonError(`This ${media.kind} exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB analysis limit.`, 413);
 
+  if (!apiKey) {
+    const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
+      post_id: post.id, provider: "Google Gemini (not configured)", check_type: "media_origin",
+      status: "provider_not_configured", claim: null, signals: [], supporting: [], contradicting: [],
+      explanation: "Automatic media review was requested after upload, but the server has no Gemini API key configured. No media analysis was performed.",
+      uncertainty: "This media has not been checked for AI generation, manipulation or deepfakes.",
+      is_demo: false, assessed_at: null,
+    });
+    if (unavailableSaveError) console.error("Could not record unavailable media check:", unavailableSaveError.message);
+    return jsonError("Gemini is not configured on the server. The media remains unchecked.", 503);
+  }
   const { count, error: countError } = await supabase
     .from("content_checks")
     .select("id", { count: "exact", head: true })
