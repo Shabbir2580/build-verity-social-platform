@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, Bot, BrainCircuit, Clock3, LoaderCircle, RefreshCw, Send, ShieldCheck, Sparkles, Users, FileText, Flag, Headphones, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Bot, BrainCircuit, Briefcase, Clock3, LoaderCircle, RefreshCw, Send, ShieldCheck, Sparkles, Users, FileText, Flag, Headphones, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Metrics = {
@@ -11,6 +11,7 @@ type Metrics = {
   activeCases: number | null; urgentCases: number | null; overdueCases: number | null;
   openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
   newMembers7d: number | null; newPosts7d: number | null;
+  businessLeads: number | null; openBusinessLeads: number | null;
 };
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -19,6 +20,7 @@ const suggestions = [
   "Summarize our current moderation workload.",
   "How is platform activity looking this week?",
   "What operational metrics need attention?",
+  "How many business enquiries need follow-up? Are any payments recorded?",
 ];
 
 function MetricCard({ label, value, note, icon: Icon }: {
@@ -140,6 +142,7 @@ export default function AdminAiPage() {
           {staffRole === "admin" && <>
             <MetricCard label="Members" value={metrics?.members ?? null} note={`+${(metrics?.newMembers7d ?? 0).toLocaleString()} in 7 days`} icon={Users}/>
             <MetricCard label="Posts" value={metrics?.posts ?? null} note={`+${(metrics?.newPosts7d ?? 0).toLocaleString()} in 7 days`} icon={FileText}/>
+            <MetricCard label="Business enquiries" value={metrics?.businessLeads ?? null} note={`${(metrics?.openBusinessLeads ?? 0).toLocaleString()} still open · not revenue`} icon={Briefcase}/>
           </>}
           {(staffRole === "admin" || staffRole === "moderator") && <MetricCard label="Active cases" value={metrics?.activeCases ?? null} note={`${metrics?.urgentCases ?? 0} marked urgent`} icon={Flag}/>}
           {(staffRole === "admin" || staffRole === "support") && <MetricCard label="Open support" value={metrics?.openTickets ?? null} note="Not marked resolved" icon={Headphones}/>}
