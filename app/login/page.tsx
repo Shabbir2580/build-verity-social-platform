@@ -6,6 +6,22 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ShieldCheck, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
+
+function getSafeNextPath() {
+  const candidate = new URLSearchParams(window.location.search).get("next");
+  if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//") || candidate.startsWith("/\\")) {
+    return "/";
+  }
+
+  try {
+    const destination = new URL(candidate, window.location.origin);
+    if (destination.origin !== window.location.origin) return "/";
+    return destination.pathname + destination.search + destination.hash;
+  } catch {
+    return "/";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -38,7 +54,7 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
       const callbackUrl = new URL("/auth/callback", window.location.origin);
-      callbackUrl.searchParams.set("next", "/");
+      callbackUrl.searchParams.set("next", getSafeNextPath());
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: callbackUrl.toString() },
@@ -80,7 +96,7 @@ export default function LoginPage() {
 
       setNotice("Login successful. Opening Verity...");
 
-      router.replace("/");
+      router.replace(getSafeNextPath());
       router.refresh();
     } catch (err) {
       setError(
