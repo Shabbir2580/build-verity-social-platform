@@ -87,7 +87,7 @@ export default function AdminBusinessPage() {
           {data?.leads.map((lead) => <article key={lead.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{lead.organization || "Organization enquiry"}</p><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600">#{lead.ticket_number}</span><span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${lead.status === "resolved" ? "bg-emerald-50 text-emerald-700" : lead.overdue ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>{lead.overdue ? "Overdue" : lead.status.replaceAll("_", " ")}</span></div>
-              <p className="mt-1 text-xs text-slate-500">Received {date(lead.created_at)} · Team: {lead.assigned_team}</p>
+              <p className="mt-1 text-xs text-slate-500">Received {date(lead.created_at)} · Team: {lead.assigned_team || "Unassigned"} · {lead.response_due_at ? `Response due ${date(lead.response_due_at)}` : "No response deadline set"}</p>
             </div>
             <Link href="/support/staff" className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Open ticket queue</Link>
           </article>)}
