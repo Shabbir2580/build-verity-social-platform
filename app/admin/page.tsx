@@ -9,6 +9,7 @@ type Profile = { id: string; username: string; display_name: string; role: strin
 type Audit = { id: number; actor_id: string | null; action: string; entity_type: string; entity_id: string | null; details: Record<string, unknown>; created_at: string };
 type Stats = { members: number; posts: number; reports: number; cases: number; tickets: number };
 type DailyMetric = { day: string; members: number; posts: number; comments: number };
+type ManagedPost = { id: string; author_id: string; title: string | null; body: string; status: string; removal_reason: string | null; created_at: string; edited_at: string | null; author_name: string; author_username: string };
 
 const roleOptions = ["user", "support", "moderator", "admin"];
 const fmt = (value: string) => { const d = new Date(value); return Number.isFinite(d.getTime()) ? d.toLocaleString() : "—"; };
@@ -34,6 +35,15 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [managedPosts, setManagedPosts] = useState<ManagedPost[]>([]);
+  const [postTotal, setPostTotal] = useState(0);
+  const [postPage, setPostPage] = useState(0);
+  const [postSearch, setPostSearch] = useState("");
+  const [postStatus, setPostStatus] = useState("all");
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postActionTarget, setPostActionTarget] = useState<ManagedPost | null>(null);
+  const [postAction, setPostAction] = useState<"remove_post" | "restrict_post" | "restore_post">("remove_post");
+  const [postActionReason, setPostActionReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -98,7 +108,64 @@ export default function AdminPage() {
     finally { setLoading(false); setChecking(false); }
   }, [peoplePage]);
 
+  const loadManagedPosts = useCallback(async () => {
+    setPostsLoading(true);
+    try {
+      const supabase = createClient();
+      let query = supabase.from("posts")
+        .select("id, author_id, title, body, status, removal_reason, created_at, edited_at", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(postPage * 20, postPage * 20 + 19);
+      if (postStatus !== "all") query = query.eq("status", postStatus);
+      if (postSearch.trim()) query = query.textSearch("search", postSearch.trim(), { type: "websearch" });
+      const { data, count, error: postsError } = await query;
+      if (postsError) throw postsError;
+      const rows = data ?? [];
+      const authorIds = [...new Set(rows.map((row) => row.author_id))];
+      const { data: profiles, error: profilesError } = authorIds.length
+        ? await supabase.from("profiles").select("id, username, display_name").in("id", authorIds)
+        : { data: [], error: null };
+      if (profilesError) throw profilesError;
+      const byId = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      setManagedPosts(rows.map((row) => {
+        const author = byId.get(row.author_id);
+        return { ...row, author_name: author?.display_name ?? "Unknown member", author_username: author?.username ?? "unknown" };
+      }));
+      setPostTotal(count ?? 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load posts.");
+    } finally {
+      setPostsLoading(false);
+    }
+  }, [postPage, postSearch, postStatus]);
+
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (authorized) void loadManagedPosts(); }, [authorized, loadManagedPosts]);
+
+  async function applyPostAction() {
+    if (!postActionTarget || saving) return;
+    if (postActionReason.trim().length < 5) {
+      setError("Enter a reason of at least 5 characters.");
+      return;
+    }
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const supabase = createClient();
+      const { error: rpcError } = await supabase.rpc("admin_manage_post", {
+        p_post_id: postActionTarget.id,
+        p_action: postAction,
+        p_reason: postActionReason.trim(),
+      });
+      if (rpcError) throw rpcError;
+      setNotice(`Post action completed for “${postActionTarget.title || postActionTarget.body.slice(0, 70)}”. The decision and reason were added to moderation and audit history.`);
+      setPostActionTarget(null); setPostActionReason("");
+      await Promise.all([load(), loadManagedPosts()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update post.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function saveRole() {
     if (!selected || saving) return;
@@ -158,6 +225,35 @@ export default function AdminPage() {
         <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-slate-500"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-indigo-500"/> Registrations</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500"/> Posts</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500"/> Comments</span></div>
         <p className="mt-4 text-[11px] leading-5 text-slate-400">“Contributing members” means unique accounts with at least one post, comment or reaction in this period. It is not a daily-active-user or retention metric. Recent event queries are capped at 10,000 rows per source.</p>
       </section>
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="flex items-center gap-2"><FileText size={18} className="text-indigo-600"/><h2 className="font-extrabold">Post management</h2></div><p className="mt-1 text-xs text-slate-500">Search posts, inspect their status and take audited moderation actions. Posts are never permanently deleted here.</p></div>
+          <button onClick={() => void loadManagedPosts()} disabled={postsLoading} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-50"><RefreshCw size={13} className={postsLoading ? "animate-spin" : ""}/> Refresh posts</button>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px]">
+          <input value={postSearch} onChange={(event) => { setPostSearch(event.target.value); setPostPage(0); }} placeholder="Search post title and content" className="min-h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"/>
+          <select value={postStatus} onChange={(event) => { setPostStatus(event.target.value); setPostPage(0); }} className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="all">All statuses</option><option value="published">Published</option><option value="restricted">Restricted</option><option value="removed">Removed</option></select>
+        </div>
+        <div className="mt-3 divide-y divide-slate-100">
+          {managedPosts.map((post) => <article key={post.id} className="py-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-extrabold">{post.title || post.body.slice(0, 100) || "Untitled post"}</p><span className={`rounded-full px-2 py-1 text-[10px] font-extrabold uppercase ${post.status === "published" ? "bg-emerald-50 text-emerald-700" : post.status === "restricted" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>{post.status}</span></div>
+                <p className="mt-1 line-clamp-2 break-words text-xs text-slate-600">{post.body}</p>
+                <p className="mt-2 text-[11px] text-slate-400">By {post.author_name} (@{post.author_username}) · {fmt(post.created_at)} · ID {post.id.slice(0, 8)}</p>
+                {post.removal_reason && <p className="mt-1 text-xs text-slate-500">Moderation reason: {post.removal_reason}</p>}
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {post.status !== "removed" && <button onClick={() => { setPostActionTarget(post); setPostAction("remove_post"); setPostActionReason(""); setError(""); }} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100">Remove</button>}
+                {post.status === "published" && <button onClick={() => { setPostActionTarget(post); setPostAction("restrict_post"); setPostActionReason(""); setError(""); }} className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100">Restrict</button>}
+                {post.status !== "published" && <button onClick={() => { setPostActionTarget(post); setPostAction("restore_post"); setPostActionReason(""); setError(""); }} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100">Restore</button>}
+              </div>
+            </div>
+          </article>)}
+          {!managedPosts.length && <p className="py-8 text-center text-sm text-slate-500">{postsLoading ? "Loading posts…" : "No posts match these filters."}</p>}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3"><p className="text-xs text-slate-500">{postTotal.toLocaleString()} matching posts · Page {postPage + 1} of {Math.max(1, Math.ceil(postTotal / 20))}</p><div className="flex gap-2"><button disabled={postPage === 0 || postsLoading} onClick={() => setPostPage((page) => Math.max(0, page - 1))} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40">Previous</button><button disabled={(postPage + 1) * 20 >= postTotal || postsLoading} onClick={() => setPostPage((page) => page + 1)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40">Next</button></div></div>
+      </section>
       <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><UserCog size={18} className="text-indigo-600"/><h2 className="font-extrabold">People & role management</h2></div><p className="mt-1 text-xs text-slate-500">Browse all {peopleTotal.toLocaleString()} profiles · 50 per page. Role changes use protected database functions and automatically create audit records.</p>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search members by username or name" className="mt-4 min-h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"/>
@@ -168,6 +264,7 @@ export default function AdminPage() {
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Activity size={18} className="text-indigo-600"/><h2 className="font-extrabold">Administrative audit log</h2></div><p className="mt-1 text-xs text-slate-500">Latest 30 recorded administrative actions. Read access is restricted to admins.</p><div className="mt-4 space-y-3">{audit.length ? audit.map((entry) => <article key={entry.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-extrabold text-slate-800">{pretty(entry.action)}</p><time className="text-[11px] text-slate-400">{fmt(entry.created_at)}</time></div><p className="mt-1 text-xs text-slate-500">{pretty(entry.entity_type)} · {entry.entity_id || "No entity ID"}</p>{Object.keys(entry.details ?? {}).length > 0 && <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] text-slate-600">{JSON.stringify(entry.details,null,2)}</pre>}</article>) : <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No audit entries available.</p>}</div></section>
       </div>
+      {postActionTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setPostActionTarget(null); }}><section role="dialog" aria-modal="true" aria-labelledby="post-action-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><h2 id="post-action-title" className="text-lg font-black">{postAction === "remove_post" ? "Remove post" : postAction === "restrict_post" ? "Restrict post" : "Restore post"}</h2><p className="mt-1 text-sm text-slate-500">Post by @{postActionTarget.author_username}. This is a reversible status change, not a permanent delete. The action, reason and previous state will be recorded.</p><label className="mt-4 block text-xs font-bold text-slate-600">Reason (minimum 5 characters)<textarea autoFocus value={postActionReason} onChange={(event) => setPostActionReason(event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="Explain the moderation decision."/></label><div className="mt-4 flex justify-end gap-2"><button disabled={saving} onClick={() => setPostActionTarget(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold disabled:opacity-50">Cancel</button><button disabled={saving || postActionReason.trim().length < 5} onClick={() => void applyPostAction()} className={`rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50 ${postAction === "restore_post" ? "bg-emerald-600" : postAction === "restrict_post" ? "bg-amber-600" : "bg-rose-600"}`}>{saving ? "Saving…" : "Confirm action"}</button></div></section></div>}
       {suspensionTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSuspensionTarget(null); }}><section role="dialog" aria-modal="true" aria-labelledby="suspension-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><h2 id="suspension-title" className="text-lg font-black">{suspensionTarget.is_suspended ? "Restore account" : "Suspend account"}</h2><p className="mt-1 text-sm text-slate-500">Account: @{suspensionTarget.username}. This action will be written to the administrative audit log.</p><label className="mt-4 block text-xs font-bold text-slate-600">Reason (minimum 5 characters)<textarea autoFocus value={suspensionReason} onChange={(event) => setSuspensionReason(event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="Explain the reason for this account action."/></label><div className="mt-4 flex justify-end gap-2"><button disabled={saving} onClick={() => setSuspensionTarget(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold disabled:opacity-50">Cancel</button><button disabled={saving || suspensionReason.trim().length < 5} onClick={() => void toggleSuspension()} className={`rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50 ${suspensionTarget.is_suspended ? "bg-emerald-600" : "bg-rose-600"}`}>{saving ? "Saving…" : suspensionTarget.is_suspended ? "Restore account" : "Suspend account"}</button></div></section></div>}
       <p className="mt-5 text-xs text-slate-400">Counts reflect stored database rows, not unique active users or verified platform outcomes. This dashboard does not run AI detection or fact-checking jobs.</p>
     </section>
