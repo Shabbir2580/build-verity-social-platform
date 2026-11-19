@@ -84,7 +84,7 @@ export default function AdminPage() {
       const sinceIso = since.toISOString();
       let peopleQuery = supabase.from("profiles")
         .select("id, username, display_name, role, is_suspended, created_at", { count: "exact" });
-      const peopleTerm = debouncedSearch.trim().replace(/[^a-zA-Z0-9 -]/g, "").slice(0, 60);
+      const peopleTerm = debouncedSearch.trim().replace(/[^\p{L}\p{N}_ -]/gu, "").slice(0, 60);
       if (peopleTerm) {
         peopleQuery = peopleQuery.or(`username.ilike.%${peopleTerm}%,display_name.ilike.%${peopleTerm}%`);
       }
