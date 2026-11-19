@@ -1011,3 +1011,28 @@ body { color: var(--verity-ink); background: #fff; }
 @media (max-width: 639px) {
   .verity-workspace .verity-ai-hero { border-radius: 18px !important; padding: 22px !important; }
 }
+
+/* Apply brand/action colour roles consistently across staff workspaces */
+.verity-workspace .text-indigo-600,
+.verity-admin-page .text-indigo-600 { color: #405a91 !important; }
+.verity-workspace .text-indigo-700,
+.verity-admin-page .text-indigo-700 { color: #314875 !important; }
+.verity-workspace .bg-indigo-600,
+.verity-admin-page .bg-indigo-600 { background-color: #405a91 !important; }
+.verity-workspace .bg-indigo-50,
+.verity-admin-page .bg-indigo-50 { background-color: #eef1f6 !important; }
+.verity-workspace .border-indigo-200,
+.verity-admin-page .border-indigo-200 { border-color: #cbd5e2 !important; }
+.verity-workspace .border-indigo-100,
+.verity-admin-page .border-indigo-100 { border-color: #dce3eb !important; }
+.verity-workspace .hover\\:bg-indigo-700:hover,
+.verity-admin-page .hover\\:bg-indigo-700:hover { background-color: #314875 !important; }
+.verity-workspace .hover\\:bg-indigo-50:hover,
+.verity-admin-page .hover\\:bg-indigo-50:hover { background-color: #eef1f6 !important; }
+.verity-workspace .focus\\:border-indigo-400:focus,
+.verity-admin-page .focus\\:border-indigo-400:focus { border-color: #7187aa !important; }
+.verity-workspace .text-emerald-600 { color: #247a78 !important; }
+.verity-workspace .bg-emerald-50 { background-color: #edf5f1 !important; }
+.verity-workspace .border-emerald-200 { border-color: #c5ddd2 !important; }
+.verity-workspace .text-emerald-800 { color: #286451 !important; }
+.verity-admin-page .text-emerald-600 { color: #247a78 !important; }
