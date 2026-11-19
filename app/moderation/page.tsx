@@ -57,6 +57,9 @@ export default function ModerationPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [assignee, setAssignee] = useState("");
+  const [aiConsent, setAiConsent] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiSummary, setAiSummary] = useState<null | { overview: string; reported_concerns: string[]; available_evidence: string[]; uncertainty_and_conflicts: string[]; missing_information: string[]; suggested_human_review_steps: string[]; disclaimer: string }>(null);
 
   const selected = cases.find((item) => item.id === selectedId) ?? null;
   const canStartSelected = Boolean(selected && selected.status !== "resolved"
@@ -192,6 +195,7 @@ export default function ModerationPage() {
   const openCase = async (item: CaseRow) => {
     const requestId = ++actionsRequest.current;
     setSelectedId(item.id); setReason(""); setLabelValue(""); setError(""); setNotice(""); setAssignee(item.assigned_to ?? "");
+    setAiConsent(false); setAiSummary(null);
     // Do not display the previous case's audit history while this case loads.
     setActions([]);
     const supabase = createClient();
@@ -201,6 +205,23 @@ export default function ModerationPage() {
     if (actionError) setError(actionError.message);
     else setActions((data ?? []) as ActionRow[]);
   };
+
+  async function generateAiSummary() {
+    if (!selected || aiBusy || !aiConsent) return;
+    setAiBusy(true); setError(""); setAiSummary(null);
+    try {
+      const supabase = createClient();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Your session expired. Sign in again.");
+      const response = await fetch("/api/moderation/ai-summary", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ caseId: selected.id, consent: true }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not summarize this case.");
+      setAiSummary({ ...payload.summary, disclaimer: payload.disclaimer || "AI-generated aid only. Verify against original records." });
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not generate case summary."); }
+    finally { setAiBusy(false); }
+  }
 
   async function assignCase() {
     if (!selected || userRole !== "admin" || !assignee || saving) return;
@@ -284,6 +305,20 @@ export default function ModerationPage() {
                {selectedChecks.map((check) => <div key={check.id} className="mt-3 rounded-xl border border-violet-200 bg-violet-50/60 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-extrabold uppercase text-violet-800">Automated {check.check_type.replace("_", " ")} · {check.provider}</p><span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase text-violet-800">{check.status.replaceAll("_", " ")}</span></div>{check.explanation && <p className="mt-2 text-sm text-slate-800">{check.explanation}</p>}{check.uncertainty && <p className="mt-2 text-xs leading-5 text-slate-600">{check.uncertainty}</p>}<p className="mt-2 text-[10px] text-slate-500">{new Date(check.created_at).toLocaleString()}</p></div>)}
               {selectedReports.map((item) => <div key={item.id} className="mt-3 rounded-xl border border-slate-200 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Report · {item.target_type} · {item.reason}</p><p className="mt-1 text-sm">{item.details || "No additional details supplied."}</p><p className="mt-2 text-xs text-slate-500">Reported by @{profiles[item.reporter_id]?.username || "member"} · {item.status}</p></div>)}
               {selectedAppeals.map((item) => <div key={item.id} className="mt-3 rounded-xl border border-slate-200 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Appeal · {item.status}</p><p className="mt-1 text-sm">{item.reason}</p>{item.evidence && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-600">{item.evidence}</p>}<p className="mt-2 text-xs text-slate-500">Submitted by @{profiles[item.appellant_id]?.username || "member"}</p></div>)}
+              <section className="mt-5 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+                <div className="flex items-center gap-2 text-sm font-extrabold text-violet-950"><BrainCircuit size={16}/> AI case summary</div>
+                <p className="mt-1 text-xs leading-5 text-violet-900">Neutral case organization for a human reviewer. It does not decide violations or take actions.</p>
+                <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-5 text-violet-950">
+                  <input type="checkbox" checked={aiConsent} onChange={(event) => setAiConsent(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-violet-700"/>
+                  <span>I authorize sending this case's post text, report details, appeal evidence and prior check summaries to Google Gemini for this request. Google's processing and data-use terms apply. I will verify the result against original records.</span>
+                </label>
+                <button type="button" onClick={() => void generateAiSummary()} disabled={!aiConsent || aiBusy || (!canStartSelected && userRole !== "admin")} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-violet-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{aiBusy ? <LoaderCircle size={14} className="animate-spin"/> : <BrainCircuit size={14}/>} {aiBusy ? "Preparing summary…" : "Generate case summary"}</button>
+                {aiSummary && <div className="mt-4 space-y-3 rounded-xl bg-white p-4 text-xs leading-5 text-slate-700">
+                  <p className="font-bold text-slate-900">{aiSummary.overview}</p>
+                  {([["Reported concerns",aiSummary.reported_concerns],["Available evidence",aiSummary.available_evidence],["Uncertainty and conflicts",aiSummary.uncertainty_and_conflicts],["Missing information",aiSummary.missing_information],["Suggested human review steps",aiSummary.suggested_human_review_steps]] as [string,string[]][]).map(([heading,items]) => <div key={heading}><p className="font-extrabold text-slate-800">{heading}</p>{items.length ? <ul className="mt-1 list-disc space-y-1 pl-5">{items.map((item,index)=><li key={index}>{item}</li>)}</ul> : <p className="mt-1 text-slate-500">Not identified from supplied records.</p>}</div>)}
+                  <p className="border-t border-slate-100 pt-2 text-[11px] text-amber-800">{aiSummary.disclaimer}</p>
+                </div>}
+              </section>
               <div className="mt-5 border-t border-slate-100 pt-5"><h3 className="text-sm font-extrabold">Decision & case controls</h3>
                 <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><p><strong>Assigned reviewer:</strong> {selected.assigned_to ? `@${profiles[selected.assigned_to]?.username || "staff"}` : "Not assigned"}</p>{selected.needs_second_review && <p className="mt-1 font-bold text-rose-700">Independent second review required. Original reviewer: {selected.second_review_requested_by ? `@${profiles[selected.second_review_requested_by]?.username || "staff"}` : "Not recorded"}.</p>}</div>
                 {userRole === "admin" && selected.status !== "resolved" && <div className="mt-3 flex flex-wrap gap-2"><select aria-label="Assign reviewer" value={assignee} onChange={(event) => setAssignee(event.target.value)} className="min-h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">Select reviewer</option>{Object.entries(profiles).filter(([id]) => id !== selected.second_review_requested_by || !selected.needs_second_review).map(([id, person]) => <option key={id} value={id}>@{person.username} · {person.display_name}</option>)}</select><button type="button" onClick={() => void assignCase()} disabled={saving || !assignee} className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Assign case</button></div>}

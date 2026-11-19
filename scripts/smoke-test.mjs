@@ -23,6 +23,7 @@ const routes = [
   ["/support/tickets/00000000-0000-4000-8000-000000000002", "Ticket conversation"],
   ["/support/staff", null],
   ["/moderation", "Checking staff access"],
+  ["/api/moderation/ai-summary", null],
   ["/admin", "Checking administrator access"],
   ["/admin/business", "Commercial workspace"],
   ["/admin/revenue", "Revenue"],
