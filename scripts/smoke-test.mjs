@@ -8,7 +8,7 @@ const routes = [
   ["/signup", "Join the conversation."],
   ["/questions", "Questions worth answering."],
   ["/verify", "See the evidence."],
-  ["/for-organizations", "Bring clearer context to your community."],
+  ["/for-organizations", "Grow your brand."],
   ["/notifications", "Notifications"],
   ["/privacy", "Information we handle"],
   ["/terms", "Your content"],
