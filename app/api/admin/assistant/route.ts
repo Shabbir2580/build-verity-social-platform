@@ -20,7 +20,7 @@ function jsonError(message: string, status: number) {
   });
 }
 
-async function getAdmin(request: NextRequest) {
+async function getStaff(request: NextRequest) {
   const authorization = request.headers.get("authorization") || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   if (!token) return { error: jsonError("Sign in to access the admin assistant.", 401) };
@@ -35,11 +35,11 @@ async function getAdmin(request: NextRequest) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles").select("role, is_suspended").eq("id", auth.user.id).maybeSingle();
-  if (profileError) return { error: jsonError("Could not verify administrator permissions.", 503) };
+  if (profileError) return { error: jsonError("Could not verify staff permissions.", 503) };
   if (!["admin", "moderator", "support"].includes(profile?.role || "") || profile?.is_suspended) {
     return { error: jsonError("Authorized staff access is required.", 403) };
   }
-  return { supabase, userId: auth.user.id, role: profile.role };
+  return { supabase, userId: auth.user.id, role: profile?.role || "user" };
 }
 
 async function getContext(supabase: any, role: string): Promise<AdminContext> {
@@ -77,7 +77,7 @@ async function getContext(supabase: any, role: string): Promise<AdminContext> {
 }
 
 export async function GET(request: NextRequest) {
-  const access = await getAdmin(request);
+  const access = await getStaff(request);
   if ("error" in access) return access.error!;
   try {
     const metrics = await getContext(access.supabase, access.role);
