@@ -963,37 +963,47 @@ export default function HomePage() {
   }
 
   async function deletePost(postId: string) {
-    if (!user || !window.confirm("Delete this post and its attached media? It will disappear from the feed. Moderation records are preserved.")) return;
+    if (!user || !window.confirm("Remove this post from the feed? Its moderation history will be retained. Attached media will be cleaned up after removal.")) return;
     setError(""); setNotice("");
     const supabase = createClient();
-    try {
-      const { data: mediaRows, error: mediaLookupError } = await supabase
-        .from("post_media").select("id, storage_path").eq("post_id", postId);
-      if (mediaLookupError) throw mediaLookupError;
-      const mediaPaths = (mediaRows ?? []).map((media) => media.storage_path);
-      if (mediaPaths.length) {
-        const { error: storageError } = await supabase.storage.from("post-media").remove(mediaPaths);
-        if (storageError) throw new Error("Could not remove attached media. The post was not deleted: " + storageError.message);
-        const { error: metadataError } = await supabase.from("post_media").delete().eq("post_id", postId);
-        if (metadataError) throw new Error("Media files were removed, but their records could not be cleaned up: " + metadataError.message);
-      }
-      const { data: removedPost, error: deleteError } = await supabase.from("posts")
-        .update({ status: "removed", removal_reason: "Deleted by the author" })
-        .eq("id", postId).eq("author_id", user.id).eq("status", "published")
-        .select("id").maybeSingle();
-      if (deleteError || !removedPost) {
-        throw new Error(deleteError ? "Could not delete this post: " + deleteError.message : "This post is no longer available to delete. Refresh the feed and try again.");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete this post.");
+
+    // Change the post state first. Never delete media while a post may still be
+    // publicly visible; a failed state transition must leave the original intact.
+    const { data: removedPost, error: removeError } = await supabase.from("posts")
+      .update({ status: "removed", removal_reason: "Deleted by the author" })
+      .eq("id", postId).eq("author_id", user.id).eq("status", "published")
+      .select("id").maybeSingle();
+    if (removeError || !removedPost) {
+      setError(removeError
+        ? "Could not remove this post: " + removeError.message
+        : "This post is no longer available to remove. Refresh the feed and try again.");
       return;
     }
+
+    // Reflect the successful removal immediately, even if later media cleanup
+    // encounters a storage or metadata error.
     setPosts((current) => current.filter((post) => post.id !== postId));
     setLiked((current) => current.filter((id) => id !== postId));
     setSaved((current) => current.filter((id) => id !== postId));
     setCommentsByPost((current) => { const next = { ...current }; delete next[postId]; return next; });
     if (openComments === postId) setOpenComments(null);
-    setNotice("Your post was removed from the feed. Its moderation history is retained.");
+
+    try {
+      const { data: mediaRows, error: mediaLookupError } = await supabase
+        .from("post_media").select("id, storage_path").eq("post_id", postId);
+      if (mediaLookupError) throw mediaLookupError;
+      const mediaPaths = (mediaRows ?? []).map((media) => media.storage_path).filter(Boolean);
+      if (mediaPaths.length) {
+        const { error: storageError } = await supabase.storage.from("post-media").remove(mediaPaths);
+        if (storageError) throw new Error("Storage cleanup failed: " + storageError.message);
+        const { error: metadataError } = await supabase.from("post_media").delete().eq("post_id", postId);
+        if (metadataError) throw new Error("Media metadata cleanup failed: " + metadataError.message);
+      }
+      setNotice("Your post was removed from the feed and attached media was cleaned up. Its moderation history is retained.");
+    } catch (err) {
+      setNotice("Your post was removed from the feed, but attached media cleanup needs administrator attention. The post is no longer publicly visible.");
+      setError(err instanceof Error ? err.message : "Media cleanup did not finish.");
+    }
   }
 
   async function deleteComment(comment: DbComment) {
