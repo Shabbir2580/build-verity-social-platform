@@ -121,6 +121,19 @@ type CoverageResult = {
   publishedAt: string | null;
 };
 
+type FactCheckResult = {
+  claimText: string;
+  claimant: string | null;
+  claimDate: string | null;
+  title: string | null;
+  publisher: string | null;
+  publisherSite: string | null;
+  url: string;
+  reviewDate: string | null;
+  rating: string | null;
+  languageCode: string | null;
+};
+
 function safeHttpUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
@@ -208,8 +221,14 @@ export default function VerifyPage() {
   const [coverageCheckedAt, setCoverageCheckedAt] = useState("");
   const [coverageLoading, setCoverageLoading] = useState(false);
   const [coverageError, setCoverageError] = useState("");
+  const [factCheckConsent, setFactCheckConsent] = useState(false);
+  const [factCheckResults, setFactCheckResults] = useState<FactCheckResult[]>([]);
+  const [factCheckCheckedAt, setFactCheckCheckedAt] = useState("");
+  const [factCheckLoading, setFactCheckLoading] = useState(false);
+  const [factCheckError, setFactCheckError] = useState("");
   const detailsRequestId = useRef(0);
   const coverageRequestId = useRef(0);
+  const factCheckRequestId = useRef(0);
 
   const selectedPost = posts.find((post) => post.id === selectedPostId) || null;
 
@@ -394,6 +413,12 @@ export default function VerifyPage() {
     setCoverageResults([]);
     setCoverageCheckedAt("");
     setCoverageError("");
+    factCheckRequestId.current += 1;
+    setFactCheckConsent(false);
+    setFactCheckResults([]);
+    setFactCheckCheckedAt("");
+    setFactCheckError("");
+    setFactCheckLoading(false);
   }, [selectedPostId, posts]);
 
   const filteredPosts = useMemo(() => {
@@ -439,6 +464,51 @@ export default function VerifyPage() {
       }
     } finally {
       if (requestId === coverageRequestId.current) setCoverageLoading(false);
+    }
+  }
+
+  async function findPublishedFactChecks() {
+    if (!selectedPost) return;
+    if (!user) {
+      setFactCheckError("Sign in to search published fact-checks.");
+      return;
+    }
+    if (!factCheckConsent) {
+      setFactCheckError("Confirm that you consent to sending this claim to Google's published fact-check search.");
+      return;
+    }
+    const query = (coverageQuery.trim() || selectedPost.title || selectedPost.body).slice(0, 240);
+    if (query.length < 12) {
+      setFactCheckError("Add at least 12 characters describing the claim or event.");
+      return;
+    }
+
+    const requestId = ++factCheckRequestId.current;
+    setFactCheckLoading(true);
+    setFactCheckError("");
+    setFactCheckResults([]);
+    setFactCheckCheckedAt("");
+    try {
+      const supabase = createClient();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Your session expired. Sign in again.");
+      const response = await fetch(`/api/verify/fact-check?q=${encodeURIComponent(query)}`, {
+        headers: { Accept: "application/json", Authorization: "Bearer " + token },
+        cache: "no-store",
+      });
+      const payload = await response.json() as { error?: string; results?: FactCheckResult[]; checkedAt?: string };
+      if (!response.ok) throw new Error(payload.error || "Could not search published fact-checks.");
+      if (requestId !== factCheckRequestId.current) return;
+      setFactCheckResults(payload.results ?? []);
+      setFactCheckCheckedAt(payload.checkedAt ?? new Date().toISOString());
+    } catch (err) {
+      if (requestId === factCheckRequestId.current) {
+        setFactCheckError(err instanceof Error ? err.message : "Could not search published fact-checks.");
+      }
+    } finally {
+      if (requestId === factCheckRequestId.current) setFactCheckLoading(false);
     }
   }
 
@@ -571,7 +641,39 @@ export default function VerifyPage() {
                     {coverageLoading ? <LoaderCircle size={15} className="animate-spin" /> : <Search size={15} />}
                     {coverageLoading ? "Searching…" : "Search coverage"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void findPublishedFactChecks()}
+                    disabled={factCheckLoading || coverageQuery.trim().length < 12 || !user}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-extrabold text-indigo-800 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {factCheckLoading ? <LoaderCircle size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
+                    {factCheckLoading ? "Checking…" : "Published fact-checks"}
+                  </button>
                 </div>
+                <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-5 text-slate-600">
+                  <input type="checkbox" checked={factCheckConsent} onChange={(event) => setFactCheckConsent(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-indigo-700" />
+                  <span>I consent to sending this exact claim to Google's Fact Check Tools search. Verity does not store the search text in its usage log.</span>
+                </label>
+                {factCheckError && <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800">{factCheckError}</p>}
+                {factCheckCheckedAt && <p className="mt-3 text-[11px] text-slate-400">Provider: Google Fact Check Tools · Searched {timeLabel(factCheckCheckedAt)}</p>}
+                {factCheckCheckedAt && factCheckResults.length === 0 && <p className="mt-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No matching published review was returned. This does not mean the claim is true or false.</p>}
+                {factCheckResults.length > 0 && <div className="mt-4 space-y-3">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-indigo-800">Published third-party reviews · not Verity verdicts</p>
+                  {factCheckResults.map((item, index) => (
+                    <article key={item.url + index} className="min-w-0 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                      <p className="break-words text-sm font-bold leading-6">{item.title || item.claimText}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">Claim reviewed: {item.claimText}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                        {item.publisher && <span className="font-semibold text-slate-700">{item.publisher}</span>}
+                        {item.reviewDate && <time>Reviewed {timeLabel(item.reviewDate)}</time>}
+                        {item.claimant && <span>Claimant: {item.claimant}</span>}
+                      </div>
+                      {item.rating && <p className="mt-3 rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs leading-5 text-indigo-950"><strong>Publisher's rating:</strong> {item.rating}</p>}
+                      <a href={item.url} target="_blank" rel="noreferrer noopener" className="mt-3 inline-flex min-h-9 items-center gap-1 text-xs font-bold text-indigo-800 underline underline-offset-2">Read the full fact-check <ArrowUpRight size={13} /></a>
+                    </article>
+                  ))}
+                </div>}
                 {coverageError && <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800">{coverageError}</p>}
                 {coverageCheckedAt && <p className="mt-3 text-[11px] text-slate-400">Provider: Google News RSS · Searched {timeLabel(coverageCheckedAt)}</p>}
                 {coverageCheckedAt && coverageResults.length === 0 && <p className="mt-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No related articles were returned for this search. That does not mean the claim is true or false.</p>}
