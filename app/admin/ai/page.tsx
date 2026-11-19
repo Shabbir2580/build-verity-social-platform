@@ -11,6 +11,7 @@ type Metrics = {
   activeCases: number | null; urgentCases: number | null; overdueCases: number | null;
   openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
   newMembers7d: number | null; newPosts7d: number | null;
+  previousMembers7d: number | null; previousPosts7d: number | null; previousTickets7d: number | null;
   businessLeads: number | null; openBusinessLeads: number | null; aiRequests24h: number | null;
 };
 type Message = { role: "user" | "assistant"; content: string };
@@ -161,8 +162,8 @@ export default function AdminAiPage() {
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {staffRole === "admin" && <>
-            <MetricCard label="Members" value={metrics?.members ?? null} note={`+${(metrics?.newMembers7d ?? 0).toLocaleString()} in 7 days`} icon={Users}/>
-            <MetricCard label="Posts" value={metrics?.posts ?? null} note={`+${(metrics?.newPosts7d ?? 0).toLocaleString()} in 7 days`} icon={FileText}/>
+            <MetricCard label="Members" value={metrics?.members ?? null} note={`7d: +${(metrics?.newMembers7d ?? 0).toLocaleString()} · prior 7d: +${(metrics?.previousMembers7d ?? 0).toLocaleString()}`} icon={Users}/>
+            <MetricCard label="Posts" value={metrics?.posts ?? null} note={`7d: +${(metrics?.newPosts7d ?? 0).toLocaleString()} · prior 7d: +${(metrics?.previousPosts7d ?? 0).toLocaleString()}`} icon={FileText}/>
             <MetricCard label="Business enquiries" value={metrics?.businessLeads ?? null} note={`${(metrics?.openBusinessLeads ?? 0).toLocaleString()} still open · not revenue`} icon={Briefcase}/>
           </>}
           {(staffRole === "admin" || staffRole === "moderator") && <MetricCard label="Active cases" value={metrics?.activeCases ?? null} note={`${metrics?.urgentCases ?? 0} marked urgent`} icon={Flag}/>}
