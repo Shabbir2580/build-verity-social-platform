@@ -166,7 +166,6 @@ try {
   if (!supportPageSource.includes("Google Gemini for this request") || !supportPageSource.includes("Use in reply editor")) {
     throw new Error("Support AI UI must require consent and keep the draft under staff control.");
   }
-  const moderationPageSource = await readFile(new URL("../app/moderation/page.tsx", import.meta.url), "utf8");
   if (!moderationPageSource.includes("Google Gemini for this request") || !moderationPageSource.includes("Generate case summary")) {
     throw new Error("Moderation AI UI must require consent before requesting a case summary.");
   }
