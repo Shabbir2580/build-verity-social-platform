@@ -169,6 +169,7 @@ const NAV_ITEMS = [
   { name: "Settings", icon: ShieldCheck },
   { name: "Verify", icon: FileSearch },
   { name: "Support", icon: Headphones },
+  { name: "For organizations", icon: Users },
 ] as const;
 
 function formatTime(value: string) {
@@ -1361,7 +1362,7 @@ export default function HomePage() {
             <p className="mb-3 mt-8 px-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Your space</p>
             <nav className="space-y-1">
               {visibleNavItems.map(({ name, icon: Icon }) => (
-                <button key={name} type="button" onClick={() => { if (name === "Admin") router.push("/admin"); else if (name === "Moderation") router.push("/moderation"); else if (name === "Support queue") router.push("/support/staff"); else if (name === "Verify") router.push("/verify"); else if (name === "Questions") router.push("/questions"); else if (name === "Notifications") router.push("/notifications"); else if (name === "Settings") router.push("/settings"); else if (name === "People") router.push("/people"); else setActivePage(name); setMobileMenuOpen(false); }} className={`verity-nav-link group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${activePage === name ? "verity-nav-active bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80" : "text-slate-500 hover:bg-white hover:text-slate-900"}`}>
+                <button key={name} type="button" onClick={() => { if (name === "Admin") router.push("/admin"); else if (name === "Moderation") router.push("/moderation"); else if (name === "Support queue") router.push("/support/staff"); else if (name === "Verify") router.push("/verify"); else if (name === "Questions") router.push("/questions"); else if (name === "Notifications") router.push("/notifications"); else if (name === "Settings") router.push("/settings"); else if (name === "People") router.push("/people"); else if (name === "For organizations") router.push("/for-organizations"); else setActivePage(name); setMobileMenuOpen(false); }} className={`verity-nav-link group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${activePage === name ? "verity-nav-active bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80" : "text-slate-500 hover:bg-white hover:text-slate-900"}`}>
                   <Icon size={19} className={activePage === name ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600"} />
                   <span className="flex-1">{name}</span>
                   {name === "Notifications" && unreadNotifications > 0 && <span className="min-w-5 rounded-full bg-rose-600 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}
