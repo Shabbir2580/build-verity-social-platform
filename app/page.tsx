@@ -154,6 +154,7 @@ type FeedPost = {
   comments: number;
   link_url: string | null;
   source_url: string | null;
+  tags: string[];
   media: FeedMedia[];
 };
 
@@ -168,12 +169,6 @@ const NAV_ITEMS = [
   { name: "Verify", icon: FileSearch },
   { name: "Support", icon: Headphones },
 ] as const;
-
-const TRENDING_TOPICS = [
-  "Artificial Intelligence",
-  "Digital Literacy",
-  "Science Explained",
-];
 
 function formatTime(value: string) {
   const timestamp = new Date(value).getTime();
@@ -339,6 +334,7 @@ export default function HomePage() {
 
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
+  const [newTags, setNewTags] = useState("");
   const [newCategory, setNewCategory] = useState<Category>("Discussion");
   const [newCommunityId, setNewCommunityId] = useState("");
   const [newSourceUrl, setNewSourceUrl] = useState("");
@@ -636,6 +632,7 @@ export default function HomePage() {
           comments: commentCounts.get(row.id) ?? 0,
           link_url: row.link_url,
           source_url: row.source_url,
+          tags: row.tags ?? [],
           media: mediaMap.get(row.id) ?? [],
         };
       }));
@@ -689,7 +686,7 @@ export default function HomePage() {
   const visiblePosts = useMemo(() => {
     const query = search.trim().toLowerCase();
     const filtered = posts.filter((post) => {
-      const text = [post.author, post.username, post.community, post.title, post.body, post.label].join(" ").toLowerCase();
+      const text = [post.author, post.username, post.community, post.title, post.body, post.label, ...post.tags].join(" ").toLowerCase();
       if (query && !text.includes(query)) return false;
       if ((activePage === "Questions" || filter === "Questions") && post.category !== "question") return false;
       if (filter === "Discussions" && post.category === "question") return false;
@@ -765,8 +762,11 @@ export default function HomePage() {
       }
     }
 
+    const customTags = [...new Set(newTags.split(",").map((tag) => tag.trim().replace(/^#/, "").toLowerCase()).filter(Boolean))];
+    if (customTags.length > 5) { setError("Add no more than 5 custom tags."); return; }
+    if (customTags.some((tag) => !/^[a-z0-9][a-z0-9-]{1,23}$/.test(tag))) { setError("Each tag must be 2–24 characters and use only letters, numbers or hyphens."); return; }
     const categoryValue = newCategory === "News" ? "news" : newCategory === "Meme" ? "meme" : "original";
-    const tags = newCategory === "Question" ? ["question"] : [];
+    const tags = [...new Set([...customTags, ...(newCategory === "Question" ? ["question"] : [])])];
     const postType = videos.length ? "video" : images.length ? "image" : newCategory === "News" && sourceUrl ? "link" : "text";
 
     setActionLoading(true);
@@ -892,6 +892,7 @@ export default function HomePage() {
       setCreateOpen(false);
       setNewTitle("");
       setNewBody("");
+      setNewTags("");
       setNewSourceUrl("");
       setNewCategory("Discussion");
       setNewCommunityId("");
@@ -1494,6 +1495,7 @@ export default function HomePage() {
                 const artTone = post.category.includes("meme") || post.category.includes("satire") || post.category.includes("parody") ? "rose" : post.category.includes("question") ? "cyan" : post.category.includes("ai") || post.category.includes("educational") ? "violet" : null;
                 return <article id={`post-${post.id}`} key={post.id} className={`verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm ${highlightedPostId === post.id ? "ring-2 ring-indigo-500 ring-offset-2" : ""}`}><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><Link href={`/u/${encodeURIComponent(post.username)}`} className="block truncate text-sm font-extrabold hover:text-indigo-700">{post.author}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><Link href={`/u/${encodeURIComponent(post.username)}`} className="hover:text-indigo-700">@{post.username}</Link><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div>{user?.id === post.author_id ? <><button type="button" onClick={() => { setEditingPostId(post.id); setEditTitle(post.title === "Untitled post" ? "" : post.title); setEditBody(post.body); setError(""); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-700" aria-label="Edit your post" title="Edit your post"><FileSearch size={16} /></button><button type="button" onClick={() => void deletePost(post.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your post" title="Delete your post"><Trash2 size={16} /></button></> : <button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button>}</div>
                   {editingPostId === post.id ? <form onSubmit={(event) => { event.preventDefault(); void savePostEdit(post.id); }} className="mt-4 space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4"><label className="block text-xs font-bold text-slate-600">Title<input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={300} className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="Optional title"/></label><label className="block text-xs font-bold text-slate-600">Post text<textarea required value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={20000} rows={5} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-indigo-400"/></label><div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingPostId(null)} disabled={editSaving} className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold">Cancel</button><button type="submit" disabled={editSaving || !editBody.trim()} className="min-h-9 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white disabled:opacity-50">{editSaving ? "Saving…" : "Save changes"}</button></div></form> : <><h3 className="mt-4 break-words text-[17px] font-extrabold leading-7 tracking-tight text-slate-900 sm:text-lg">{post.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{post.body}</p></>}
+                  {post.tags.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label="Post topics">{post.tags.map((tag) => <button key={tag} type="button" onClick={() => { setSearch(tag); setActivePage("Explore"); setFilter("Latest"); }} className="inline-flex min-h-8 items-center rounded-full border border-indigo-100 bg-indigo-50/70 px-3 py-1 text-xs font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100">#{tag}</button>)}</div>}
                   {artTone && <Artwork tone={artTone} />}
                   {post.media.length > 0 && <div className={`verity-post-media mt-4 grid gap-2 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{post.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[560px] w-full rounded-2xl bg-slate-950 object-contain" aria-label="Post video"><source src={media.url} type={media.mime_type} />Your browser does not support HTML video.</video> : <img key={media.id} src={media.url} alt={media.alt_text || `Image shared by ${post.author}`} loading="lazy" className={`w-full rounded-2xl border border-slate-100 object-cover ${post.media.length === 1 ? "max-h-[560px]" : "aspect-square"}`} />)}</div>}
                   {post.link_url && <a href={post.link_url} target="_blank" rel="noreferrer noopener" className="mt-4 inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"><span className="break-all">Open linked content</span><ArrowUpRight size={15} className="shrink-0" /></a>}
@@ -1512,7 +1514,7 @@ export default function HomePage() {
         <aside className="verity-right-sidebar hidden space-y-5 py-6 xl:block">
           <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="verity-trust-card p-5 text-white"><div className="flex items-center gap-2 text-xs font-bold text-indigo-100"><Activity size={15} /> THE VERITY DIFFERENCE</div><h2 className="mt-4 text-2xl font-black leading-tight">Curiosity is good.<br />Context is better.</h2><p className="mt-3 text-xs leading-6 text-indigo-100">Explore what is known, what is disputed and what still needs evidence.</p><button type="button" onClick={() => router.push("/verify")} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-3.5 py-2.5 text-xs font-extrabold text-indigo-900 hover:bg-indigo-50">Explore trust tools <ArrowUpRight size={15} /></button></div><div className="space-y-4 p-5"><div className="flex items-start gap-3"><div className="rounded-xl bg-violet-50 p-2 text-violet-700"><Sparkles size={18} /></div><div><h3 className="text-xs font-extrabold">Media origin</h3><p className="mt-1 text-xs leading-5 text-slate-500">Explore available signals about how content was created.</p></div></div><div className="flex items-start gap-3"><div className="rounded-xl bg-sky-50 p-2 text-sky-700"><FileSearch size={18} /></div><div><h3 className="text-xs font-extrabold">Evidence and sources</h3><p className="mt-1 text-xs leading-5 text-slate-500">Examine evidence behind specific factual claims.</p></div></div><div className="flex items-start gap-3"><div className="rounded-xl bg-emerald-50 p-2 text-emerald-700"><Headphones size={18} /></div><div><h3 className="text-xs font-extrabold">Human review</h3><p className="mt-1 text-xs leading-5 text-slate-500">Request help when a label or moderation decision is wrong.</p></div></div></div></section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="text-sm font-extrabold">Topics to explore</h2><Flame size={17} className="text-orange-500" /></div><div className="mt-4 space-y-2">{TRENDING_TOPICS.map((topic, index) => <button key={topic} type="button" onClick={() => { setSearch(topic); setActivePage("Explore"); }} className="flex min-h-11 w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-50"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[10px] font-extrabold text-slate-500">0{index + 1}</span><span className="min-w-0 flex-1 text-sm font-bold">{topic}</span><ArrowUpRight size={15} className="text-slate-300" /></button>)}</div></section>
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="text-sm font-extrabold">Topics to explore</h2><Flame size={17} className="text-orange-500" /></div><div className="mt-4 space-y-2">{Array.from(posts.reduce((counts, post) => { post.tags.forEach((tag) => counts.set(tag, (counts.get(tag) ?? 0) + 1)); return counts; }, new Map<string, number>()).entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 6).map(([topic, count], index) => <button key={topic} type="button" onClick={() => { setSearch(topic); setActivePage("Explore"); setFilter("Latest"); }} className="flex min-h-11 w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-50"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[10px] font-extrabold text-slate-500">0{index + 1}</span><span className="min-w-0 flex-1 text-sm font-bold">#{topic}</span><span className="text-[10px] font-semibold text-slate-400">{count} {count === 1 ? "post" : "posts"}</span><ArrowUpRight size={15} className="text-slate-300" /></button>)}{posts.every((post) => post.tags.length === 0) && <p className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-500">No topic tags yet. Add tags to your posts and they will appear here for discovery.</p>}</div></section>
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700"><Users size={20} /></div><h2 className="mt-3 text-sm font-extrabold">Better discussions start together.</h2><p className="mt-2 text-xs leading-6 text-slate-500">Find people who enjoy discussing, questioning and learning about ideas.</p><button type="button" onClick={() => setActivePage("Communities")} className="mt-4 inline-flex min-h-9 items-center gap-2 text-xs font-extrabold text-indigo-700 hover:text-indigo-900">Browse communities <ArrowRight size={14} /></button></section>
           <div className="px-2 text-[11px] leading-6 text-slate-400"><div className="flex flex-wrap gap-x-3 gap-y-1"><Link href="/guidelines" className="hover:text-indigo-700">Guidelines</Link><Link href="/privacy" className="hover:text-indigo-700">Privacy</Link><Link href="/terms" className="hover:text-indigo-700">Terms</Link></div><p className="mt-2">Verity separates media origin from factual accuracy.</p></div>
@@ -1560,6 +1562,11 @@ export default function HomePage() {
 
               <label className="block text-sm font-bold">Caption or description
                 <textarea rows={4} maxLength={20000} value={newBody} onChange={(event) => setNewBody(event.target.value)} placeholder="Add a caption, a question or useful context..." className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-base font-normal leading-6 outline-none focus:border-indigo-400 sm:text-sm" />
+              </label>
+
+              <label className="block text-sm font-bold">Topics / tags <span className="font-normal text-slate-400">(optional, up to 5)</span>
+                <input value={newTags} onChange={(event) => setNewTags(event.target.value)} maxLength={160} placeholder="artificial-intelligence, technology, science" className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-normal outline-none focus:border-indigo-400 sm:text-sm" />
+                <span className="mt-1 block text-xs font-normal leading-5 text-slate-500">Separate tags with commas. Use 2–24 letters, numbers or hyphens. Tags help people find related posts.</span>
               </label>
 
               <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/60 p-4">
