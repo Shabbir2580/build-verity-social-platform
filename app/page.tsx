@@ -331,8 +331,6 @@ export default function HomePage() {
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
   const [editSaving, setEditSaving] = useState(false);
-  const [verifyUrl, setVerifyUrl] = useState("");
-  const [verifyMessage, setVerifyMessage] = useState("");
 
   const [membershipRoles, setMembershipRoles] = useState<Record<string, string>>({});
   const visibleNavItems = useMemo(() => [
@@ -1305,18 +1303,18 @@ export default function HomePage() {
           {activePage === "Verify" ? (
             <section className="verity-panel rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><FileSearch size={25} /></div>
-              <p className="mt-5 text-xs font-extrabold uppercase tracking-[0.2em] text-indigo-600">Content context</p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Check before you share.</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">A reliable assessment distinguishes media origin from factual accuracy. This verification service is not live yet, so this form does not produce a verdict.</p>
-              <form className="mt-7 space-y-3" onSubmit={(event) => { event.preventDefault(); setVerifyMessage(verifyUrl.trim() ? "Live verification is not connected yet. No claim has been verified." : "Enter a public URL first."); }}>
-                <label className="block text-sm font-bold">Article or public post URL</label>
-                <input type="url" value={verifyUrl} onChange={(event) => setVerifyUrl(event.target.value)} placeholder="https://example.com/article" className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-50 sm:text-sm" />
-                <button type="submit" className="min-h-12 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-700">Prepare check</button>
-              </form>
-              {verifyMessage && <p role="status" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">{verifyMessage}</p>}
-              <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                {["Identify the specific claim", "Find relevant evidence", "Separate origin from accuracy", "Allow human review"].map((item) => <div key={item} className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm font-semibold text-slate-600"><CheckCircle2 size={17} className="shrink-0 text-indigo-600" />{item}</div>)}
+              <p className="mt-5 text-xs font-extrabold uppercase tracking-[0.2em] text-indigo-600">Verity Trust Center</p>
+              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Check the evidence. Keep the uncertainty visible.</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">The Trust Center is available. Review stored media and claim assessments, compare related news coverage, inspect source links and request a human review. It does not issue a definitive AI-generated, deepfake or true/false verdict.</p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {[
+                  ["Inspect a post", "See its stored assessment records, context labels and attached sources."],
+                  ["Search related coverage", "Find relevant reporting and open original publisher pages. Search results are leads, not proof."],
+                  ["Request human review", "Ask the moderation team to investigate a label or missing context."],
+                  ["Understand media limits", "Gemini can describe visible content, but it cannot forensically prove whether media is AI-generated or authentic."],
+                ].map(([title, description]) => <div key={title} className="rounded-2xl border border-slate-200 p-4"><p className="text-sm font-extrabold text-slate-800">{title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{description}</p></div>)}
               </div>
+              <button type="button" onClick={() => router.push("/verify")} className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-700">Open Trust Center <ArrowUpRight size={16} /></button>
             </section>
           ) : activePage === "Support" ? (
             <section className="verity-panel rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
