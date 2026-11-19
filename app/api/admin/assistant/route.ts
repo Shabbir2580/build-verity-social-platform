@@ -11,7 +11,7 @@ type AdminContext = {
   activeCases: number | null; urgentCases: number | null; overdueCases: number | null;
   openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
   newMembers7d: number | null; newPosts7d: number | null;
-  businessLeads: number | null; openBusinessLeads: number | null;
+  businessLeads: number | null; openBusinessLeads: number | null; aiRequests24h: number | null;
 };
 
 function jsonError(message: string, status: number) {
@@ -43,7 +43,7 @@ async function getStaff(request: NextRequest) {
   return { supabase, userId: auth.user.id, role: profile?.role || "user" };
 }
 
-async function getContext(supabase: any, role: string): Promise<AdminContext> {
+async function getContext(supabase: any, role: string, userId: string): Promise<AdminContext> {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const isoNow = now.toISOString();
@@ -57,7 +57,7 @@ async function getContext(supabase: any, role: string): Promise<AdminContext> {
   };
   const [
     members, posts, reports, activeCases, urgentCases, overdueCases,
-    openTickets, overdueTickets, newTickets7d, newMembers, newPosts, businessLeads, openBusinessLeads,
+    openTickets, overdueTickets, newTickets7d, newMembers, newPosts, businessLeads, openBusinessLeads, aiRequests24h,
   ] = await Promise.all([
     isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true })) : null,
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true })) : null,
@@ -72,10 +72,14 @@ async function getContext(supabase: any, role: string): Promise<AdminContext> {
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%")) : null,
     isAdmin ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%").neq("status", "resolved")) : null,
+    count(supabase.from("audit_logs").select("id", { count: "exact", head: true })
+      .eq("action", "admin_ai_assistant_request")
+      .gte("created_at", new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString())
+      .match(isAdmin ? {} : { actor_id: userId })),
   ]);
   return {
     generatedAt: isoNow, members, posts, reports, activeCases, urgentCases,
-    overdueCases, openTickets, overdueTickets, newTickets7d, newMembers7d: newMembers, newPosts7d: newPosts, businessLeads, openBusinessLeads,
+    overdueCases, openTickets, overdueTickets, newTickets7d, newMembers7d: newMembers, newPosts7d: newPosts, businessLeads, openBusinessLeads, aiRequests24h,
   };
 }
 
@@ -83,7 +87,7 @@ export async function GET(request: NextRequest) {
   const access = await getStaff(request);
   if ("error" in access) return access.error!;
   try {
-    const metrics = await getContext(access.supabase, access.role);
+    const metrics = await getContext(access.supabase, access.role, access.userId);
     return NextResponse.json({
       metrics,
       role: access.role,
@@ -112,8 +116,47 @@ export async function POST(request: NextRequest) {
     : "";
   if (question.length < 4 || question.length > 500) return jsonError("Enter a question between 4 and 500 characters.", 400);
 
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [hourUsage, dayUsage] = await Promise.all([
+    access.supabase.from("audit_logs").select("id", { count: "exact", head: true })
+      .eq("actor_id", access.userId).eq("action", "admin_ai_assistant_request").gte("created_at", hourAgo),
+    access.supabase.from("audit_logs").select("id", { count: "exact", head: true })
+      .eq("actor_id", access.userId).eq("action", "admin_ai_assistant_request").gte("created_at", dayAgo),
+  ]);
+  if (hourUsage.error || dayUsage.error) {
+    return jsonError("AI usage limits could not be checked. The request was not sent.", 503);
+  }
+  if ((hourUsage.count ?? 0) >= 12 || (dayUsage.count ?? 0) >= 40) {
+    return jsonError("Your AI usage limit has been reached (12 requests per hour, 40 per day). Try again later.", 429);
+  }
+
+  // Reserve a durable usage event before calling Gemini. Never store the staff prompt.
+  const { data: usageEvent, error: usageInsertError } = await access.supabase
+    .from("audit_logs")
+    .insert({
+      actor_id: access.userId,
+      action: "admin_ai_assistant_request",
+      entity_type: "ai_assistant",
+      entity_id: null,
+      details: { model: "gemini-2.5-flash", status: "started" },
+    })
+    .select("id")
+    .single();
+  if (usageInsertError || !usageEvent) {
+    console.error("Could not reserve AI usage event:", usageInsertError?.message);
+    return jsonError("AI usage tracking is unavailable. The request was not sent.", 503);
+  }
+
+  const updateUsage = async (details: Record<string, unknown>) => {
+    const { error } = await access.supabase.from("audit_logs")
+      .update({ details: { model: "gemini-2.5-flash", ...details } })
+      .eq("id", usageEvent.id);
+    if (error) console.error("Could not update AI usage event:", error.message);
+  };
+
   try {
-    const metrics = await getContext(access.supabase, access.role);
+    const metrics = await getContext(access.supabase, access.role, access.userId);
     const prompt = [
       "You are Verity's internal staff operations assistant. The staff member role is " + access.role + ".",
       "Answer using only the verified aggregate metrics supplied below. Never invent a count, user, event, revenue, cause, or trend.",
@@ -136,6 +179,7 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) {
+      await updateUsage({ status: "provider_error", providerStatus: response.status });
       if (response.status === 429) return jsonError("Gemini usage limit reached. Try again later.", 429);
       console.error("Admin assistant provider error:", response.status);
       return jsonError("The AI assistant could not complete this request.", 502);
@@ -144,13 +188,24 @@ export async function POST(request: NextRequest) {
     const answer = payload?.candidates?.[0]?.content?.parts
       ?.map((part: { text?: string }) => typeof part.text === "string" ? part.text : "")
       .join("\n").trim();
+    const usage = payload?.usageMetadata ?? {};
+    const usageDetails = {
+      status: answer ? "completed" : "empty_response",
+      promptTokens: Number.isInteger(usage.promptTokenCount) ? usage.promptTokenCount : null,
+      outputTokens: Number.isInteger(usage.candidatesTokenCount) ? usage.candidatesTokenCount : null,
+      totalTokens: Number.isInteger(usage.totalTokenCount) ? usage.totalTokenCount : null,
+      modelVersion: typeof payload?.modelVersion === "string" ? payload.modelVersion.slice(0, 80) : null,
+    };
+    await updateUsage(usageDetails);
     if (!answer) return jsonError("The AI provider returned an empty response.", 502);
     return NextResponse.json({
       answer: answer.slice(0, 5000),
       metricsGeneratedAt: metrics.generatedAt,
+      usage: { promptTokens: usageDetails.promptTokens, outputTokens: usageDetails.outputTokens, totalTokens: usageDetails.totalTokens },
       disclaimer: "AI-generated operational guidance. Verify the underlying records; humans retain all moderation and account decisions.",
     }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
+    await updateUsage({ status: "failed" });
     console.error("Admin assistant request failed:", error instanceof Error ? error.message : "unknown");
     return jsonError("The assistant request failed. Please try again.", 502);
   }
