@@ -123,6 +123,15 @@ export async function POST(request: NextRequest) {
   const maxBytes = media.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
   if (media.size_bytes > maxBytes) return recordFailure(`This ${media.kind} exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB analysis limit.`, 413);
 
+  const { count, error: countError } = await supabase
+    .from("content_checks")
+    .select("id", { count: "exact", head: true })
+    .eq("post_id", post.id)
+    .eq("check_type", "media_origin")
+    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
+  if (countError) return jsonError("Could not verify the assessment usage limit.", 503);
+  if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 Gemini assessments per hour.", 429);
+
   if (!apiKey) {
     const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
       post_id: post.id, provider: "Google Gemini (not configured)", check_type: "media_origin",
@@ -139,15 +148,6 @@ export async function POST(request: NextRequest) {
     if (caseError) console.error("Could not queue unconfigured media for human review:", caseError.message);
     return jsonError("Gemini is not configured on the server. The media remains unchecked.", 503);
   }
-  const { count, error: countError } = await supabase
-    .from("content_checks")
-    .select("id", { count: "exact", head: true })
-    .eq("post_id", post.id)
-    .eq("provider", `Google Gemini / ${MODEL}`)
-    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
-  if (countError) return jsonError("Could not verify the assessment usage limit.", 503);
-  if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 Gemini assessments per hour.", 429);
-
   const { data: signed, error: signedError } = await supabase.storage
     .from("post-media")
     .createSignedUrl(media.storage_path, 60);
