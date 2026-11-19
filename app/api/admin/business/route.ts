@@ -28,22 +28,24 @@ export async function GET(request: NextRequest) {
   const leadQuery = () => supabase.from("support_tickets")
     .select("id, ticket_number, subject, status, priority, assigned_team, created_at, response_due_at")
     .ilike("subject", "Business enquiry —%");
-  const [leadRows, allCount, openCount, resolvedCount, receivedCount] = await Promise.all([
+  const now = new Date().toISOString();
+  const [leadRows, allCount, openCount, resolvedCount, receivedCount, overdueCount] = await Promise.all([
     leadQuery().order("created_at", { ascending: false }).limit(30),
     supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%"),
     supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%").neq("status", "resolved"),
     supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%").eq("status", "resolved"),
     supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%").eq("status", "received"),
+    supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%").neq("status", "resolved").lt("response_due_at", now),
   ]);
-  const errors = [leadRows, allCount, openCount, resolvedCount, receivedCount].filter((item) => item.error);
+  const errors = [leadRows, allCount, openCount, resolvedCount, receivedCount, overdueCount].filter((item) => item.error);
   if (errors.length) return fail("Business enquiry records could not be loaded.", 503);
 
-  const now = Date.now();
+  const nowMs = Date.now();
   const leads = (leadRows.data ?? []).map((ticket) => ({
     ...ticket,
     organization: ticket.subject.replace(/^Business enquiry —\s*/i, "").slice(0, 120),
     overdue: ticket.status !== "resolved" && ticket.response_due_at
-      ? new Date(ticket.response_due_at).getTime() < now
+      ? new Date(ticket.response_due_at).getTime() < nowMs
       : false,
   }));
   return NextResponse.json({
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest) {
       open: openCount.count ?? 0,
       resolved: resolvedCount.count ?? 0,
       received: receivedCount.count ?? 0,
-      overdue: leads.filter((lead) => lead.overdue).length,
+      overdue: overdueCount.count ?? 0,
     },
     leads,
     revenue: {
