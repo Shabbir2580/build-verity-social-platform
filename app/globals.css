@@ -370,3 +370,8 @@
 .verity-admin-page > header { border-color:#cbd5e1; }
 .verity-admin-page > header span { color:#172554; }
 @media(max-width:639px){.verity-metric-card{border-radius:16px}.verity-metric-card strong{font-size:1.55rem}.verity-header .verity-search{display:none}}
+
+.verity-header button[aria-label="Verity home"] { color:#fff; }
+.verity-header > div > div:last-child > button:not([aria-label="Open admin console"]) { color:#e0e7ff; }
+.verity-header > div > div:last-child > a { color:#e0e7ff; }
+.verity-header > div > div:last-child > a:last-child { color:#fff; }
