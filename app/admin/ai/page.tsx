@@ -230,7 +230,7 @@ export default function AdminAiPage() {
             <li>• AI cannot suspend accounts, delete posts or resolve cases.</li>
             <li>• AI cannot determine whether a claim or media item is true or authentic.</li>
             <li>• Admins remain responsible for decisions and should verify records.</li>
-            <li>• Requests are capped at 12 per hour and 40 per day per staff account.</li>
+            <li>• Best-effort app limits are 12 per hour and 40 per day per staff account; provider quotas remain the hard ceiling.</li>
             <li>• Usage events store token counts, not the question text; token counts are not a currency-cost estimate.</li>
           </ul>
         </section>
