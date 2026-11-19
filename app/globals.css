@@ -520,3 +520,63 @@ body { color: var(--verity-ink); background: #fff; }
   .verity-post-card, .verity-community-card, .verity-sidebar-card,
   .verity-hero, .verity-logo, .verity-create-button { animation: none !important; transition: none !important; }
 }
+
+
+/* Admin workspace refinement */
+.verity-admin-page {
+  background: #f7f8fa !important;
+  background-image: none !important;
+  color: #17243b !important;
+}
+.verity-admin-page > header {
+  background: rgba(255,255,255,.96);
+  border-color: #e4e9f1 !important;
+}
+.verity-admin-page h1,
+.verity-admin-page h2,
+.verity-admin-page h3 { letter-spacing: -.025em; }
+.verity-admin-page .bg-gradient-to-br {
+  background: #fff !important;
+  background-image: none !important;
+}
+.verity-admin-page a.group {
+  background: #fff !important;
+  border: 1px solid #e4e9f1 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 2px rgba(23,36,59,.025) !important;
+  transform: none !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.verity-admin-page a.group:hover {
+  border-color: #cbd4e4 !important;
+  box-shadow: 0 5px 16px rgba(23,36,59,.055) !important;
+  transform: none !important;
+}
+.verity-admin-page a.group > span:first-child {
+  background: #edf1f8 !important;
+  color: #34477f !important;
+}
+.verity-admin-page article.rounded-2xl,
+.verity-admin-page section.rounded-2xl {
+  border-color: #e4e9f1 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 2px rgba(23,36,59,.025) !important;
+}
+.verity-admin-page .shadow-sm {
+  box-shadow: 0 1px 2px rgba(23,36,59,.025) !important;
+}
+.verity-admin-page .shadow-md,
+.verity-admin-page .shadow-lg {
+  box-shadow: 0 8px 24px rgba(23,36,59,.07) !important;
+}
+.verity-admin-page input,
+.verity-admin-page select,
+.verity-admin-page textarea {
+  border-color: #dfe5ee !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+.verity-admin-page button { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  .verity-admin-page * { transition: none !important; animation: none !important; }
+}
