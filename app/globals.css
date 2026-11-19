@@ -601,7 +601,6 @@ body { color: var(--verity-ink); background: #fff; }
 .verity-workspace h1,
 .verity-workspace h2,
 .verity-workspace h3 {
-  color: #17243b;
   letter-spacing: -.025em;
 }
 .verity-workspace p {
