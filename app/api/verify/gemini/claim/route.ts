@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 type NewsItem = { title: string; url: string; publisher: string | null; publishedAt: string | null };
+type ClaimAssessment = { summary: string; claim_type: string; time_sensitivity: string; supporting_indices: number[]; contradicting_indices: number[]; missing_context: string[]; verification_steps: string[]; uncertainty: string };
 
 function decodeXml(value: string) {
   return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -29,7 +30,7 @@ function parseNews(xml: string): NewsItem[] {
     if (!title || !url) continue;
     const date = rawDate ? new Date(rawDate) : null;
     items.push({ title, url, publisher, publishedAt: date && Number.isFinite(date.getTime()) ? date.toISOString() : null });
-    if (items.length === 6) break;
+    if (items.length === 10) break;
   }
   return items;
 }
@@ -105,19 +106,34 @@ export async function POST(request: NextRequest) {
     const news = parseNews(await newsResponse.text());
     const evidenceContext = news.map((item, index) => ({ index: index + 1, title: item.title, publisher: item.publisher, publishedAt: item.publishedAt, url: item.url }));
     const prompt = [
-      "You assist a human fact-check reviewer. Assess the precise claim using ONLY the supplied Google News search-result headlines and metadata.",
-      "Headlines are leads, not article evidence. Do not infer that an article supports a claim unless its headline directly addresses it.",
-      "Do not invent sources, facts, quotations, URLs, or numeric confidence. Do not give a true/false verdict.",
-      "Return JSON only with this shape: { \"claim\": string, \"summary\": string, \"supporting_indices\": number[], \"contradicting_indices\": number[], \"uncertainty\": string }.",
-      "Only use valid source indices from the supplied list. If none directly supports or contradicts, return empty arrays.",
-      "Explain that source headlines alone are insufficient and original reports must be read.",
+      "You assist a human fact-check reviewer. Analyse the exact claim using ONLY the supplied Google News search-result headlines and metadata.",
+      "Headlines are leads, not article evidence. Never infer that a headline proves a claim. A source may be relevant without supporting or contradicting it.",
+      "Do not invent facts, quotes, URLs, dates or numeric confidence. Do not issue true/false, real/fake or misinformation verdicts.",
+      "Classify the claim type and whether it is time-sensitive. Identify missing context and concrete next verification steps for a human reviewer.",
+      "Return JSON only with this shape: { \"summary\": string, \"claim_type\": string, \"time_sensitivity\": string, \"supporting_indices\": number[], \"contradicting_indices\": number[], \"missing_context\": string[], \"verification_steps\": string[], \"uncertainty\": string }.",
+      "Only use integer source indices that exist in the supplied list. If no headline directly relates, return empty source arrays.",
+      "Explicitly state that headlines alone are insufficient and original articles or primary records must be read.",
       "Claim: " + claim,
       "Search results: " + JSON.stringify(evidenceContext),
     ].join("\n");
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.1, maxOutputTokens: 700 } }),
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            summary: { type: "STRING" }, claim_type: { type: "STRING" }, time_sensitivity: { type: "STRING" },
+            supporting_indices: { type: "ARRAY", items: { type: "INTEGER" }, },
+            contradicting_indices: { type: "ARRAY", items: { type: "INTEGER" } },
+            missing_context: { type: "ARRAY", items: { type: "STRING" } },
+            verification_steps: { type: "ARRAY", items: { type: "STRING" } }, uncertainty: { type: "STRING" },
+          },
+          required: ["summary", "claim_type", "time_sensitivity", "supporting_indices", "contradicting_indices", "missing_context", "verification_steps", "uncertainty"],
+        },
+        temperature: 0.1, maxOutputTokens: 1100,
+      } }),
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) {
@@ -127,17 +143,20 @@ export async function POST(request: NextRequest) {
     }
     const payload = await response.json();
     const raw = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim();
-    let result: { claim?: string; summary?: string; supporting_indices?: number[]; contradicting_indices?: number[]; uncertainty?: string };
-    try { result = JSON.parse(raw || ""); } catch { return recordFailure("Gemini returned an unreadable assessment. No result was stored.", 502); }
-    if (typeof result.summary !== "string" || !Array.isArray(result.supporting_indices) || !Array.isArray(result.contradicting_indices)) {
-      return recordFailure("Gemini returned an incomplete assessment. No result was stored.", 502);
-    }
-    const selectSources = (indices: number[]) => indices.slice(0, 6).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: "Headline from " + (item!.publisher || "publisher not identified") + "; headlines are leads, not verified evidence.", url: item!.url }));
+    let result: ClaimAssessment;
+    try { result = JSON.parse(raw || "") as ClaimAssessment; } catch { return recordFailure("Gemini returned an unreadable assessment. No result was stored.", 502); }
+    if (typeof result.summary !== "string" || typeof result.claim_type !== "string" || typeof result.time_sensitivity !== "string" || typeof result.uncertainty !== "string" || !Array.isArray(result.supporting_indices) || !Array.isArray(result.contradicting_indices) || !Array.isArray(result.missing_context) || !Array.isArray(result.verification_steps) || [...result.missing_context, ...result.verification_steps].some((item) => typeof item !== "string")) return recordFailure("Gemini returned an incomplete assessment. No result was stored.", 502);
+    const validIndices = (indices: number[]) => [...new Set(indices.filter((index) => Number.isInteger(index) && index >= 1 && index <= evidenceContext.length))].slice(0, 10);
+    const selectSources = (indices: number[]) => validIndices(indices).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: "Headline from " + (item!.publisher || "publisher not identified") + "; relevance is model-assessed and this headline is not verified evidence.", url: item!.url }));
     const { data: saved, error: saveError } = await supabase.from("content_checks").insert({
       post_id: post.id, provider: "Google Gemini / gemini-2.5-flash", check_type: "claim", status: "uncertain",
-      claim: claim.slice(0, 1000), signals: [{ kind: "claim_analysis", source_count: evidenceContext.length, method: "Google News RSS headlines reviewed by Gemini" }],
+      claim: claim.slice(0, 1000), signals: [
+        { kind: "claim_analysis", source_count: evidenceContext.length, method: "Google News RSS headlines reviewed by Gemini", claim_type: result.claim_type.slice(0, 120), time_sensitivity: result.time_sensitivity.slice(0, 120) },
+        ...result.missing_context.slice(0, 6).map((detail) => ({ kind: "missing_context", detail: detail.slice(0, 500) })),
+        ...result.verification_steps.slice(0, 6).map((detail) => ({ kind: "human_verification_step", detail: detail.slice(0, 500) })),
+      ],
       supporting: selectSources(result.supporting_indices), contradicting: selectSources(result.contradicting_indices),
-      explanation: result.summary.slice(0, 4000),
+      explanation: [result.summary, "", "Claim type: " + result.claim_type, "Time sensitivity: " + result.time_sensitivity, "What is missing: " + (result.missing_context.slice(0, 6).join(" | ") || "Not specified."), "Human verification steps: " + (result.verification_steps.slice(0, 6).join(" | ") || "Read original sources and primary records.")].join("\n").slice(0, 4000),
       uncertainty: (result.uncertainty || "This is a preliminary language-model review of search-result headlines, not a fact-check. Read original sources and primary evidence.").slice(0, 2000),
       is_demo: false, assessed_at: new Date().toISOString(),
     }).select("id, post_id, provider, check_type, status, claim, supporting, contradicting, explanation, uncertainty, assessed_at, created_at").single();
