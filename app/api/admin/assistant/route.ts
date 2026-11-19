@@ -42,50 +42,48 @@ async function getAdmin(request: NextRequest) {
   return { supabase, userId: auth.user.id, role: profile.role };
 }
 
-async function getContext(supabase: any) {
+async function getContext(supabase: any, role: string): Promise<AdminContext> {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const isoNow = now.toISOString();
+  const isAdmin = role === "admin";
+  const canModerate = isAdmin || role === "moderator";
+  const canSupport = isAdmin || role === "support";
+  const count = async (query: any): Promise<number> => {
+    const { count: total, error } = await query;
+    if (error) throw new Error("One or more staff metrics could not be loaded.");
+    return total ?? 0;
+  };
   const [
     members, posts, reports, activeCases, urgentCases, overdueCases,
-    openTickets, newMembers, newPosts,
+    openTickets, overdueTickets, newTickets7d, newMembers, newPosts,
   ] = await Promise.all([
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase.from("posts").select("id", { count: "exact", head: true }),
-    supabase.from("reports").select("id", { count: "exact", head: true }),
-    supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved"),
-    supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved").eq("priority", "urgent"),
-    supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved").lt("due_at", isoNow),
-    supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved"),
-    supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
-    supabase.from("posts").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
+    isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true })) : null,
+    isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true })) : null,
+    canModerate ? count(supabase.from("reports").select("id", { count: "exact", head: true })) : null,
+    canModerate ? count(supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved")) : null,
+    canModerate ? count(supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved").eq("priority", "urgent")) : null,
+    canModerate ? count(supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved").lt("due_at", isoNow)) : null,
+    canSupport ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved")) : null,
+    canSupport ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved").lt("response_due_at", isoNow)) : null,
+    canSupport ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
   ]);
-  const errors = [members, posts, reports, activeCases, urgentCases, overdueCases, openTickets, newMembers, newPosts]
-    .filter((item) => item.error);
-  if (errors.length) throw new Error("One or more dashboard metrics could not be loaded.");
-
-  const context: AdminContext = {
-    generatedAt: isoNow,
-    members: members.count ?? 0,
-    posts: posts.count ?? 0,
-    reports: reports.count ?? 0,
-    activeCases: activeCases.count ?? 0,
-    urgentCases: urgentCases.count ?? 0,
-    overdueCases: overdueCases.count ?? 0,
-    openTickets: openTickets.count ?? 0,
-    newMembers7d: newMembers.count ?? 0,
-    newPosts7d: newPosts.count ?? 0,
+  return {
+    generatedAt: isoNow, members, posts, reports, activeCases, urgentCases,
+    overdueCases, openTickets, overdueTickets, newTickets7d, newMembers7d: newMembers, newPosts7d: newPosts,
   };
-  return context;
 }
 
 export async function GET(request: NextRequest) {
   const access = await getAdmin(request);
   if ("error" in access) return access.error!;
   try {
-    const metrics = await getContext(access.supabase);
+    const metrics = await getContext(access.supabase, access.role);
     return NextResponse.json({
       metrics,
+      role: access.role,
       aiEnabled: process.env.VERITY_ADMIN_AI_ENABLED === "true" && Boolean(process.env.GEMINI_API_KEY),
       aiModel: "gemini-2.5-flash",
     }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
@@ -112,7 +110,7 @@ export async function POST(request: NextRequest) {
   if (question.length < 4 || question.length > 500) return jsonError("Enter a question between 4 and 500 characters.", 400);
 
   try {
-    const metrics = await getContext(access.supabase);
+    const metrics = await getContext(access.supabase, access.role);
     const prompt = [
       "You are Verity's internal admin operations assistant.",
       "Answer using only the verified aggregate metrics supplied below. Never invent a count, user, event, revenue, cause, or trend.",
