@@ -209,6 +209,7 @@ export default function VerifyPage() {
   const [coverageLoading, setCoverageLoading] = useState(false);
   const [coverageError, setCoverageError] = useState("");
   const detailsRequestId = useRef(0);
+  const coverageRequestId = useRef(0);
 
   const selectedPost = posts.find((post) => post.id === selectedPostId) || null;
 
@@ -251,6 +252,7 @@ export default function VerifyPage() {
         : postQuery.eq("status", "published");
       const { data, error: postError } = await postQuery
         .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(100);
       if (postError) throw postError;
 
@@ -340,6 +342,7 @@ export default function VerifyPage() {
           .select("id, post_id, provider, check_type, status, claim, signals, supporting, contradicting, explanation, uncertainty, is_demo, assessed_at, created_at")
           .eq("post_id", postId)
           .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
           .limit(20),
         supabase
           .from("post_labels")
@@ -385,6 +388,8 @@ export default function VerifyPage() {
 
   useEffect(() => {
     const post = posts.find((item) => item.id === selectedPostId);
+    coverageRequestId.current += 1;
+    setCoverageLoading(false);
     setCoverageQuery((post?.title || post?.body || "").slice(0, 240));
     setCoverageResults([]);
     setCoverageCheckedAt("");
@@ -410,6 +415,7 @@ export default function VerifyPage() {
       return;
     }
 
+    const requestId = ++coverageRequestId.current;
     setCoverageLoading(true);
     setCoverageError("");
     setCoverageResults([]);
@@ -424,12 +430,15 @@ export default function VerifyPage() {
         results?: CoverageResult[];
       };
       if (!response.ok) throw new Error(payload.error || "Could not search related coverage.");
+      if (requestId !== coverageRequestId.current) return;
       setCoverageResults(payload.results ?? []);
       setCoverageCheckedAt(payload.checkedAt ?? new Date().toISOString());
     } catch (err) {
-      setCoverageError(err instanceof Error ? err.message : "Could not search related coverage.");
+      if (requestId === coverageRequestId.current) {
+        setCoverageError(err instanceof Error ? err.message : "Could not search related coverage.");
+      }
     } finally {
-      setCoverageLoading(false);
+      if (requestId === coverageRequestId.current) setCoverageLoading(false);
     }
   }
 
