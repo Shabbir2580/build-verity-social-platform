@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ClipboardList, LoaderCircle, RefreshCw, ShieldCheck, AlertTriangle, Clock3, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, ClipboardList, LoaderCircle, RefreshCw, ShieldCheck, AlertTriangle, Clock3, CheckCircle2, XCircle, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type CaseRow = {
@@ -45,6 +45,7 @@ export default function ModerationPage() {
   const [actions, setActions] = useState<ActionRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("active");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -66,16 +67,39 @@ export default function ModerationPage() {
   const selectedReports = reports.filter((item) => item.case_id === selectedId);
   const selectedAppeals = appeals.filter((item) => item.case_id === selectedId);
   const selectedChecks = selected?.post_id ? checks.filter((item) => item.post_id === selected.post_id) : [];
-  const filteredCases = useMemo(() => cases
-    .filter((item) => filter === "mine" ? item.assigned_to === userId : filter === "unassigned" ? item.assigned_to === null && item.status !== "resolved" : filter === "active" ? item.status !== "resolved" : filter === "all" ? true : item.status === filter)
-    .sort((a, b) => {
-      const priorityRank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-      const priorityDifference = (priorityRank[a.priority] ?? 2) - (priorityRank[b.priority] ?? 2);
-      if (priorityDifference !== 0) return priorityDifference;
-      const dueDifference = new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
-      if (dueDifference !== 0) return dueDifference;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }), [cases, filter, userId]);
+  const filteredCases = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return cases
+      .filter((item) => filter === "mine" ? item.assigned_to === userId : filter === "unassigned" ? item.assigned_to === null && item.status !== "resolved" : filter === "active" ? item.status !== "resolved" : filter === "all" ? true : item.status === filter)
+      .filter((item) => {
+        if (!term) return true;
+        const linkedPost = item.post_id ? posts[item.post_id] : undefined;
+        const linkedReports = reports.filter((report) => report.case_id === item.id);
+        const linkedAppeals = appeals.filter((appeal) => appeal.case_id === item.id);
+        const peopleText = [item.opened_by, item.assigned_to, ...linkedReports.map((report) => report.reporter_id), ...linkedAppeals.map((appeal) => appeal.appellant_id)]
+          .map((id) => id ? profiles[id]?.username || profiles[id]?.display_name || "" : "").join(" ");
+        const searchable = [item.id, item.case_type, item.status, item.priority, item.summary, linkedPost?.title, linkedPost?.body, linkedPost?.removal_reason, peopleText,
+          ...linkedReports.flatMap((report) => [report.reason, report.details, report.target_type]),
+          ...linkedAppeals.flatMap((appeal) => [appeal.reason, appeal.evidence])]
+          .filter(Boolean).join(" ").toLowerCase();
+        return searchable.includes(term);
+      })
+      .sort((a, b) => {
+        const priorityRank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+        const priorityDifference = (priorityRank[a.priority] ?? 2) - (priorityRank[b.priority] ?? 2);
+        if (priorityDifference !== 0) return priorityDifference;
+        const dueDifference = new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
+        if (dueDifference !== 0) return dueDifference;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+  }, [cases, filter, userId, search, posts, reports, appeals, profiles]);
+
+  const queueSummary = useMemo(() => ({
+    active: cases.filter((item) => item.status !== "resolved").length,
+    unassigned: cases.filter((item) => item.status !== "resolved" && !item.assigned_to).length,
+    urgent: cases.filter((item) => item.status !== "resolved" && item.priority === "urgent").length,
+    overdue: cases.filter((item) => item.status !== "resolved" && item.due_at && new Date(item.due_at).getTime() < Date.now()).length,
+  }), [cases]);
 
   const load = useCallback(async (append = false) => {
     if (append) setLoadingMore(true);
@@ -218,16 +242,23 @@ export default function ModerationPage() {
         </div>
         {error && <div role="alert" className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
         {notice && <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
-        <div className="mt-6 flex flex-wrap gap-2">{[["active","Active"],["mine","Assigned to me"],["unassigned","Unassigned"],["awaiting_review","Awaiting review"],["under_review","Under review"],["awaiting_information","Awaiting information"],["resolved","Resolved"],["all","All cases"]].map(([value,label]) => <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-full px-4 py-2 text-xs font-bold ${filter === value ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-indigo-200"}`}>{label}</button>)}</div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[["Active cases",queueSummary.active,"Cases not resolved",ClipboardList],["Unassigned",queueSummary.unassigned,"Waiting for a reviewer",Clock3],["Urgent",queueSummary.urgent,"Urgent priority · open cases",AlertTriangle],["Overdue",queueSummary.overdue,"Past their recorded due time",XCircle]].map(([label,value,note,Icon]) => <article key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-500">{String(label)}</span><Icon size={16} className="text-indigo-600"/></div><p className="mt-2 text-2xl font-black tabular-nums">{Number(value).toLocaleString()}</p><p className="mt-1 text-[11px] text-slate-400">{String(note)}</p></article>)}
+        </div>
+        <div className="mt-5 flex flex-col gap-3">
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search size={16} className="shrink-0 text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search case, post, report, appeal or member" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/>{search && <button type="button" onClick={() => setSearch("")} className="rounded-lg px-2 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-50">Clear</button>}</label>
+          <div className="flex flex-wrap gap-2">{[["active","Active"],["mine","Assigned to me"],["unassigned","Unassigned"],["awaiting_review","Awaiting review"],["under_review","Under review"],["awaiting_information","Awaiting information"],["resolved","Resolved"],["all","All cases"]].map(([value,label]) => <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-full px-4 py-2 text-xs font-bold ${filter === value ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-indigo-200"}`}>{label}</button>)}</div>
+          <p className="text-xs text-slate-500">Showing {filteredCases.length} matching cases from {cases.length} loaded cases. Priority and due date determine the order.</p>
+        </div>
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <section className="space-y-3">
-            {filteredCases.length === 0 ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">{loading ? "Loading cases..." : "No cases in this view."}</div> : filteredCases.map((item) => {
+            {filteredCases.length === 0 ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">{loading ? "Loading cases..." : search ? "No cases match your search. Try a different name, case ID or keyword." : "No cases in this view."}</div> : filteredCases.map((item) => {
               const reportCount = reports.filter((report) => report.case_id === item.id).length;
               const appealCount = appeals.filter((appeal) => appeal.case_id === item.id).length;
               return <button key={item.id} type="button" onClick={() => void openCase(item)} className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${selectedId === item.id ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200 bg-white hover:border-indigo-200"}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-extrabold uppercase tracking-wide text-indigo-700">{item.case_type.replace("_"," ")}</span><span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase ${priorityStyles[item.priority] ?? priorityStyles.normal}`}>{item.priority}</span></div>
                 <p className="mt-2 line-clamp-2 text-sm font-bold text-slate-900">{item.summary || "Review case"}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{statusLabels[item.status] ?? item.status}</span><span>{item.assigned_to ? `Assigned: @${profiles[item.assigned_to]?.username || "staff"}` : "Unassigned"}</span>{item.needs_second_review && <span className="font-bold text-rose-700">Second review</span>}<span>{reportCount} reports</span><span>{appealCount} appeals</span><span className="inline-flex items-center gap-1"><Clock3 size={12} />Due {new Date(item.due_at).toLocaleDateString()}</span></div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{statusLabels[item.status] ?? item.status}</span><span>{item.assigned_to ? `Assigned: @${profiles[item.assigned_to]?.username || "staff"}` : "Unassigned"}</span>{item.needs_second_review && <span className="font-bold text-rose-700">Second review</span>}<span>{reportCount} reports</span><span>{appealCount} appeals</span><span className={`inline-flex items-center gap-1 ${item.status !== "resolved" && new Date(item.due_at).getTime() < Date.now() ? "font-extrabold text-rose-700" : ""}`}><Clock3 size={12} />{item.status !== "resolved" && new Date(item.due_at).getTime() < Date.now() ? "Overdue" : "Due"} {new Date(item.due_at).toLocaleDateString()}</span></div>
               </button>;
             })}
             {hasMore && <div className="flex justify-center pt-2"><button type="button" onClick={() => void loadMore()} disabled={loadingMore || loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 hover:border-indigo-200 hover:text-indigo-700 disabled:opacity-50">{loadingMore && <LoaderCircle size={14} className="animate-spin" />}{loadingMore ? "Loading more cases..." : "Load older cases"}</button></div>}
