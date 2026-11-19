@@ -38,11 +38,12 @@ export default function StaffSupportPage() {
 
   const selected = tickets.find((ticket) => ticket.id === selectedId) ?? null;
   const visible = useMemo(() => tickets.filter((ticket) => {
-    const statusMatch = filter === "all" || (filter === "open" ? ticket.status !== "resolved" : ticket.status === filter);
+    const isBusinessEnquiry = ticket.subject.startsWith("Business enquiry —") || ticket.description.includes("VERITY BUSINESS ENQUIRY");
+    const statusMatch = filter === "all" || (filter === "business" ? isBusinessEnquiry : filter === "open" ? ticket.status !== "resolved" : ticket.status === filter);
     const teamMatch = team === "all" || ticket.assigned_team === team;
     const owner = profiles[ticket.user_id];
     const term = search.trim().toLowerCase();
-    const searchMatch = !term || String(ticket.ticket_number).includes(term) || ticket.subject.toLowerCase().includes(term) || (owner?.username ?? "").toLowerCase().includes(term) || (owner?.display_name ?? "").toLowerCase().includes(term);
+    const searchMatch = !term || String(ticket.ticket_number).includes(term) || ticket.subject.toLowerCase().includes(term) || ticket.description.toLowerCase().includes(term) || (owner?.username ?? "").toLowerCase().includes(term) || (owner?.display_name ?? "").toLowerCase().includes(term);
     return statusMatch && teamMatch && searchMatch;
   }), [tickets, filter, team, search, profiles]);
 
@@ -152,14 +153,14 @@ export default function StaffSupportPage() {
       {notice && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
       <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
         <label className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search size={16} className="text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ticket, subject or member" className="w-full bg-transparent text-sm outline-none"/></label>
-        <select value={filter} onChange={(event) => setFilter(event.target.value)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold">{[["open","All open"],["all","All statuses"],...statuses.map((status) => [status,pretty(status)])].map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <select value={filter} onChange={(event) => setFilter(event.target.value)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold">{[["open","All open"],["business","Business enquiries"],["all","All statuses"],...statuses.map((status) => [status,pretty(status)])].map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
         <select value={team} onChange={(event) => setTeam(event.target.value)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold"><option value="all">All teams</option><option value="support">Support</option><option value="trust_safety">Trust & safety</option></select>
       </div>
       <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.2fr)]">
         <section className="space-y-3">
           {visible.length ? visible.map((ticket) => { const person = profiles[ticket.user_id]; return <button key={ticket.id} onClick={() => { setSelectedId(ticket.id); setNotice(""); setError(""); }} className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${selectedId === ticket.id ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200 bg-white hover:border-indigo-200"}`}>
             <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-extrabold uppercase tracking-wide text-indigo-700">VER-{String(ticket.ticket_number).padStart(6,"0")}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold">{pretty(ticket.status)}</span></div>
-            <p className="mt-2 font-bold">{ticket.subject}</p><p className="mt-1 text-xs text-slate-500">{person?.display_name || "Member"} · @{person?.username || "unknown"} · {pretty(ticket.category)}</p>
+            <p className="mt-2 font-bold">{ticket.subject}</p><p className="mt-1 text-xs text-slate-500">{person?.display_name || "Member"} · @{person?.username || "unknown"} · {ticket.subject.startsWith("Business enquiry —") || ticket.description.includes("VERITY BUSINESS ENQUIRY") ? "Business lead" : pretty(ticket.category)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500"><span className="font-bold">{pretty(ticket.priority)} priority</span><span>{pretty(ticket.assigned_team)}</span><span className="inline-flex items-center gap-1"><Clock3 size={12}/> Due {stamp(ticket.response_due_at)}</span></div>
           </button>; }) : <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{loading ? "Refreshing…" : "No tickets match these filters."}</div>}
           {hasMore && <button onClick={() => void loadMore()} disabled={loadingMore || loading} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:border-indigo-300 disabled:opacity-50">{loadingMore ? "Loading older tickets…" : "Load older tickets"}</button>}
