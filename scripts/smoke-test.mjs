@@ -87,6 +87,11 @@ try {
     }
 
     process.stdout.write(`PASS ${path} (${response.status})\n`);
+    if (path === "/") {
+      if (!html.includes('aria-label="Open navigation menu"') || !html.includes('aria-controls="verity-mobile-menu"') || !html.includes('id="verity-mobile-menu"')) {
+        throw new Error("Home page is missing its accessible mobile navigation toggle or sidebar target.");
+      }
+    }
   }
 
   const sharedPostId = "00000000-0000-4000-8000-000000000001";
