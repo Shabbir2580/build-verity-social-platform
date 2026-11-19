@@ -12,6 +12,9 @@ type Metrics = {
   openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
   newMembers7d: number | null; newPosts7d: number | null;
   previousMembers7d: number | null; previousPosts7d: number | null; previousTickets7d: number | null;
+  newComments7d: number | null; previousComments7d: number | null;
+  newReactions7d: number | null; previousReactions7d: number | null;
+  newCommunityJoins7d: number | null; previousCommunityJoins7d: number | null;
   businessLeads: number | null; openBusinessLeads: number | null; aiRequests24h: number | null;
 };
 type Message = { role: "user" | "assistant"; content: string };
@@ -207,6 +210,9 @@ export default function AdminAiPage() {
             {staffRole === "admin" && <>
               <PeriodComparison label="New members" current={metrics?.newMembers7d ?? null} previous={metrics?.previousMembers7d ?? null}/>
               <PeriodComparison label="Posts created" current={metrics?.newPosts7d ?? null} previous={metrics?.previousPosts7d ?? null}/>
+              <PeriodComparison label="Comments created" current={metrics?.newComments7d ?? null} previous={metrics?.previousComments7d ?? null}/>
+              <PeriodComparison label="Post reactions" current={metrics?.newReactions7d ?? null} previous={metrics?.previousReactions7d ?? null}/>
+              <PeriodComparison label="Community joins" current={metrics?.newCommunityJoins7d ?? null} previous={metrics?.previousCommunityJoins7d ?? null}/>
             </>}
             <PeriodComparison label="Support tickets created" current={metrics?.newTickets7d ?? null} previous={metrics?.previousTickets7d ?? null}/>
           </div>

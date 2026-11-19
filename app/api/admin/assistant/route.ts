@@ -12,6 +12,9 @@ type AdminContext = {
   openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
   newMembers7d: number | null; newPosts7d: number | null;
   previousMembers7d: number | null; previousPosts7d: number | null; previousTickets7d: number | null;
+  newComments7d: number | null; previousComments7d: number | null;
+  newReactions7d: number | null; previousReactions7d: number | null;
+  newCommunityJoins7d: number | null; previousCommunityJoins7d: number | null;
   businessLeads: number | null; openBusinessLeads: number | null; aiRequests24h: number | null;
 };
 
@@ -65,7 +68,9 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
   };
   const [
     members, posts, reports, activeCases, urgentCases, overdueCases,
-    openTickets, overdueTickets, newTickets7d, newMembers, newPosts, previousMembers, previousPosts, previousTickets, businessLeads, openBusinessLeads, aiRequests24h,
+    openTickets, overdueTickets, newTickets7d, newMembers, newPosts, previousMembers, previousPosts, previousTickets,
+    newComments, previousComments, newReactions, previousReactions, newCommunityJoins, previousCommunityJoins,
+    businessLeads, openBusinessLeads, aiRequests24h,
   ] = await Promise.all([
     isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true })) : null,
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true })) : null,
@@ -81,6 +86,12 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
     isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", twoWeeksAgo).lt("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true }).gte("created_at", twoWeeksAgo).lt("created_at", weekAgo)) : null,
     canSupport ? count(ticketQuery().gte("created_at", twoWeeksAgo).lt("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("comments").select("id", { count: "exact", head: true }).eq("is_deleted", false).gte("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("comments").select("id", { count: "exact", head: true }).eq("is_deleted", false).gte("created_at", twoWeeksAgo).lt("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("reactions").select("post_id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("reactions").select("post_id", { count: "exact", head: true }).gte("created_at", twoWeeksAgo).lt("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("community_memberships").select("community_id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("community_memberships").select("community_id", { count: "exact", head: true }).gte("created_at", twoWeeksAgo).lt("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%")) : null,
     isAdmin ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%").neq("status", "resolved")) : null,
     count(supabase.from("audit_logs").select("id", { count: "exact", head: true })
@@ -92,6 +103,9 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
     generatedAt: isoNow, members, posts, reports, activeCases, urgentCases,
     overdueCases, openTickets, overdueTickets, newTickets7d, newMembers7d: newMembers, newPosts7d: newPosts,
     previousMembers7d: previousMembers, previousPosts7d: previousPosts, previousTickets7d: previousTickets,
+    newComments7d: newComments, previousComments7d: previousComments,
+    newReactions7d: newReactions, previousReactions7d: previousReactions,
+    newCommunityJoins7d: newCommunityJoins, previousCommunityJoins7d: previousCommunityJoins,
     businessLeads, openBusinessLeads, aiRequests24h,
   };
 }
@@ -178,7 +192,7 @@ export async function POST(request: NextRequest) {
       question: "Answer the staff question directly. Start with the direct answer, then give evidence from exact supplied metric names and values, then practical next steps.",
       briefing: "Create a short operational briefing with exactly these headings: Situation; What needs attention; Recommended next steps; Data limitations. Prioritize the staff member's own role.",
       priorities: "Rank up to five priorities by urgency. For each, state the supplied metric that supports it, why it matters operationally, and a safe next step. If no urgent work is visible, say so.",
-      growth: "Compare the current seven-day member, post and support-ticket counts with the immediately preceding seven-day period where both values are supplied. Calculate absolute changes and percentage changes only when the previous-period denominator is greater than zero. If the previous period is zero, report the absolute change and state that percentage change is undefined. Distinguish volume changes from retention or user growth; these counts do not measure active users, quality or retention.",
+      growth: "Compare the current seven-day member, post, comment, reaction and community-join counts with the immediately preceding seven-day period where both values are supplied. Calculate absolute changes and percentage changes only when the previous-period denominator is greater than zero. If the previous period is zero, report the absolute change and state that percentage change is undefined. Distinguish volume changes from retention or user growth; these counts do not measure active users, quality or retention.",
       workflow: "Give a practical step-by-step workflow for the staff member's role. Tie each step to a supplied metric where possible. Do not claim you can access or change individual records.",
     };
     const systemInstruction = [
