@@ -98,7 +98,7 @@ Several database foundations (including structured Q&A, polls, follows, notifica
 
 ## Staff AI usage and reporting
 
-The internal staff assistant is disabled by default and requires both `GEMINI_API_KEY` and `VERITY_ADMIN_AI_ENABLED=true`. Best-effort application-level request limits are 12 per hour and 40 per day per staff account; provider-side quotas remain the hard ceiling. Usage events are recorded in the existing admin audit log with model and token counts; prompt text is not stored. Token counts are not a currency-cost estimate. Provider billing and quota dashboards remain the source of truth for actual spend.
+The internal staff assistant is disabled by default and requires both `GEMINI_API_KEY` and `VERITY_ADMIN_AI_ENABLED=true`. Best-effort application-level request limits are 12 per hour and 40 per day per staff account; provider-side quotas remain the hard ceiling. Staff must explicitly consent before sending a question to Google; the UI warns them not to include names, private messages, credentials or personal data and discloses Google's free-tier data-use terms. Usage events are recorded in the existing admin audit log with model and token counts; prompt text is not stored. Token counts are not a currency-cost estimate. Provider billing and quota dashboards remain the source of truth for actual spend.
 
 The admin Revenue & Impact workspace separates commercial enquiries and platform activity from recognized revenue. No payment processor or reconciled financial ledger is connected yet, so revenue, refunds, net revenue and profit are deliberately shown as unavailable. The future public impact report must use reviewed, privacy-safe aggregates and must never expose private financial records.
 
