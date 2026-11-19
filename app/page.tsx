@@ -892,15 +892,29 @@ export default function HomePage() {
   }
 
   async function deletePost(postId: string) {
-    if (!user || !window.confirm("Delete this post? It will disappear from the feed. Moderation records are preserved.")) return;
+    if (!user || !window.confirm("Delete this post and its attached media? It will disappear from the feed. Moderation records are preserved.")) return;
     setError(""); setNotice("");
     const supabase = createClient();
-    const { data: removedPost, error: deleteError } = await supabase.from("posts")
-      .update({ status: "removed", removal_reason: "Deleted by the author" })
-      .eq("id", postId).eq("author_id", user.id).eq("status", "published")
-      .select("id").maybeSingle();
-    if (deleteError || !removedPost) {
-      setError(deleteError ? "Could not delete this post: " + deleteError.message : "This post is no longer available to delete. Refresh the feed and try again.");
+    try {
+      const { data: mediaRows, error: mediaLookupError } = await supabase
+        .from("post_media").select("id, storage_path").eq("post_id", postId);
+      if (mediaLookupError) throw mediaLookupError;
+      const mediaPaths = (mediaRows ?? []).map((media) => media.storage_path);
+      if (mediaPaths.length) {
+        const { error: storageError } = await supabase.storage.from("post-media").remove(mediaPaths);
+        if (storageError) throw new Error("Could not remove attached media. The post was not deleted: " + storageError.message);
+        const { error: metadataError } = await supabase.from("post_media").delete().eq("post_id", postId);
+        if (metadataError) throw new Error("Media files were removed, but their records could not be cleaned up: " + metadataError.message);
+      }
+      const { data: removedPost, error: deleteError } = await supabase.from("posts")
+        .update({ status: "removed", removal_reason: "Deleted by the author" })
+        .eq("id", postId).eq("author_id", user.id).eq("status", "published")
+        .select("id").maybeSingle();
+      if (deleteError || !removedPost) {
+        throw new Error(deleteError ? "Could not delete this post: " + deleteError.message : "This post is no longer available to delete. Refresh the feed and try again.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete this post.");
       return;
     }
     setPosts((current) => current.filter((post) => post.id !== postId));
