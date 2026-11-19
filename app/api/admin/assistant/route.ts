@@ -26,13 +26,13 @@ function jsonError(message: string, status: number) {
 }
 
 async function getAdmin(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !secret) return { error: jsonError("Secure database access is not configured.", 503) };
-
   const authorization = request.headers.get("authorization") || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   if (!token) return { error: jsonError("Sign in to access the admin assistant.", 401) };
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !secret) return { error: jsonError("Secure database access is not configured.", 503) };
 
   const supabase = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: auth, error: authError } = await supabase.auth.getUser(token);
