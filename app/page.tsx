@@ -392,6 +392,15 @@ export default function HomePage() {
 
       const currentUser = authUser ? { id: authUser.id, email: authUser.email } : null;
       setUser(currentUser);
+      let followedUserIds: string[] = [];
+      if (currentUser && filter === "Following") {
+        const { data: followingRows, error: followingError } = await supabase
+          .from("follows")
+          .select("following_id")
+          .eq("follower_id", currentUser.id);
+        if (followingError) throw followingError;
+        followedUserIds = (followingRows ?? []).map((row) => row.following_id);
+      }
 
       if (currentUser) {
         const { count: unreadCount, error: unreadError } = await supabase.from("notifications")
@@ -418,12 +427,18 @@ export default function HomePage() {
         setMembershipRoles({});
       }
 
-      const { data: postData, error: postError } = await supabase
+      let postQuery = supabase
         .from("posts")
         .select("id, author_id, community_id, type, title, body, link_url, source_url, declared_category, ai_disclosure, tags, status, created_at")
         .eq("status", "published")
         .order("created_at", { ascending: false })
         .limit(50);
+      if (filter === "Following") {
+        postQuery = postQuery.in("author_id", followedUserIds.length
+          ? followedUserIds
+          : ["00000000-0000-0000-0000-000000000000"]);
+      }
+      const { data: postData, error: postError } = await postQuery;
       if (postError) throw postError;
 
       const rows = (postData ?? []) as unknown as DbPost[];
@@ -564,9 +579,9 @@ export default function HomePage() {
 
   useEffect(() => {
     void loadFeed();
-    // Initial load only; explicit refreshes call loadFeed directly.
+    // Refresh the query when the feed scope changes (not just its visual sort).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filter]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1343,7 +1358,7 @@ export default function HomePage() {
 
               <div className="mb-5 mt-8 flex items-end justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-indigo-600">Your daily dose of curiosity</p><h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{pageTitleFor(activePage)}</h2><p className="mt-1.5 text-sm text-slate-500">Good conversations start with better questions.</p></div><button type="button" onClick={() => setCreateOpen(true)} className="hidden min-h-11 shrink-0 items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 sm:flex"><Plus size={17} /> Post</button></div>
 
-              <div className="mb-5 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">{[{ name: "Popular", icon: Flame }, { name: "Latest", icon: Clock3 }, { name: "Questions", icon: CircleHelp }, { name: "Discussions", icon: MessageCircle }, { name: "Joined communities", icon: Users }].map(({ name, icon: Icon }) => <button key={name} type="button" onClick={() => setFilter(name)} className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition sm:text-sm ${filter === name ? "bg-slate-950 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}><Icon size={15} />{name}</button>)}</div>
+              <div className="mb-5 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">{[{ name: "Popular", icon: Flame }, { name: "Following", icon: Users }, { name: "Latest", icon: Clock3 }, { name: "Questions", icon: CircleHelp }, { name: "Discussions", icon: MessageCircle }, { name: "Joined communities", icon: Users }].map(({ name, icon: Icon }) => <button key={name} type="button" onClick={() => setFilter(name)} className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition sm:text-sm ${filter === name ? "bg-slate-950 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}><Icon size={15} />{name}</button>)}</div>
 
               {notice && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
               {error && <div role="alert" className="mb-4 break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{error}</div>}
@@ -1352,7 +1367,7 @@ export default function HomePage() {
 
               <div className="mb-4 flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-3 text-xs leading-5 text-indigo-950"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-indigo-700" /><p><strong>Content with context.</strong> Labels reflect creator declarations or unverified status. Automated AI detection is not connected yet.</p></div>
 
-              {loading ? <LoadingBox label="Loading posts from Supabase..." /> : visiblePosts.length === 0 ? <EmptyState title={search ? "No matching posts" : activePage === "Saved" ? "No saved posts yet" : filter === "Questions" || activePage === "Questions" ? "No questions yet" : "Your feed starts here"} body={search ? "Try another search or clear the search field." : activePage === "Saved" ? "Tap Save on any post to keep it here for later." : "No published posts were returned. Sign in and publish the first real post to your Verity community."} action={!search && activePage !== "Saved" ? () => { setError(""); setCreateOpen(true); } : undefined} /> : <div className="space-y-4">{visiblePosts.map((post) => {
+              {loading ? <LoadingBox label="Loading posts from Supabase..." /> : visiblePosts.length === 0 ? <EmptyState title={search ? "No matching posts" : filter === "Following" ? "Your following feed is quiet" : activePage === "Saved" ? "No saved posts yet" : filter === "Questions" || activePage === "Questions" ? "No questions yet" : "Your feed starts here"} body={search ? "Try another search or clear the search field." : filter === "Following" ? user ? "Posts from people you follow will appear here. Follow members from their profiles to build this feed." : "Log in and follow members to build a personalized feed." : activePage === "Saved" ? "Tap Save on any post to keep it here for later." : "No published posts were returned. Sign in and publish the first real post to your Verity community."} action={!search && activePage !== "Saved" && filter !== "Following" ? () => { setError(""); setCreateOpen(true); } : undefined} /> : <div className="space-y-4">{visiblePosts.map((post) => {
                 const isLiked = liked.includes(post.id);
                 const isSaved = saved.includes(post.id);
                 const postComments = commentsByPost[post.id] || [];
