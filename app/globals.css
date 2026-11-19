@@ -959,3 +959,55 @@ body { color: var(--verity-ink); background: #fff; }
   .verity-product-page > section { padding-top: 18px !important; }
   .verity-product-page article { border-radius: 13px !important; }
 }
+
+/* Verity enterprise palette — 60/30/10 colour roles shared across workspaces */
+.verity-workspace {
+  --workspace-ink: #202b3a;
+  --workspace-muted: #697586;
+  --workspace-line: #e5e3dd;
+  --workspace-paper: #f6f5f1;
+  --workspace-brand: #405a91;
+  --workspace-teal: #247a78;
+  --workspace-highlight: #c58a4a;
+  background: var(--workspace-paper) !important;
+  color: var(--workspace-ink);
+}
+.verity-workspace > header {
+  background: rgba(255,255,255,.96) !important;
+  border-color: var(--workspace-line) !important;
+}
+.verity-workspace .verity-ai-hero {
+  border: 1px solid rgba(255,255,255,.12);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(36,122,120,.30), transparent 34%),
+    linear-gradient(122deg,#17263c 0%,#243b59 62%,#2b4b62 100%);
+  box-shadow: 0 16px 34px rgba(23,38,60,.13);
+}
+.verity-workspace .verity-ai-hero .verity-ai-accent { color: #a9d7d0; }
+.verity-workspace .verity-ai-hero .verity-ai-primary {
+  color: #17263c;
+  background: #f6f5f1;
+}
+.verity-workspace .verity-ai-hero .verity-ai-primary:hover { background: #fff; }
+.verity-workspace .verity-ai-hero .verity-ai-secondary {
+  border-color: rgba(255,255,255,.24);
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+.verity-workspace .verity-ai-hero .verity-ai-secondary:hover { background: rgba(255,255,255,.15); }
+.verity-workspace .verity-ai-brand { color: var(--workspace-brand) !important; }
+.verity-workspace .verity-ai-teal { color: var(--workspace-teal) !important; }
+.verity-workspace .verity-ai-highlight { color: var(--workspace-highlight) !important; }
+.verity-workspace .verity-ai-user-message { background: var(--workspace-brand) !important; }
+.verity-workspace .verity-ai-send { background: var(--workspace-brand) !important; }
+.verity-workspace .verity-ai-send:hover { background: #314875 !important; }
+.verity-workspace .verity-ai-panel { border-color: var(--workspace-line) !important; border-radius: 18px !important; }
+.verity-workspace .verity-ai-chat { background: #f8f8f5 !important; }
+.verity-workspace .verity-ai-suggestion:hover { border-color: #b9c8c4 !important; background: #f0f6f3 !important; }
+.verity-workspace .verity-ai-note { border-color: #eadcc8 !important; background: #fbf5ec !important; color: #74552e !important; }
+.verity-workspace .rounded-2xl.border,
+.verity-workspace article.rounded-2xl,
+.verity-workspace section.rounded-2xl { border-color: var(--workspace-line); }
+@media (max-width: 639px) {
+  .verity-workspace .verity-ai-hero { border-radius: 18px !important; padding: 22px !important; }
+}
