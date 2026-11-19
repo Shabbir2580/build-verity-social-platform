@@ -56,6 +56,7 @@ export default function AdminAiPage() {
   const [staffRole, setStaffRole] = useState<"admin" | "moderator" | "support" | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
+  const [aiConsent, setAiConsent] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -93,6 +94,7 @@ export default function AdminAiPage() {
     event?.preventDefault();
     const prompt = (preset ?? question).trim();
     if (!prompt || sending) return;
+    if (!aiConsent) { setError("Confirm the Google Gemini data-use notice before sending a question."); return; }
     setMessages((current) => [...current, { role: "user", content: prompt }]);
     setQuestion("");
     setSending(true);
@@ -173,7 +175,7 @@ export default function AdminAiPage() {
               <h3 className="mt-4 font-semibold text-slate-800">What would you like to understand?</h3>
               <p className="mt-1 text-sm text-slate-500">Start with one of these questions.</p>
               <div className="mt-5 grid gap-2 text-left sm:grid-cols-2">
-                {(staffRole ? suggestionsByRole[staffRole] : suggestionsByRole.admin).map((item) => <button key={item} disabled={!aiEnabled || sending} onClick={() => void ask(undefined, item)} className="rounded-xl border border-slate-200 bg-white p-3 text-left text-xs font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50">{item}</button>)}
+                {(staffRole ? suggestionsByRole[staffRole] : suggestionsByRole.admin).map((item) => <button key={item} disabled={!aiEnabled || !aiConsent || sending} onClick={() => void ask(undefined, item)} className="rounded-xl border border-slate-200 bg-white p-3 text-left text-xs font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50">{item}</button>)}
               </div>
             </div>}
             {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-[#34477f] px-4 py-3 text-sm leading-6 text-white" : "mr-auto max-w-[95%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700"}>
@@ -181,9 +183,13 @@ export default function AdminAiPage() {
             </div>)}
             {sending && <div className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle size={14} className="animate-spin"/> Reviewing current aggregate metrics…</div>}
           </div>
+          <label className="flex cursor-pointer items-start gap-2 border-t border-slate-100 bg-white px-4 pt-4 text-xs leading-5 text-slate-600">
+            <input type="checkbox" checked={aiConsent} onChange={(event) => setAiConsent(event.target.checked)} disabled={!aiEnabled || sending} className="mt-0.5 size-4 shrink-0 accent-indigo-700" />
+            <span>I understand that my question is sent to Google Gemini for processing. Google's free-tier data-use terms may allow submitted content to be used to improve Google products. I will ask only about aggregate operations and will not include names, private messages, credentials or personal data.</span>
+          </label>
           <form onSubmit={(event) => void ask(event)} className="flex gap-2 border-t border-slate-100 bg-white p-3 sm:p-4">
-            <input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={500} disabled={!aiEnabled || sending} placeholder={aiEnabled ? "Ask about workload, activity or priorities…" : "AI assistant is currently disabled"} className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-indigo-300 focus:bg-white disabled:opacity-60"/>
-            <button type="submit" disabled={!aiEnabled || sending || question.trim().length < 4} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#34477f] px-4 text-sm font-semibold text-white transition hover:bg-[#26375f] disabled:cursor-not-allowed disabled:opacity-40"><Send size={15}/><span className="hidden sm:inline">Ask</span></button>
+            <input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={500} disabled={!aiEnabled || !aiConsent || sending} placeholder={!aiEnabled ? "AI assistant is currently disabled" : aiConsent ? "Ask about workload, activity or priorities…" : "Confirm the Google data-use notice to continue"} className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-indigo-300 focus:bg-white disabled:opacity-60"/>
+            <button type="submit" disabled={!aiEnabled || !aiConsent || sending || question.trim().length < 4} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#34477f] px-4 text-sm font-semibold text-white transition hover:bg-[#26375f] disabled:cursor-not-allowed disabled:opacity-40"><Send size={15}/><span className="hidden sm:inline">Ask</span></button>
           </form>
           {!aiEnabled && <div className="border-t border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900"><strong>AI is not activated.</strong> This feature requires the existing Gemini key and the explicit server setting <code>VERITY_ADMIN_AI_ENABLED=true</code>. It is deliberately off by default to prevent unexpected API usage or charges.</div>}
           {error && <p role="alert" className="border-t border-rose-100 bg-rose-50 px-4 py-3 text-xs text-rose-800">{error}</p>}
