@@ -1296,6 +1296,7 @@ export default function HomePage() {
           </label>
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {isAdmin && <button type="button" onClick={() => router.push("/admin")} aria-label="Open admin console" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-xs font-extrabold text-indigo-800 transition hover:border-indigo-300 hover:bg-indigo-100 sm:px-3 sm:text-sm"><ShieldCheck size={15} /> Admin</button>}
             <button type="button" onClick={() => router.push("/verify")} className="hidden min-h-10 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-indigo-700 hover:bg-indigo-50 sm:flex"><Sparkles size={16} /> Verify</button>
             {user ? (
               <>
