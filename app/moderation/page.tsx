@@ -66,7 +66,16 @@ export default function ModerationPage() {
   const selectedReports = reports.filter((item) => item.case_id === selectedId);
   const selectedAppeals = appeals.filter((item) => item.case_id === selectedId);
   const selectedChecks = selected?.post_id ? checks.filter((item) => item.post_id === selected.post_id) : [];
-  const filteredCases = useMemo(() => cases.filter((item) => filter === "mine" ? item.assigned_to === userId : filter === "unassigned" ? item.assigned_to === null && item.status !== "resolved" : filter === "active" ? item.status !== "resolved" : filter === "all" ? true : item.status === filter), [cases, filter, userId]);
+  const filteredCases = useMemo(() => cases
+    .filter((item) => filter === "mine" ? item.assigned_to === userId : filter === "unassigned" ? item.assigned_to === null && item.status !== "resolved" : filter === "active" ? item.status !== "resolved" : filter === "all" ? true : item.status === filter)
+    .sort((a, b) => {
+      const priorityRank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+      const priorityDifference = (priorityRank[a.priority] ?? 2) - (priorityRank[b.priority] ?? 2);
+      if (priorityDifference !== 0) return priorityDifference;
+      const dueDifference = new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
+      if (dueDifference !== 0) return dueDifference;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }), [cases, filter, userId]);
 
   const load = useCallback(async (append = false) => {
     if (append) setLoadingMore(true);
@@ -204,7 +213,7 @@ export default function ModerationPage() {
       </header>
       <section className="mx-auto max-w-7xl pt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><div className="flex items-center gap-2 text-indigo-600"><ShieldCheck size={19} /><span className="text-xs font-extrabold uppercase tracking-wider">Trust & safety</span></div><h1 className="mt-2 text-3xl font-black tracking-tight">Moderation queue</h1><p className="mt-2 text-sm text-slate-500">Review reports and appeals, record decisions, and preserve an audit trail.</p></div>
+          <div><div className="flex items-center gap-2 text-indigo-600"><ShieldCheck size={19} /><span className="text-xs font-extrabold uppercase tracking-wider">Trust & safety</span></div><h1 className="mt-2 text-3xl font-black tracking-tight">Moderation queue</h1><p className="mt-2 text-sm text-slate-500">Urgent and overdue cases are prioritized first. Review reports and appeals, record decisions, and preserve an audit trail.</p></div>
           <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 disabled:opacity-50"><RefreshCw size={15} className={loading ? "animate-spin" : ""} />Refresh queue</button>
         </div>
         {error && <div role="alert" className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
