@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, Bot, BrainCircuit, Briefcase, Clock3, LoaderCircle, RefreshCw, Send, ShieldCheck, Sparkles, Users, FileText, Flag, Headphones, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Bot, BrainCircuit, Briefcase, Clock3, LoaderCircle, RefreshCw, Send, ShieldCheck, Sparkles, Users, FileText, Flag, Headphones, AlertTriangle, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Metrics = {
