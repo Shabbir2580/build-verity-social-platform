@@ -91,6 +91,19 @@ try {
   }
   process.stdout.write("PASS author post removal hides content before best-effort media cleanup\\n");
 
+  const productPageSources = await Promise.all([
+    readFile(new URL("../app/u/[username]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/people/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/communities/[slug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/notifications/page.tsx", import.meta.url), "utf8"),
+  ]);
+  for (const [index, source] of productPageSources.entries()) {
+    if (!source.includes("verity-product-page")) {
+      throw new Error(`Product page ${index + 1} is missing the shared responsive design shell.`);
+    }
+  }
+  process.stdout.write("PASS profile, people, community and notification pages use the shared product shell\\n");
+
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line"]) {
     if (!visualSystem.includes(marker)) throw new Error(`Visual design system is missing expected rule: ${marker}`);
