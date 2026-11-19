@@ -171,15 +171,22 @@ export default function AdminAiPage() {
           <h2 className="font-semibold">Operations snapshot</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">Current counts from Verity records. Refresh to retrieve a new snapshot.</p>
           <div className="mt-4 space-y-3">
-            {[
-              ["Urgent cases", metrics?.urgentCases ?? 0, AlertTriangle, "text-rose-600"],
-              ["Overdue cases", metrics?.overdueCases ?? 0, Clock3, "text-amber-600"],
-              ["All reports", metrics?.reports ?? 0, Flag, "text-slate-500"],
-              ["Open support tickets", metrics?.openTickets ?? 0, Headphones, "text-slate-500"],
-            ].map(([label, value, Icon, tone]) => <div key={String(label)} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-              <span className="flex items-center gap-2 text-sm text-slate-600"><Icon size={15} className={String(tone)}/>{String(label)}</span>
-              <strong className="text-sm tabular-nums">{Number(value).toLocaleString()}</strong>
-            </div>)}
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <span className="flex items-center gap-2 text-sm text-slate-600"><AlertTriangle size={15} className="text-rose-600"/>Urgent cases</span>
+              <strong className="text-sm tabular-nums">{(metrics?.urgentCases ?? 0).toLocaleString()}</strong>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <span className="flex items-center gap-2 text-sm text-slate-600"><Clock3 size={15} className="text-amber-600"/>Overdue cases</span>
+              <strong className="text-sm tabular-nums">{(metrics?.overdueCases ?? 0).toLocaleString()}</strong>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <span className="flex items-center gap-2 text-sm text-slate-600"><Flag size={15} className="text-slate-500"/>All reports</span>
+              <strong className="text-sm tabular-nums">{(metrics?.reports ?? 0).toLocaleString()}</strong>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-sm text-slate-600"><Headphones size={15} className="text-slate-500"/>Open support tickets</span>
+              <strong className="text-sm tabular-nums">{(metrics?.openTickets ?? 0).toLocaleString()}</strong>
+            </div>
           </div>
           {metrics && <p className="mt-4 text-[11px] text-slate-400">Updated {new Date(metrics.generatedAt).toLocaleString()}</p>}
           {loading && <p className="mt-3 text-xs text-slate-400">Loading metrics…</p>}
