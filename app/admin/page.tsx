@@ -36,6 +36,8 @@ export default function AdminPage() {
   const [suspensionTarget, setSuspensionTarget] = useState<Profile | null>(null);
   const [suspensionReason, setSuspensionReason] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedPostSearch, setDebouncedPostSearch] = useState("");
   const [peopleRoleFilter, setPeopleRoleFilter] = useState("all");
   const [peopleStatusFilter, setPeopleStatusFilter] = useState("all");
   const [saving, setSaving] = useState(false);
@@ -50,6 +52,16 @@ export default function AdminPage() {
   const [postActionTarget, setPostActionTarget] = useState<ManagedPost | null>(null);
   const [postAction, setPostAction] = useState<"remove_post" | "restrict_post" | "restore_post">("remove_post");
   const [postActionReason, setPostActionReason] = useState("");
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedPostSearch(postSearch), 300);
+    return () => window.clearTimeout(timeout);
+  }, [postSearch]);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -72,7 +84,7 @@ export default function AdminPage() {
       const sinceIso = since.toISOString();
       let peopleQuery = supabase.from("profiles")
         .select("id, username, display_name, role, is_suspended, created_at", { count: "exact" });
-      const peopleTerm = search.trim().replace(/[^a-zA-Z0-9 -]/g, "").slice(0, 60);
+      const peopleTerm = debouncedSearch.trim().replace(/[^a-zA-Z0-9 -]/g, "").slice(0, 60);
       if (peopleTerm) {
         peopleQuery = peopleQuery.or(`username.ilike.%${peopleTerm}%,display_name.ilike.%${peopleTerm}%`);
       }
@@ -128,7 +140,7 @@ export default function AdminPage() {
       setEngagement({ comments: recentComments?.data?.length ?? 0, reactions: recentReactions?.data?.length ?? 0, communities: recentMemberships?.data?.length ?? 0, contributors: contributors.size });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
     finally { setLoading(false); setChecking(false); }
-  }, [peoplePage, search, peopleRoleFilter, peopleStatusFilter]);
+  }, [peoplePage, debouncedSearch, peopleRoleFilter, peopleStatusFilter]);
 
   const loadManagedPosts = useCallback(async () => {
     setPostsLoading(true);
@@ -139,7 +151,7 @@ export default function AdminPage() {
         .order("created_at", { ascending: false }).order("id", { ascending: false })
         .range(postPage * 20, postPage * 20 + 19);
       if (postStatus !== "all") query = query.eq("status", postStatus);
-      if (postSearch.trim()) query = query.textSearch("search", postSearch.trim(), { type: "websearch" });
+      if (debouncedPostSearch.trim()) query = query.textSearch("search", debouncedPostSearch.trim(), { type: "websearch" });
       const { data, count, error: postsError } = await query;
       if (postsError) throw postsError;
       const rows = data ?? [];
@@ -159,7 +171,7 @@ export default function AdminPage() {
     } finally {
       setPostsLoading(false);
     }
-  }, [postPage, postSearch, postStatus]);
+  }, [postPage, debouncedPostSearch, postStatus]);
 
   const filteredAudit = useMemo(() => {
     const term = auditSearch.trim().toLowerCase();
