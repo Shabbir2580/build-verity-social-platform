@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const access = await getAdmin(request);
+  const access = await getStaff(request);
   if ("error" in access) return access.error!;
   if (process.env.VERITY_ADMIN_AI_ENABLED !== "true") {
     return jsonError("The AI assistant is not enabled. Enable it only after reviewing the existing Gemini API billing and usage limits.", 503);
