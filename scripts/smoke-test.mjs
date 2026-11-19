@@ -134,7 +134,7 @@ try {
   }
   const adminPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
   const aiPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
-  for (const marker of ["suggestionsByRole", "admin: [", "moderator: [", "support: [", "role-specific operational briefing", "aiConsent", "sent to Google Gemini", "private messages, credentials or personal data"]) {
+  for (const marker of ["suggestionsByRole", "admin: [", "moderator: [", "support: [", "role-specific operational briefing", "Seven-day activity comparison", "immediately preceding seven days", "function PeriodComparison", "% unavailable", "aiConsent", "sent to Google Gemini", "private messages, credentials or personal data"]) {
     if (!aiPageSource.includes(marker)) throw new Error(`AI workspace is missing role-specific guidance: ${marker}`);
   }
   for (const marker of ["12 requests per hour", "40 per day", "admin_ai_assistant_request", "promptTokens", "outputTokens", "AI usage tracking is unavailable", "allowedModes", "modeInstructions", "Data limitations", "previousMembers7d", "previousPosts7d", "previousTickets7d", "twoWeeksAgo", "immediately preceding seven-day period", "const ticketQuery = () =>", '.eq("assigned_team", "support")', "systemInstruction: { parts: [{ text: systemInstruction }] }"]) {
