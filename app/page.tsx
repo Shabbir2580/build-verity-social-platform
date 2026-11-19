@@ -815,7 +815,7 @@ export default function HomePage() {
       }
 
       let automaticCheckFailures: string[] = [];
-      if (newVerificationConsent && (mediaRowsToInsert.length > 0 || (categoryValue === "news" && (newTitle.trim() + " " + newBody.trim()).trim().length >= 12))) {
+      if (newVerificationConsent && needsExternalReview) {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData.session?.access_token;
         if (!accessToken) automaticCheckFailures.push("Your session was unavailable, so automatic checks did not start.");
