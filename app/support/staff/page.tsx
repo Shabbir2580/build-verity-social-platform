@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { ArrowLeft, Clock3, Headphones, LoaderCircle, RefreshCw, Search, Send, ShieldCheck, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Clock3, Headphones, LoaderCircle, RefreshCw, Search, Send, ShieldCheck, UserRoundCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Ticket = {
