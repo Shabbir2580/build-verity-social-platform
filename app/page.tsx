@@ -877,10 +877,12 @@ export default function HomePage() {
     setEditSaving(true); setError(""); setNotice("");
     try {
       const supabase = createClient();
-      const { error: updateError } = await supabase.from("posts")
-        .update({ title: editTitle.trim() || null, body: editBody.trim(), edited_at: new Date().toISOString() })
-        .eq("id", postId).eq("author_id", user.id).eq("status", "published");
+      const { data: updatedPost, error: updateError } = await supabase.from("posts")
+        .update({ title: editTitle.trim() || null, body: editBody.trim() })
+        .eq("id", postId).eq("author_id", user.id).eq("status", "published")
+        .select("id, edited_at").maybeSingle();
       if (updateError) throw updateError;
+      if (!updatedPost) throw new Error("This post is no longer available to edit. Refresh the feed and try again.");
       setPosts((current) => current.map((post) => post.id === postId
         ? { ...post, title: editTitle.trim() || "Untitled post", body: editBody.trim() } : post));
       setEditingPostId(null); setNotice("Post updated.");
@@ -893,11 +895,12 @@ export default function HomePage() {
     if (!user || !window.confirm("Delete this post? It will disappear from the feed. Moderation records are preserved.")) return;
     setError(""); setNotice("");
     const supabase = createClient();
-    const { error: deleteError } = await supabase.from("posts")
+    const { data: removedPost, error: deleteError } = await supabase.from("posts")
       .update({ status: "removed", removal_reason: "Deleted by the author" })
-      .eq("id", postId).eq("author_id", user.id).eq("status", "published");
-    if (deleteError) {
-      setError("Could not delete this post: " + deleteError.message);
+      .eq("id", postId).eq("author_id", user.id).eq("status", "published")
+      .select("id").maybeSingle();
+    if (deleteError || !removedPost) {
+      setError(deleteError ? "Could not delete this post: " + deleteError.message : "This post is no longer available to delete. Refresh the feed and try again.");
       return;
     }
     setPosts((current) => current.filter((post) => post.id !== postId));
