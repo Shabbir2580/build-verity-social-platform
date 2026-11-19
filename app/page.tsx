@@ -360,6 +360,15 @@ export default function HomePage() {
   const [reportError, setReportError] = useState("");
 
   useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     const previews = newFiles.map((file) => ({
       file,
       url: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
