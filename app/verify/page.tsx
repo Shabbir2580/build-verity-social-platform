@@ -655,6 +655,7 @@ export default function VerifyPage() {
                   <input type="checkbox" checked={factCheckConsent} onChange={(event) => setFactCheckConsent(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-indigo-700" />
                   <span>I consent to sending this exact claim to Google's Fact Check Tools search. Verity does not store the search text in its usage log.</span>
                 </label>
+                {!user && <p className="mt-2 text-xs text-slate-500">Sign in to search published fact-checks. Google News source discovery remains available without signing in.</p>}
                 {factCheckError && <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800">{factCheckError}</p>}
                 {factCheckCheckedAt && <p className="mt-3 text-[11px] text-slate-400">Provider: Google Fact Check Tools · Searched {timeLabel(factCheckCheckedAt)}</p>}
                 {factCheckCheckedAt && factCheckResults.length === 0 && <p className="mt-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No matching published review was returned. This does not mean the claim is true or false.</p>}
@@ -666,7 +667,9 @@ export default function VerifyPage() {
                       <p className="mt-1 text-xs leading-5 text-slate-600">Claim reviewed: {item.claimText}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                         {item.publisher && <span className="font-semibold text-slate-700">{item.publisher}</span>}
+                        {item.publisherSite && <span>{item.publisherSite}</span>}
                         {item.reviewDate && <time>Reviewed {timeLabel(item.reviewDate)}</time>}
+                        {item.claimDate && <time>Claim made {timeLabel(item.claimDate)}</time>}
                         {item.claimant && <span>Claimant: {item.claimant}</span>}
                       </div>
                       {item.rating && <p className="mt-3 rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs leading-5 text-indigo-950"><strong>Publisher's rating:</strong> {item.rating}</p>}
