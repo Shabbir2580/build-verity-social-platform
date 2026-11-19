@@ -16,6 +16,8 @@ const ALLOWED_MIME = new Set([
 type GeminiAssessment = {
   media_type: "image" | "video";
   visible_content: string;
+  visible_text: string[];
+  observable_signals: string[];
   origin_indicators: string[];
   limitations: string[];
   summary: string;
@@ -173,10 +175,12 @@ export async function POST(request: NextRequest) {
     const prompt = [
       "You are assisting a human content reviewer. Inspect the supplied media and return JSON only.",
       "Do NOT claim to detect or prove AI generation, deepfakes, authenticity, identity, location, or factual truth.",
-      "Do not infer provenance from visual style alone. Describe observable content and any concrete visual/audio inconsistencies only.",
-      "If origin cannot be established from the media itself, say so clearly. Do not invent confidence percentages.",
+      "Do not infer provenance from visual style alone. Describe observable content and concrete, directly visible or audible details only.",
+      "Transcribe clearly legible text when possible, preserving uncertainty for blurry, cropped or ambiguous text. Do not guess missing words.",
+      "List observable signals separately from origin indicators. A visual oddity is not proof of editing or AI generation.",
+      "If origin cannot be established from the media itself, say so clearly. Never invent confidence percentages or a detector score.",
       "Return exactly this JSON shape:",
-      '{"media_type":"image|video","visible_content":"brief neutral description","origin_indicators":["observable clue or none"],"limitations":["specific limitation"],"summary":"short cautious assessment"}',
+      '{"media_type":"image or video","visible_content":"neutral scene description","visible_text":["legible text or state none/unclear"],"observable_signals":["specific directly observable detail"],"origin_indicators":["limited clue, or no reliable origin indicator"],"limitations":["specific limitation"],"summary":"cautious reviewer summary"}',
       "State explicitly that this multimodal model is not a forensic AI-generated-media detector.",
       `Post context (unverified user text): ${String(post.title || "").slice(0, 300)} ${String(post.body || "").slice(0, 700)}`,
     ].join("\n");
@@ -194,7 +198,21 @@ export async function POST(request: NextRequest) {
               { inline_data: { mime_type: media.mime_type, data: buffer.toString("base64") } },
             ],
           }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0.1, maxOutputTokens: 700 },
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                media_type: { type: "STRING" }, visible_content: { type: "STRING" },
+                visible_text: { type: "ARRAY", items: { type: "STRING" } },
+                observable_signals: { type: "ARRAY", items: { type: "STRING" } },
+                origin_indicators: { type: "ARRAY", items: { type: "STRING" } },
+                limitations: { type: "ARRAY", items: { type: "STRING" } }, summary: { type: "STRING" },
+              },
+              required: ["media_type", "visible_content", "visible_text", "observable_signals", "origin_indicators", "limitations", "summary"],
+            },
+            temperature: 0.1, maxOutputTokens: 1000,
+          },
         }),
         signal: AbortSignal.timeout(45000),
       },
@@ -223,13 +241,14 @@ export async function POST(request: NextRequest) {
       return recordFailure("Gemini returned an unreadable assessment. No result was stored.", 502);
     }
     if (
-      typeof assessment.summary !== "string" ||
-      typeof assessment.visible_content !== "string" ||
-      !Array.isArray(assessment.origin_indicators) ||
-      !Array.isArray(assessment.limitations)
+      typeof assessment.summary !== "string" || typeof assessment.visible_content !== "string" ||
+      !Array.isArray(assessment.visible_text) || !Array.isArray(assessment.observable_signals) ||
+      !Array.isArray(assessment.origin_indicators) || !Array.isArray(assessment.limitations) ||
+      !["image", "video"].includes(assessment.media_type) ||
+      [...assessment.visible_text, ...assessment.observable_signals, ...assessment.origin_indicators, ...assessment.limitations].some((item) => typeof item !== "string")
     ) return recordFailure("Gemini returned an incomplete assessment. No result was stored.", 502);
 
-    const explanation = [assessment.summary, "", "Visible content: " + assessment.visible_content].join("\n").slice(0, 4000);
+    const explanation = [assessment.summary, "", "Visible content: " + assessment.visible_content, "Visible text: " + (assessment.visible_text.slice(0, 8).join(" | ") || "None clearly identified."), "Observable details: " + (assessment.observable_signals.slice(0, 8).join(" | ") || "No specific signal identified.")].join("\n").slice(0, 4000);
     const uncertainty = [
       "This is a language-model assessment, not forensic AI/deepfake detection. It cannot establish media provenance or authenticity.",
       ...assessment.limitations.slice(0, 6).map((item) => String(item).slice(0, 400)),
@@ -245,7 +264,9 @@ export async function POST(request: NextRequest) {
         claim: null,
         signals: [
           { kind: "model_assessment", media_type: media.kind, summary: assessment.summary.slice(0, 1000) },
-          ...assessment.origin_indicators.slice(0, 8).map((detail) => ({ kind: "observable_indicator", detail: String(detail).slice(0, 500) })),
+          ...assessment.visible_text.slice(0, 8).map((detail) => ({ kind: "visible_text", detail: detail.slice(0, 500) })),
+          ...assessment.observable_signals.slice(0, 8).map((detail) => ({ kind: "observable_signal", detail: detail.slice(0, 500) })),
+          ...assessment.origin_indicators.slice(0, 8).map((detail) => ({ kind: "origin_indicator_not_proof", detail: detail.slice(0, 500) })),
         ],
         supporting: [],
         contradicting: [],
