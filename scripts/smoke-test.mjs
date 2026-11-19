@@ -160,6 +160,9 @@ try {
   if (!revenuePageSource.includes('assistantPayload.role !== "admin"') || !revenuePageSource.includes("No real earnings are recorded yet")) {
     throw new Error("Revenue workspace is missing its administrator role check or truthful financial state.");
   }
+  for (const marker of ["AI Revenue Analyst", "Waiting for verified ledger", "Sponsor performance", "Forecast scenarios", "reconciled ledger"]) {
+    if (!revenuePageSource.includes(marker)) throw new Error(`Revenue analyst safeguards are missing: ${marker}`);
+  }
   const revenueApiResponse = await fetch(new URL("/api/admin/business", origin), { signal: AbortSignal.timeout(5000) });
   if (revenueApiResponse.status !== 401) throw new Error("Revenue data source must reject unauthenticated access (401).");
 
