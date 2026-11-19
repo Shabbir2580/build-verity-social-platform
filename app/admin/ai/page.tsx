@@ -6,9 +6,10 @@ import { ArrowLeft, Bot, BrainCircuit, Clock3, LoaderCircle, RefreshCw, Send, Sh
 import { createClient } from "@/lib/supabase/client";
 
 type Metrics = {
-  generatedAt: string; members: number; posts: number; reports: number;
-  activeCases: number; urgentCases: number; overdueCases: number; openTickets: number;
-  newMembers7d: number; newPosts7d: number;
+  generatedAt: string; members: number | null; posts: number | null; reports: number | null;
+  activeCases: number | null; urgentCases: number | null; overdueCases: number | null;
+  openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
+  newMembers7d: number | null; newPosts7d: number | null;
 };
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -20,14 +21,14 @@ const suggestions = [
 ];
 
 function MetricCard({ label, value, note, icon: Icon }: {
-  label: string; value: number; note: string; icon: typeof Users;
+  label: string; value: number | null; note: string; icon: typeof Users;
 }) {
   return <div className="rounded-2xl border border-slate-200 bg-white p-4">
     <div className="flex items-center justify-between gap-3">
       <p className="text-xs font-semibold text-slate-500">{label}</p>
       <Icon size={17} className="text-slate-400"/>
     </div>
-    <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 tabular-nums">{value.toLocaleString()}</p>
+    <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 tabular-nums">{value === null ? "—" : value.toLocaleString()}</p>
     <p className="mt-1 text-xs text-slate-500">{note}</p>
   </div>;
 }
@@ -35,6 +36,7 @@ function MetricCard({ label, value, note, icon: Icon }: {
 export default function AdminAiPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [staffRole, setStaffRole] = useState<"admin" | "moderator" | "support" | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,7 @@ export default function AdminAiPage() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Could not load admin assistant.");
       setMetrics(payload.metrics as Metrics);
+      setStaffRole(payload.role as "admin" | "moderator" | "support");
       setAiEnabled(payload.aiEnabled === true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load the admin assistant.");
@@ -111,7 +114,7 @@ export default function AdminAiPage() {
           <Link href="/admin" aria-label="Back to admin console" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"><ArrowLeft size={18}/></Link>
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-600">Verity operations</p>
-            <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">AI command center</h1>
+            <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{staffRole === "admin" ? "AI command center" : "Staff AI assistant"}</h1>
           </div>
         </div>
         <button onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={14} className={loading ? "animate-spin" : ""}/> Refresh</button>
@@ -123,7 +126,7 @@ export default function AdminAiPage() {
         <div className="rounded-3xl bg-[#182743] p-6 text-white sm:p-8">
           <div className="flex items-center gap-2 text-indigo-200"><BrainCircuit size={18}/><span className="text-xs font-bold uppercase tracking-[0.15em]">Internal assistant</span></div>
           <h2 className="mt-4 max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl">Understand what needs attention.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Ask about operational workload and platform activity. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Ask about the work available to your staff role. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Admin-only</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Read-only</span>
@@ -132,10 +135,12 @@ export default function AdminAiPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Members" value={metrics?.members ?? 0} note={`+${(metrics?.newMembers7d ?? 0).toLocaleString()} in 7 days`} icon={Users}/>
-          <MetricCard label="Posts" value={metrics?.posts ?? 0} note={`+${(metrics?.newPosts7d ?? 0).toLocaleString()} in 7 days`} icon={FileText}/>
-          <MetricCard label="Active cases" value={metrics?.activeCases ?? 0} note={`${metrics?.urgentCases ?? 0} marked urgent`} icon={Flag}/>
-          <MetricCard label="Open support" value={metrics?.openTickets ?? 0} note="Not marked resolved" icon={Headphones}/>
+          {staffRole === "admin" && <>
+            <MetricCard label="Members" value={metrics?.members ?? null} note={`+${(metrics?.newMembers7d ?? 0).toLocaleString()} in 7 days`} icon={Users}/>
+            <MetricCard label="Posts" value={metrics?.posts ?? null} note={`+${(metrics?.newPosts7d ?? 0).toLocaleString()} in 7 days`} icon={FileText}/>
+          </>}
+          {(staffRole === "admin" || staffRole === "moderator") && <MetricCard label="Active cases" value={metrics?.activeCases ?? null} note={`${metrics?.urgentCases ?? 0} marked urgent`} icon={Flag}/>}
+          {(staffRole === "admin" || staffRole === "support") && <MetricCard label="Open support" value={metrics?.openTickets ?? null} note="Not marked resolved" icon={Headphones}/>}
         </div>
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -171,22 +176,30 @@ export default function AdminAiPage() {
           <h2 className="font-semibold">Operations snapshot</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">Current counts from Verity records. Refresh to retrieve a new snapshot.</p>
           <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <span className="flex items-center gap-2 text-sm text-slate-600"><AlertTriangle size={15} className="text-rose-600"/>Urgent cases</span>
-              <strong className="text-sm tabular-nums">{(metrics?.urgentCases ?? 0).toLocaleString()}</strong>
-            </div>
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <span className="flex items-center gap-2 text-sm text-slate-600"><Clock3 size={15} className="text-amber-600"/>Overdue cases</span>
-              <strong className="text-sm tabular-nums">{(metrics?.overdueCases ?? 0).toLocaleString()}</strong>
-            </div>
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <span className="flex items-center gap-2 text-sm text-slate-600"><Flag size={15} className="text-slate-500"/>All reports</span>
-              <strong className="text-sm tabular-nums">{(metrics?.reports ?? 0).toLocaleString()}</strong>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-sm text-slate-600"><Headphones size={15} className="text-slate-500"/>Open support tickets</span>
-              <strong className="text-sm tabular-nums">{(metrics?.openTickets ?? 0).toLocaleString()}</strong>
-            </div>
+            {(staffRole === "admin" || staffRole === "moderator") && <>
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <span className="flex items-center gap-2 text-sm text-slate-600"><AlertTriangle size={15} className="text-rose-600"/>Urgent cases</span>
+                <strong className="text-sm tabular-nums">{(metrics?.urgentCases ?? 0).toLocaleString()}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <span className="flex items-center gap-2 text-sm text-slate-600"><Clock3 size={15} className="text-amber-600"/>Overdue cases</span>
+                <strong className="text-sm tabular-nums">{(metrics?.overdueCases ?? 0).toLocaleString()}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <span className="flex items-center gap-2 text-sm text-slate-600"><Flag size={15} className="text-slate-500"/>All reports</span>
+                <strong className="text-sm tabular-nums">{(metrics?.reports ?? 0).toLocaleString()}</strong>
+              </div>
+            </>}
+            {(staffRole === "admin" || staffRole === "support") && <>
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <span className="flex items-center gap-2 text-sm text-slate-600"><Headphones size={15} className="text-slate-500"/>Open support tickets</span>
+                <strong className="text-sm tabular-nums">{(metrics?.openTickets ?? 0).toLocaleString()}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-sm text-slate-600"><Clock3 size={15} className="text-amber-600"/>Overdue support</span>
+                <strong className="text-sm tabular-nums">{(metrics?.overdueTickets ?? 0).toLocaleString()}</strong>
+              </div>
+            </>}
           </div>
           {metrics && <p className="mt-4 text-[11px] text-slate-400">Updated {new Date(metrics.generatedAt).toLocaleString()}</p>}
           {loading && <p className="mt-3 text-xs text-slate-400">Loading metrics…</p>}
