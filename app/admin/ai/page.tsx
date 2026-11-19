@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Bot, BrainCircuit, Clock3, LoaderCircle, RefreshCw, Send, ShieldCheck, Sparkles, Users, FileText, Flag, Headphones, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -34,6 +35,7 @@ function MetricCard({ label, value, note, icon: Icon }: {
 }
 
 export default function AdminAiPage() {
+  const pathname = usePathname();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [staffRole, setStaffRole] = useState<"admin" | "moderator" | "support" | null>(null);
@@ -51,7 +53,7 @@ export default function AdminAiPage() {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       if (!sessionData.session) {
-        window.location.href = "/login?next=%2Fadmin%2Fai";
+        window.location.href = "/login?next=" + encodeURIComponent(pathname || "/admin/ai");
         return;
       }
       const response = await fetch("/api/admin/assistant", {
@@ -114,7 +116,7 @@ export default function AdminAiPage() {
           <Link href="/admin" aria-label="Back to admin console" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"><ArrowLeft size={18}/></Link>
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-600">Verity operations</p>
-            <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{staffRole === "admin" ? "AI command center" : "Staff AI assistant"}</h1>
+            <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{staffRole === "moderator" || staffRole === "support" ? "Staff AI assistant" : "AI command center"}</h1>
           </div>
         </div>
         <button onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={14} className={loading ? "animate-spin" : ""}/> Refresh</button>
