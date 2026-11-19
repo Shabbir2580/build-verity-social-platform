@@ -119,10 +119,6 @@ export async function POST(request: NextRequest) {
     if (caseError) console.error("Could not queue failed media assessment:", caseError.message);
     return jsonError(message, status);
   };
-  if (!ALLOWED_MIME.has(media.mime_type)) return recordFailure("This media format is not supported for analysis.", 415);
-  const maxBytes = media.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
-  if (media.size_bytes > maxBytes) return recordFailure(`This ${media.kind} exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB analysis limit.`, 413);
-
   const { count, error: countError } = await supabase
     .from("content_checks")
     .select("id", { count: "exact", head: true })
@@ -131,6 +127,10 @@ export async function POST(request: NextRequest) {
     .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
   if (countError) return jsonError("Could not verify the assessment usage limit.", 503);
   if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 Gemini assessments per hour.", 429);
+
+  if (!ALLOWED_MIME.has(media.mime_type)) return recordFailure("This media format is not supported for analysis.", 415);
+  const maxBytes = media.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+  if (media.size_bytes > maxBytes) return recordFailure(`This ${media.kind} exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB analysis limit.`, 413);
 
   if (!apiKey) {
     const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
