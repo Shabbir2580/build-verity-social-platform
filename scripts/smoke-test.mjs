@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 
 const port = 3100;
 const origin = `http://127.0.0.1:${port}`;
@@ -61,6 +62,16 @@ async function waitForServer() {
 }
 
 try {
+  for (const authPage of ["login", "signup"]) {
+    const source = await readFile(new URL(`../app/${authPage}/page.tsx`, import.meta.url), "utf8");
+    for (const marker of ["function getSafeNextPath()", 'callbackUrl.searchParams.set("next", getSafeNextPath())', "router.replace(getSafeNextPath())"]) {
+      if (!source.includes(marker)) {
+        throw new Error(`/${authPage} is missing safe post-auth redirect behavior: ${marker}`);
+      }
+    }
+    process.stdout.write(`PASS /${authPage} preserves safe return destinations\\n`);
+  }
+
   await waitForServer();
 
   for (const [path, expectedText] of routes) {
