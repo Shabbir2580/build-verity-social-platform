@@ -5,6 +5,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+
+function getSafeNextPath() {
+  const candidate = new URLSearchParams(window.location.search).get("next");
+  if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//") || candidate.startsWith("/\\")) {
+    return "/";
+  }
+
+  try {
+    const destination = new URL(candidate, window.location.origin);
+    if (destination.origin !== window.location.origin) return "/";
+    return destination.pathname + destination.search + destination.hash;
+  } catch {
+    return "/";
+  }
+}
+
 export default function SignupPage() {
   const router = useRouter();
 
@@ -32,7 +48,7 @@ export default function SignupPage() {
     try {
       const supabase = createClient();
       const callbackUrl = new URL("/auth/callback", window.location.origin);
-      callbackUrl.searchParams.set("next", "/");
+      callbackUrl.searchParams.set("next", getSafeNextPath());
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: callbackUrl.toString() },
@@ -110,7 +126,7 @@ export default function SignupPage() {
       }
 
       if (data.session) {
-        router.replace("/");
+        router.replace(getSafeNextPath());
         router.refresh();
         return;
       }
