@@ -218,6 +218,25 @@ function getPostLabel(post: DbPost): { label: string; tone: BadgeTone; category:
   return { label: "Not checked", tone: "neutral", category: declared || post.type || "discussion" };
 }
 
+function getContextExplanation(post: FeedPost): string {
+  if (post.label.toLowerCase().includes("ai")) {
+    return "This label comes from the creator's disclosure. It is not the result of an AI detector and does not prove how the media was made.";
+  }
+  if (post.label.toLowerCase().includes("news")) {
+    return "This post is categorized as news, but Verity has not independently established whether its claims are accurate. Check the original source and supporting evidence.";
+  }
+  if (post.label.toLowerCase().includes("meme") || post.label === "Satire" || post.label === "Parody") {
+    return "This is a creator-declared content format. The label describes presentation, not whether every statement in the post is true.";
+  }
+  if (post.label === "Educational") {
+    return "This is a creator-selected category. It does not certify the content or replace checking its sources.";
+  }
+  if (post.label === "Community question") {
+    return "This post is categorized as a question to invite discussion. Replies and popularity are not proof of an answer.";
+  }
+  return "No completed evidence assessment is shown for this post. That does not mean the content is false; open Content context to review available checks, sources and labels.";
+}
+
 function Avatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
   const initials = name
     .split(" ")
@@ -316,6 +335,7 @@ export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [openComments, setOpenComments] = useState<string | null>(null);
+  const [expandedContextPostId, setExpandedContextPostId] = useState<string | null>(null);
 
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
@@ -1478,7 +1498,7 @@ export default function HomePage() {
                   {post.media.length > 0 && <div className={`verity-post-media mt-4 grid gap-2 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{post.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[560px] w-full rounded-2xl bg-slate-950 object-contain" aria-label="Post video"><source src={media.url} type={media.mime_type} />Your browser does not support HTML video.</video> : <img key={media.id} src={media.url} alt={media.alt_text || `Image shared by ${post.author}`} loading="lazy" className={`w-full rounded-2xl border border-slate-100 object-cover ${post.media.length === 1 ? "max-h-[560px]" : "aspect-square"}`} />)}</div>}
                   {post.link_url && <a href={post.link_url} target="_blank" rel="noreferrer noopener" className="mt-4 inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"><span className="break-all">Open linked content</span><ArrowUpRight size={15} className="shrink-0" /></a>}
                   {post.source_url && <a href={post.source_url} target="_blank" rel="noreferrer noopener" className="mt-3 block break-all text-xs text-slate-500 underline underline-offset-2 hover:text-indigo-700">Original source</a>}
-                  <div className="mt-4 flex flex-wrap items-center gap-2"><ContentBadge label={post.label} tone={post.tone} /><button type="button" onClick={() => router.push(`/verify?post=${encodeURIComponent(post.id)}`)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><ShieldCheck size={13} /> Content context</button></div>
+                  <div className="mt-4 flex flex-wrap items-center gap-2"><ContentBadge label={post.label} tone={post.tone} /><button type="button" aria-expanded={expandedContextPostId === post.id} aria-controls={`context-note-${post.id}`} onClick={() => setExpandedContextPostId(expandedContextPostId === post.id ? null : post.id)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"><CircleHelp size={13} /> What this means</button><button type="button" onClick={() => router.push(`/verify?post=${encodeURIComponent(post.id)}`)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><ShieldCheck size={13} /> Evidence & context</button></div>{expandedContextPostId === post.id && <div id={`context-note-${post.id}`} className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5"><p className="text-xs font-extrabold text-slate-700">How to read this label</p><p className="mt-1.5 text-xs leading-5 text-slate-600">{getContextExplanation(post)}</p><button type="button" onClick={() => router.push(`/verify?post=${encodeURIComponent(post.id)}`)} className="mt-2 inline-flex min-h-8 items-center gap-1 text-xs font-bold text-indigo-700 hover:text-indigo-900">Review evidence and sources <ArrowRight size={13} /></button></div>}
                   <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-3 sm:gap-5"><button type="button" onClick={() => void toggleLike(post.id)} className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-1 text-sm font-bold ${isLiked ? "text-rose-600" : "text-slate-500 hover:text-rose-600"}`} aria-label={isLiked ? "Unlike post" : "Like post"}><Heart size={18} fill={isLiked ? "currentColor" : "none"} />{post.likes}</button><button type="button" onClick={() => { const isOpening = openComments !== post.id; setOpenComments(isOpening ? post.id : null); if (isOpening) void loadComments(post.id); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-slate-500 hover:text-indigo-600"><MessageCircle size={18} />{post.comments}</button><button type="button" onClick={() => void toggleBookmark(post.id)} className={`ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg px-1 text-sm font-bold ${isSaved ? "text-indigo-700" : "text-slate-400 hover:text-indigo-700"}`} aria-label={isSaved ? "Remove bookmark" : "Bookmark post"}><Bookmark size={18} fill={isSaved ? "currentColor" : "none"} /><span className="hidden sm:inline">{isSaved ? "Saved" : "Save"}</span></button><button type="button" onClick={async () => { try { await navigator.clipboard.writeText(`${window.location.origin}/?post=${post.id}`); setNotice("Post link copied."); } catch { setNotice("Copy the current page URL from your browser."); } }} aria-label="Share post" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-indigo-700"><Share2 size={17} /></button></div>
                   {openComments === post.id && <div className="mt-4 border-t border-slate-100 pt-4"><form onSubmit={(event) => void handleAddComment(event, post.id)} className="flex gap-2"><input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Add a thoughtful comment..." aria-label="Write a comment" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-3 text-base outline-none focus:border-indigo-400 sm:text-sm" /><button type="submit" aria-label="Send comment" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"><Send size={16} /></button></form>{postComments.map((comment) => <div key={comment.id} className="mt-3 rounded-xl bg-slate-50 p-3"><div className="flex items-start justify-between gap-2"><p className="text-xs font-bold text-slate-700">{comment.display_name} <span className="font-normal text-slate-400">@{comment.username}</span></p>{user?.id === comment.author_id && <button type="button" onClick={() => void deleteComment(comment)} className="inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your comment" title="Delete your comment"><Trash2 size={13}/>Delete</button>}</div><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{comment.body}</p></div>)}{postComments.length === 0 && <p className="mt-4 text-sm text-slate-400">No comments yet. Start the conversation.</p>}</div>}
                 </div></article>;
