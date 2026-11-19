@@ -393,13 +393,24 @@ export default function HomePage() {
       const currentUser = authUser ? { id: authUser.id, email: authUser.email } : null;
       setUser(currentUser);
       let followedUserIds: string[] = [];
-      if (currentUser && filter === "Following") {
+      if (currentUser && filter === "Following" && activePage !== "Saved") {
         const { data: followingRows, error: followingError } = await supabase
           .from("follows")
           .select("following_id")
           .eq("follower_id", currentUser.id);
         if (followingError) throw followingError;
         followedUserIds = (followingRows ?? []).map((row) => row.following_id);
+      }
+      let savedPostIds: string[] = [];
+      if (currentUser && activePage === "Saved") {
+        const { data: bookmarkRows, error: bookmarkError } = await supabase
+          .from("bookmarks")
+          .select("post_id")
+          .eq("user_id", currentUser.id)
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (bookmarkError) throw bookmarkError;
+        savedPostIds = (bookmarkRows ?? []).map((row) => row.post_id);
       }
 
       if (currentUser) {
@@ -432,8 +443,12 @@ export default function HomePage() {
         .select("id, author_id, community_id, type, title, body, link_url, source_url, declared_category, ai_disclosure, tags, status, created_at")
         .eq("status", "published")
         .order("created_at", { ascending: false })
-        .limit(50);
-      if (filter === "Following") {
+        .limit(activePage === "Saved" ? 100 : 50);
+      if (activePage === "Saved") {
+        postQuery = postQuery.in("id", savedPostIds.length
+          ? savedPostIds
+          : ["00000000-0000-0000-0000-000000000000"]);
+      } else if (filter === "Following") {
         postQuery = postQuery.in("author_id", followedUserIds.length
           ? followedUserIds
           : ["00000000-0000-0000-0000-000000000000"]);
@@ -581,7 +596,7 @@ export default function HomePage() {
     void loadFeed();
     // Refresh the query when the feed scope changes (not just its visual sort).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [filter, activePage]);
 
   useEffect(() => {
     if (!user?.id) return;
