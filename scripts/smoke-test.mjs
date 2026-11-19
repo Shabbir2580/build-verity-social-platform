@@ -24,6 +24,7 @@ const routes = [
   ["/support/staff", null],
   ["/moderation", "Checking staff access"],
   ["/admin", "Checking administrator access"],
+  ["/admin/business", "Business & revenue"],
   ["/admin/ai", "AI command center"],
   ["/staff/assistant", "AI command center"],
 ];
@@ -82,13 +83,21 @@ try {
 
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
   const adminPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
+  const businessApiSource = await readFile(new URL("../app/api/admin/business/route.ts", import.meta.url), "utf8");
+  const businessPageSource = await readFile(new URL("../app/admin/business/page.tsx", import.meta.url), "utf8");
   for (const marker of ["[\"admin\", \"moderator\", \"support\"].includes(profile?.role || \"\")", "const canModerate = isAdmin || role === \"moderator\"", "const canSupport = isAdmin || role === \"support\"", "VERITY_ADMIN_AI_ENABLED !== \"true\"", "\"Cache-Control\": \"no-store\""]) {
     if (!adminAssistantSource.includes(marker)) throw new Error(`Admin assistant API is missing required access/cost control: ${marker}`);
   }
   if (!adminPageSource.includes("AI is not activated.") || !adminPageSource.includes("Read-only")) {
     throw new Error("Admin AI page is missing its disabled-by-default and read-only safety states.");
   }
-  process.stdout.write("PASS admin AI access and cost gates are present\\n");
+  if (!businessApiSource.includes(\x27profile?.role !== "admin"\x27) || !businessApiSource.includes("Business enquiry —%") || !businessApiSource.includes("not_configured")) {
+    throw new Error("Business dashboard API is missing its admin gate, lead filter or honest revenue state.");
+  }
+  if (!businessPageSource.includes("Enquiries are not revenue.") || !businessPageSource.includes("No payment processor connected")) {
+    throw new Error("Business dashboard is missing its revenue transparency notices.");
+  }
+  process.stdout.write("PASS admin AI and business workspace access/cost boundaries are present\\n");
 
   await waitForServer();
 
@@ -134,6 +143,10 @@ try {
       }
     }
   }
+
+  const businessApiResponse = await fetch(new URL("/api/admin/business", origin), { signal: AbortSignal.timeout(5000) });
+  if (businessApiResponse.status !== 401) throw new Error("Business dashboard API must reject unauthenticated access.");
+  process.stdout.write("PASS /api/admin/business rejects unauthenticated access (401)\\n");
 
   const adminAssistantResponse = await fetch(new URL("/api/admin/assistant", origin), { signal: AbortSignal.timeout(5000) });
   if (adminAssistantResponse.status !== 401) throw new Error("Admin assistant API must reject unauthenticated access.");
