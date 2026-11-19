@@ -35,6 +35,13 @@ The live function definition for `public.guard_post_update()` matches the reposi
 - Staff must consent before sending a question to Google Gemini and are instructed not to include personal data, credentials or private messages.
 - The Google Fact Check Tools integration requires a server-only API key, explicit user consent and account-level request limits. The key should be restricted to that API and protected with conservative quotas.
 
+### Role-scoped AI data
+
+- The assistant currently uses aggregate metrics only; it does not retrieve individual moderation cases or support conversations.
+- Its database client uses a service-role key and therefore bypasses RLS. Role checks and query filters must be enforced explicitly in every server-side data path.
+- Support-role AI metrics now explicitly filter tickets to `assigned_team = 'support'`. Admin metrics retain the cross-team overview. This prevents support staff from receiving Trust & Safety queue counts through the assistant.
+- Any future case/ticket copilot must verify the requested record belongs to the staff member's permitted team before retrieval, require separate explicit consent before sending member-submitted content to an external model, and return source references. Do not pass private conversations to Gemini by default.
+
 ## Operational boundaries
 
 - This audit used read-only database inspection and Supabase advisor calls. No live schema, Auth setting, billing setting or project configuration was changed.
