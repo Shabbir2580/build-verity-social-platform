@@ -91,7 +91,7 @@ try {
   if (!adminPageSource.includes("AI is not activated.") || !adminPageSource.includes("Read-only")) {
     throw new Error("Admin AI page is missing its disabled-by-default and read-only safety states.");
   }
-  if (!businessApiSource.includes("profile?.role !== \\"admin\\"") || !businessApiSource.includes("Business enquiry —%") || !businessApiSource.includes("not_configured")) {
+  if (!businessApiSource.includes('profile?.role !== "admin"') || !businessApiSource.includes("Business enquiry —%") || !businessApiSource.includes("not_configured")) {
     throw new Error("Business dashboard API is missing its admin gate, lead filter or honest revenue state.");
   }
   if (!businessPageSource.includes("Enquiries are not revenue.") || !businessPageSource.includes("No payment processor connected")) {
