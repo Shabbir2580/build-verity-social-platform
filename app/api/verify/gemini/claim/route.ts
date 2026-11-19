@@ -74,6 +74,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message, queuedForHumanReview: !caseError }, { status });
   };
 
+  const { count, error: countError } = await supabase.from("content_checks").select("id", { count: "exact", head: true })
+    .eq("post_id", post.id).eq("check_type", "claim")
+    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
+  if (countError) return NextResponse.json({ error: "Could not verify the assessment usage limit." }, { status: 503 });
+  if ((count ?? 0) >= 6) return NextResponse.json({ error: "This post has reached its limit of 6 Gemini assessments per hour." }, { status: 429 });
+
   if (!apiKey) {
     const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
       post_id: post.id, provider: "Google Gemini (not configured)", check_type: "claim",
@@ -90,12 +96,6 @@ export async function POST(request: NextRequest) {
     if (caseError) console.error("Could not queue unconfigured news claim for human review:", caseError.message);
     return NextResponse.json({ error: "Gemini is not configured on the server. The claim remains unchecked." }, { status: 503 });
   }
-  const { count, error: countError } = await supabase.from("content_checks").select("id", { count: "exact", head: true })
-    .eq("post_id", post.id).eq("provider", "Google Gemini / gemini-2.5-flash")
-    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
-  if (countError) return NextResponse.json({ error: "Could not verify the assessment usage limit." }, { status: 503 });
-  if ((count ?? 0) >= 6) return NextResponse.json({ error: "This post has reached its limit of 6 Gemini assessments per hour." }, { status: 429 });
-
   try {
     const feedUrl = new URL("https://news.google.com/rss/search");
     feedUrl.searchParams.set("q", claim.slice(0, 240));
