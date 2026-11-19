@@ -570,6 +570,7 @@ export default function VerifyPage() {
           <span className="text-[23px] font-black tracking-tight">verity<span className="text-indigo-600">.</span></span>
         </Link>
         <div className="flex items-center gap-2">
+          <Link href="/impact" className="flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-slate-600 hover:bg-white">Impact</Link>
           {user ? <span className="hidden max-w-48 truncate text-xs text-slate-500 sm:block">{user.email}</span> : <Link href="/login?next=%2Fverify" className="flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-slate-600 hover:bg-white">Log in</Link>}
           <Link href="/" className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold hover:border-indigo-200 hover:text-indigo-700"><ArrowLeft size={16} /> <span className="hidden sm:inline">Back to feed</span><span className="sm:hidden">Back</span></Link>
         </div>

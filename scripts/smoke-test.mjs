@@ -27,6 +27,7 @@ const routes = [
   ["/admin/business", "Commercial workspace"],
   ["/admin/revenue", "Revenue"],
   ["/admin/ai", "AI command center"],
+  ["/impact", "Verity, in the open."],
   ["/staff/assistant", "AI command center"],
 ];
 
