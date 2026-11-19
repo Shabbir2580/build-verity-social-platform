@@ -106,7 +106,7 @@ try {
   process.stdout.write("PASS profile, people, community and notification pages use the shared product shell\\n");
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line", "--workspace-teal", "--workspace-highlight", ".verity-ai-hero"]) {
+  for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line", "--workspace-teal", "--workspace-highlight", ".verity-ai-hero", ".verity-workspace .text-indigo-600", ".verity-admin-page .bg-indigo-600"]) {
     if (!visualSystem.includes(marker)) throw new Error(`Visual design system is missing expected rule: ${marker}`);
   }
   process.stdout.write("PASS editorial design system rules are present\\n");
