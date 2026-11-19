@@ -7,15 +7,10 @@ export const maxDuration = 30;
 
 type AdminContext = {
   generatedAt: string;
-  members: number;
-  posts: number;
-  reports: number;
-  activeCases: number;
-  urgentCases: number;
-  overdueCases: number;
-  openTickets: number;
-  newMembers7d: number;
-  newPosts7d: number;
+  members: number | null; posts: number | null; reports: number | null;
+  activeCases: number | null; urgentCases: number | null; overdueCases: number | null;
+  openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
+  newMembers7d: number | null; newPosts7d: number | null;
 };
 
 function jsonError(message: string, status: number) {
@@ -41,8 +36,10 @@ async function getAdmin(request: NextRequest) {
   const { data: profile, error: profileError } = await supabase
     .from("profiles").select("role, is_suspended").eq("id", auth.user.id).maybeSingle();
   if (profileError) return { error: jsonError("Could not verify administrator permissions.", 503) };
-  if (profile?.role !== "admin" || profile.is_suspended) return { error: jsonError("Administrator access is required.", 403) };
-  return { supabase, userId: auth.user.id };
+  if (!["admin", "moderator", "support"].includes(profile?.role || "") || profile?.is_suspended) {
+    return { error: jsonError("Authorized staff access is required.", 403) };
+  }
+  return { supabase, userId: auth.user.id, role: profile.role };
 }
 
 async function getContext(supabase: any) {
