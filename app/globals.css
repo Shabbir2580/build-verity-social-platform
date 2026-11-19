@@ -834,3 +834,67 @@ body { color: var(--verity-ink); background: #fff; }
     font-size: 17px !important;
   }
 }
+
+
+/* Product page family — profile, people, communities and notifications */
+.verity-product-page {
+  --product-ink: #17243b;
+  --product-muted: #68778d;
+  --product-line: #e3e8f0;
+  background: #f5f7fa !important;
+  color: var(--product-ink);
+}
+.verity-product-page > header {
+  max-width: 1180px !important;
+  min-height: 68px !important;
+  border-color: var(--product-line) !important;
+}
+.verity-product-page > header a:last-child {
+  color: #263b65;
+  letter-spacing: -.04em;
+}
+.verity-product-page > section {
+  max-width: 1180px !important;
+  padding-top: 30px !important;
+}
+.verity-product-page > section > div,
+.verity-product-page article,
+.verity-product-page section > div.rounded-2xl,
+.verity-product-page section > div.rounded-3xl {
+  border-color: var(--product-line);
+}
+.verity-product-page article {
+  border-radius: 16px !important;
+  box-shadow: 0 2px 9px rgba(23,36,59,.035) !important;
+}
+.verity-product-page h1,
+.verity-product-page h2,
+.verity-product-page h3 {
+  letter-spacing: -.03em;
+}
+.verity-product-page input,
+.verity-product-page textarea,
+.verity-product-page select {
+  border-color: #dce3ed !important;
+  border-radius: 11px !important;
+}
+.verity-product-page button,
+.verity-product-page a {
+  -webkit-tap-highlight-color: transparent;
+}
+.verity-product-page button:focus-visible,
+.verity-product-page a:focus-visible,
+.verity-product-page input:focus-visible,
+.verity-product-page textarea:focus-visible {
+  outline: 3px solid rgba(64,85,143,.28);
+  outline-offset: 2px;
+}
+.verity-product-page .bg-gradient-to-br {
+  box-shadow: 0 12px 28px rgba(23,36,59,.09);
+}
+@media (max-width: 639px) {
+  .verity-product-page { padding-inline: 13px !important; }
+  .verity-product-page > header { min-height: 60px !important; }
+  .verity-product-page > section { padding-top: 18px !important; }
+  .verity-product-page article { border-radius: 14px !important; }
+}
