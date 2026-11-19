@@ -37,6 +37,33 @@ const suggestionsByRole = {
   ],
 } as const;
 
+function PeriodComparison({ label, current, previous }: { label: string; current: number | null; previous: number | null }) {
+  if (current === null || previous === null) return null;
+  const peak = Math.max(current, previous, 1);
+  const change = current - previous;
+  const percentage = previous > 0 ? Math.round((change / previous) * 100) : null;
+  const direction = change > 0 ? "more" : change < 0 ? "fewer" : "unchanged";
+  return <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h3 className="text-sm font-semibold text-slate-800">{label}</h3>
+      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${change > 0 ? "bg-emerald-50 text-emerald-700" : change < 0 ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+        {change === 0 ? "No change" : `${Math.abs(change).toLocaleString()} ${direction}`}
+        {percentage !== null ? ` · ${change > 0 ? "+" : ""}${percentage}%` : " · % unavailable"}
+      </span>
+    </div>
+    <div className="mt-4 space-y-3">
+      <div>
+        <div className="mb-1 flex justify-between text-xs text-slate-500"><span>Latest 7 days</span><strong className="tabular-nums text-slate-700">{current.toLocaleString()}</strong></div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#168477]" style={{ width: `${(current / peak) * 100}%` }}/></div>
+      </div>
+      <div>
+        <div className="mb-1 flex justify-between text-xs text-slate-500"><span>Previous 7 days</span><strong className="tabular-nums text-slate-700">{previous.toLocaleString()}</strong></div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-slate-400" style={{ width: `${(previous / peak) * 100}%` }}/></div>
+      </div>
+    </div>
+  </div>;
+}
+
 function MetricCard({ label, value, note, icon: Icon }: {
   label: string; value: number | null; note: string; icon: typeof Users;
 }) {
@@ -170,6 +197,21 @@ export default function AdminAiPage() {
           {(staffRole === "admin" || staffRole === "support") && <MetricCard label="Open support" value={metrics?.openTickets ?? null} note="Not marked resolved" icon={Headphones}/>}
           {staffRole && <MetricCard label="AI requests · 24h" value={metrics?.aiRequests24h ?? null} note={staffRole === "admin" ? "Across authorized staff" : "Your recorded requests"} icon={Bot}/>}
         </div>
+
+        {(staffRole === "admin" || staffRole === "support") && <section className="space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Seven-day activity comparison</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Current period versus the immediately preceding seven days. These are activity volumes, not retention or user-quality metrics.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {staffRole === "admin" && <>
+              <PeriodComparison label="New members" current={metrics?.newMembers7d ?? null} previous={metrics?.previousMembers7d ?? null}/>
+              <PeriodComparison label="Posts created" current={metrics?.newPosts7d ?? null} previous={metrics?.previousPosts7d ?? null}/>
+            </>}
+            <PeriodComparison label="Support tickets created" current={metrics?.newTickets7d ?? null} previous={metrics?.previousTickets7d ?? null}/>
+          </div>
+          <p className="text-[11px] leading-5 text-slate-400">Percentage change is shown only when the previous period contains at least one record. Ticket counts follow the same team visibility rules as the support workspace.</p>
+        </section>}
 
         <section className="verity-ai-panel overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
