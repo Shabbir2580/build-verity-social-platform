@@ -70,6 +70,7 @@ Status: **in progress**
 ### Phase 7 — Financial ledger and revenue intelligence
 Status: **foundation started; ledger not connected**
 - The private Revenue & Impact workspace now separates verified financial measures from business enquiries and public platform activity. All financial measures remain unavailable until a reconciled ledger exists.
+- The Revenue workspace now includes a ledger-gated AI Revenue Analyst design for earnings briefings, sponsor performance and scenario forecasts. It remains inactive until verified financial and campaign data exist.
 - Select a payment provider only after reviewing fees, settlement support, refunds, tax handling, webhooks, documentation and no-cost constraints.
 - Build a reconciled transaction ledger with payment captures, settlement status, refunds, provider fees, taxes, invoices and expenses.
 - Distinguish gross sales, collected cash, settled funds, refunds, net revenue, expenses and profit.
