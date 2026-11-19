@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { LoaderCircle, Sparkles, ShieldAlert } from "lucide-react";
 
-type MediaItem = { id: string; kind: "image" | "video" };
+type MediaItem = { id: string; kind: "image" | "video"; mime_type: string; size_bytes: number };
 
 export function GeminiMediaCheck({ postId, media, onComplete }: { postId: string; media: MediaItem[]; onComplete?: () => Promise<void> | void }) {
   const [consent, setConsent] = useState(false);
@@ -13,6 +13,10 @@ export function GeminiMediaCheck({ postId, media, onComplete }: { postId: string
   const [error, setError] = useState("");
 
   if (media.length === 0) return null;
+  const supportedMedia = media.filter((item) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"].includes(item.mime_type);
+    return allowed && item.size_bytes <= (item.kind === "video" ? 20 : 8) * 1024 * 1024;
+  });
 
   async function run(mediaId: string) {
     setError("");
@@ -55,13 +59,15 @@ export function GeminiMediaCheck({ postId, media, onComplete }: { postId: string
         <span>I understand that this media and its post context will be sent to Google Gemini. Google’s free-tier data-use terms may allow submitted content to be used to improve Google products. I have permission to submit this media.</span>
       </label>
       <div className="mt-3 flex flex-wrap gap-2">
-        {media.map((item, index) => (
+        {supportedMedia.map((item, index) => (
           <button key={item.id} type="button" onClick={() => void run(item.id)} disabled={Boolean(busyId)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-violet-700 px-3 py-2 text-xs font-bold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60">
             {busyId === item.id ? <LoaderCircle size={14} className="animate-spin" /> : <Sparkles size={14} />}
             {busyId === item.id ? "Analysing…" : `Analyse ${item.kind} ${index + 1}`}
           </button>
         ))}
       </div>
+      {media.length > supportedMedia.length && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">{media.length - supportedMedia.length} item(s) are not eligible for Gemini analysis. Supported: JPG, PNG, WebP up to 8 MB; MP4, QuickTime and WebM up to 20 MB. You can still view and publish those files; they are simply not sent for this assessment.</p>}
+      {supportedMedia.length === 0 && <p className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-slate-600">No attached media matches Gemini’s current supported formats and size limits.</p>}
       {message && <p role="status" className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-emerald-800">{message}</p>}
       {error && <p role="alert" className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-rose-800"><ShieldAlert size={14} className="mr-1 inline" />{error}</p>}
       <p className="mt-3 text-[11px] leading-5 text-violet-800">Important: Gemini is a general multimodal model, not a forensic AI/deepfake detector. Every result remains “uncertain”; it cannot prove whether media is AI-generated, genuine or manipulated. Up to 6 assessment attempts per post per hour.</p>
