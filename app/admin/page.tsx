@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { Activity, ArrowLeft, Ban, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileText, LoaderCircle, RefreshCw, ShieldCheck, Users, UserCog } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Activity, ArrowLeft, Ban, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileText, LoaderCircle, RefreshCw, ShieldCheck, Users, UserCog, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = { id: string; username: string; display_name: string; role: string; is_suspended: boolean; created_at: string };
@@ -17,6 +17,7 @@ const pretty = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (c
 
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, reports: 0, cases: 0, tickets: 0 });
@@ -24,6 +25,9 @@ export default function AdminPage() {
   const [peopleTotal, setPeopleTotal] = useState(0);
   const [peoplePage, setPeoplePage] = useState(0);
   const [audit, setAudit] = useState<Audit[]>([]);
+  const [auditActors, setAuditActors] = useState<Record<string, { username: string; display_name: string }>>({});
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("all");
   const [daily, setDaily] = useState<DailyMetric[]>([]);
   const [engagement, setEngagement] = useState({ comments: 0, reactions: 0, communities: 0, contributors: 0 });
   const [selected, setSelected] = useState<Profile | null>(null);
@@ -59,6 +63,7 @@ export default function AdminPage() {
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
       if (!auth.user) { window.location.href = "/login?next=%2Fadmin"; return; }
+      setCurrentUserId(auth.user.id);
       const { data: me, error: roleError } = await supabase.from("profiles").select("role").eq("id", auth.user.id).single();
       if (roleError) throw roleError;
       if (me.role !== "admin") { setAuthorized(false); setChecking(false); return; }
@@ -102,7 +107,14 @@ export default function AdminPage() {
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
       setStaff((people.data ?? []) as Profile[]);
       setPeopleTotal(people.count ?? 0);
-      setAudit((logs.data ?? []) as Audit[]);
+      const auditRows = (logs.data ?? []) as Audit[];
+      setAudit(auditRows);
+      const actorIds = [...new Set(auditRows.map((entry) => entry.actor_id).filter((id): id is string => Boolean(id)))];
+      if (actorIds.length) {
+        const { data: actorRows, error: actorError } = await supabase.from("profiles").select("id, username, display_name").in("id", actorIds);
+        if (actorError) throw actorError;
+        setAuditActors(Object.fromEntries((actorRows ?? []).map((person) => [person.id, { username: person.username, display_name: person.display_name }])));
+      } else setAuditActors({});
       const days: DailyMetric[] = Array.from({ length: 14 }, (_, index) => { const date = new Date(since); date.setDate(since.getDate() + index); return { day: date.toISOString().slice(0,10), members: 0, posts: 0, comments: 0 }; });
       const byDay = new Map(days.map((item) => [item.day, item]));
       for (const row of recentMembers?.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.members++; }
@@ -148,6 +160,18 @@ export default function AdminPage() {
       setPostsLoading(false);
     }
   }, [postPage, postSearch, postStatus]);
+
+  const filteredAudit = useMemo(() => {
+    const term = auditSearch.trim().toLowerCase();
+    return audit.filter((entry) => {
+      if (auditActionFilter !== "all" && entry.action !== auditActionFilter) return false;
+      if (!term) return true;
+      const actor = entry.actor_id ? auditActors[entry.actor_id] : undefined;
+      return [entry.action, entry.entity_type, entry.entity_id, actor?.username, actor?.display_name, JSON.stringify(entry.details ?? {})]
+        .filter(Boolean).join(" ").toLowerCase().includes(term);
+    });
+  }, [audit, auditSearch, auditActionFilter, auditActors]);
+  const auditActions = useMemo(() => [...new Set(audit.map((entry) => entry.action))].sort(), [audit]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (authorized) void loadManagedPosts(); }, [authorized, loadManagedPosts]);
@@ -310,12 +334,41 @@ export default function AdminPage() {
               <option value="suspended">Suspended</option>
             </select>
           </div>
-          <div className="mt-3 divide-y divide-slate-100">{staff.map((person) => <article key={person.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{person.display_name} <span className="font-normal text-slate-400">@{person.username}</span></p><p className="mt-1 text-xs text-slate-500">{pretty(person.role)} · {person.is_suspended ? "Suspended" : "Active"} · Joined {new Date(person.created_at).toLocaleDateString()}</p></div><div className="flex items-center gap-2"><button onClick={() => {setSelected(person);setNewRole(person.role);setReason("");setError("");}} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">Change role</button><button disabled={saving} onClick={() => { setSuspensionTarget(person); setSuspensionReason(""); setError(""); }} className={`rounded-lg px-3 py-2 text-xs font-bold ${person.is_suspended ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"} disabled:opacity-50`}>{person.is_suspended ? <><CheckCircle2 size={13} className="mr-1 inline"/>Restore</> : <><Ban size={13} className="mr-1 inline"/>Suspend</>}</button></div></article>)}</div>
+          <div className="mt-3 divide-y divide-slate-100">{staff.map((person) => {
+             const isSelf = person.id === currentUserId;
+             return <article key={person.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+               <div className="min-w-0 flex-1">
+                 <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-bold">{person.display_name} <span className="font-normal text-slate-400">@{person.username}</span></p>{isSelf && <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold text-indigo-700">You</span>}<span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${person.role === "admin" ? "bg-violet-50 text-violet-700" : person.role === "moderator" ? "bg-indigo-50 text-indigo-700" : person.role === "support" ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-600"}`}>{pretty(person.role)}</span><span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${person.is_suspended ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{person.is_suspended ? "Suspended" : "Active"}</span></div>
+                 <p className="mt-1 text-[11px] text-slate-400">Joined {new Date(person.created_at).toLocaleDateString()} · ID {person.id.slice(0, 8)}</p>
+               </div>
+               <div className="flex items-center gap-2">
+                 <button disabled={isSelf} title={isSelf ? "You cannot change your own administrator role." : "Change this member's role"} onClick={() => {setSelected(person);setNewRole(person.role);setReason("");setError("");}} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Change role</button>
+                 <button disabled={saving || isSelf} title={isSelf ? "You cannot suspend your own account." : person.is_suspended ? "Restore this account" : "Suspend this account"} onClick={() => { setSuspensionTarget(person); setSuspensionReason(""); setError(""); }} className={`rounded-lg px-3 py-2 text-xs font-bold ${person.is_suspended ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"} disabled:cursor-not-allowed disabled:opacity-40`}>{person.is_suspended ? <><CheckCircle2 size={13} className="mr-1 inline"/>Restore</> : <><Ban size={13} className="mr-1 inline"/>Suspend</>}</button>
+               </div>
+             </article>;
+           })}</div>
           {!staff.length && <p className="py-8 text-center text-sm text-slate-500">No profiles on this page.</p>}
           <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><p className="text-xs text-slate-500">Page {peoplePage + 1} of {Math.max(1, Math.ceil(peopleTotal / 50))} · Showing {peopleTotal ? peoplePage * 50 + 1 : 0}–{Math.min((peoplePage + 1) * 50, peopleTotal)} of {peopleTotal.toLocaleString()}</p><div className="flex gap-2"><button disabled={peoplePage === 0 || loading} onClick={() => setPeoplePage((page) => Math.max(0, page - 1))} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40"><ChevronLeft size={14}/> Previous</button><button disabled={(peoplePage + 1) * 50 >= peopleTotal || loading} onClick={() => setPeoplePage((page) => page + 1)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40">Next <ChevronRight size={14}/></button></div></div>
           {selected && <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4"><div className="flex items-center justify-between"><h3 className="font-extrabold">Change role · @{selected.username}</h3><button onClick={() => setSelected(null)} className="text-xs font-bold text-slate-500">Cancel</button></div><label className="mt-3 block text-xs font-bold text-slate-600">New role<select value={newRole} onChange={(event) => setNewRole(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm">{roleOptions.map((role) => <option key={role} value={role}>{pretty(role)}</option>)}</select></label><label className="mt-3 block text-xs font-bold text-slate-600">Reason (required for audit)<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Explain why this role change is necessary."/></label><button disabled={saving || reason.trim().length < 5} onClick={() => void saveRole()} className="mt-3 min-h-10 rounded-lg bg-indigo-600 px-4 text-xs font-extrabold text-white disabled:opacity-50">{saving ? "Saving…" : "Save role change"}</button></div>}
         </section>
-        <section id="audit-history" className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Activity size={18} className="text-indigo-600"/><h2 className="font-extrabold">Administrative audit log</h2></div><p className="mt-1 text-xs text-slate-500">Latest 30 recorded administrative actions. Read access is restricted to admins.</p><div className="mt-4 space-y-3">{audit.length ? audit.map((entry) => <article key={entry.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-extrabold text-slate-800">{pretty(entry.action)}</p><time className="text-[11px] text-slate-400">{fmt(entry.created_at)}</time></div><p className="mt-1 text-xs text-slate-500">{pretty(entry.entity_type)} · {entry.entity_id || "No entity ID"}</p>{Object.keys(entry.details ?? {}).length > 0 && <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] text-slate-600">{JSON.stringify(entry.details,null,2)}</pre>}</article>) : <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No audit entries available.</p>}</div></section>
+        <section id="audit-history" className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+           <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Activity size={18} className="text-indigo-600"/><h2 className="font-extrabold">Administrative audit log</h2></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">Latest 30 records</span></div>
+           <p className="mt-1 text-xs text-slate-500">See who performed each action, what changed and when. Audit access is restricted to admins.</p>
+           <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px]">
+             <label className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3"><Search size={14} className="text-slate-400"/><input value={auditSearch} onChange={(event) => setAuditSearch(event.target.value)} placeholder="Search actor, action, target or reason" className="min-w-0 flex-1 bg-transparent text-xs outline-none"/>{auditSearch && <button type="button" aria-label="Clear audit search" onClick={() => setAuditSearch("")}><X size={14}/></button>}</label>
+             <select value={auditActionFilter} onChange={(event) => setAuditActionFilter(event.target.value)} aria-label="Filter audit actions" className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="all">All action types</option>{auditActions.map((action) => <option key={action} value={action}>{pretty(action)}</option>)}</select>
+           </div>
+           <p className="mt-2 text-[11px] text-slate-400">Showing {filteredAudit.length} of {audit.length} loaded records. This view currently loads the latest 30 records.</p>
+           <div className="mt-4 space-y-3">{filteredAudit.length ? filteredAudit.map((entry) => {
+             const actor = entry.actor_id ? auditActors[entry.actor_id] : undefined;
+             return <article key={entry.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+               <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-extrabold text-slate-800">{pretty(entry.action)}</p><time className="text-[11px] text-slate-400">{fmt(entry.created_at)}</time></div>
+               <p className="mt-1 text-xs text-slate-600">By <span className="font-bold">{actor ? `${actor.display_name} (@${actor.username})` : entry.actor_id ? `Account ${entry.actor_id.slice(0,8)}` : "System"}</span></p>
+               <p className="mt-1 break-all text-[11px] text-slate-500">{pretty(entry.entity_type)} · {entry.entity_id || "No entity ID"}</p>
+               {Object.keys(entry.details ?? {}).length > 0 && <details className="mt-2"><summary className="cursor-pointer text-[11px] font-bold text-indigo-700">View recorded details</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-white p-2 text-[11px] text-slate-600">{JSON.stringify(entry.details,null,2)}</pre></details>}
+             </article>;
+           }) : <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">{audit.length ? "No audit records match these filters." : "No audit entries available."}</p>}</div>
+         </section>
       </div>
       {postActionTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setPostActionTarget(null); }}><section role="dialog" aria-modal="true" aria-labelledby="post-action-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><h2 id="post-action-title" className="text-lg font-black">{postAction === "remove_post" ? "Remove post" : postAction === "restrict_post" ? "Restrict post" : "Restore post"}</h2><p className="mt-1 text-sm text-slate-500">Post by @{postActionTarget.author_username}. This is a reversible status change, not a permanent delete. The action, reason and previous state will be recorded.</p><label className="mt-4 block text-xs font-bold text-slate-600">Reason (minimum 5 characters)<textarea autoFocus value={postActionReason} onChange={(event) => setPostActionReason(event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="Explain the moderation decision."/></label><div className="mt-4 flex justify-end gap-2"><button disabled={saving} onClick={() => setPostActionTarget(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold disabled:opacity-50">Cancel</button><button disabled={saving || postActionReason.trim().length < 5} onClick={() => void applyPostAction()} className={`rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50 ${postAction === "restore_post" ? "bg-emerald-600" : postAction === "restrict_post" ? "bg-amber-600" : "bg-rose-600"}`}>{saving ? "Saving…" : "Confirm action"}</button></div></section></div>}
       {suspensionTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSuspensionTarget(null); }}><section role="dialog" aria-modal="true" aria-labelledby="suspension-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><h2 id="suspension-title" className="text-lg font-black">{suspensionTarget.is_suspended ? "Restore account" : "Suspend account"}</h2><p className="mt-1 text-sm text-slate-500">Account: @{suspensionTarget.username}. This action will be written to the administrative audit log.</p><label className="mt-4 block text-xs font-bold text-slate-600">Reason (minimum 5 characters)<textarea autoFocus value={suspensionReason} onChange={(event) => setSuspensionReason(event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="Explain the reason for this account action."/></label><div className="mt-4 flex justify-end gap-2"><button disabled={saving} onClick={() => setSuspensionTarget(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold disabled:opacity-50">Cancel</button><button disabled={saving || suspensionReason.trim().length < 5} onClick={() => void toggleSuspension()} className={`rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50 ${suspensionTarget.is_suspended ? "bg-emerald-600" : "bg-rose-600"}`}>{saving ? "Saving…" : suspensionTarget.is_suspended ? "Restore account" : "Suspend account"}</button></div></section></div>}
