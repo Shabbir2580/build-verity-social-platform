@@ -24,6 +24,7 @@ const routes = [
   ["/support/staff", null],
   ["/moderation", "Checking staff access"],
   ["/admin", "Checking administrator access"],
+  ["/admin/ai", "AI command center"],
 ];
 
 const env = {
@@ -78,6 +79,16 @@ try {
   }
   process.stdout.write("PASS editorial design system rules are present\\n");
 
+  const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
+  const adminPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
+  for (const marker of [\x27profile?.role !== "admin"\x27, \x27VERITY_ADMIN_AI_ENABLED !== "true"\x27, \x27Cache-Control\x22: \x22no-store\x27]) {
+    if (!adminAssistantSource.includes(marker)) throw new Error(`Admin assistant API is missing required access/cost control: ${marker}`);
+  }
+  if (!adminPageSource.includes("AI is not activated.") || !adminPageSource.includes("Read-only")) {
+    throw new Error("Admin AI page is missing its disabled-by-default and read-only safety states.");
+  }
+  process.stdout.write("PASS admin AI access and cost gates are present\\n");
+
   await waitForServer();
 
   for (const [path, expectedText] of routes) {
@@ -122,6 +133,10 @@ try {
       }
     }
   }
+
+  const adminAssistantResponse = await fetch(new URL("/api/admin/assistant", origin), { signal: AbortSignal.timeout(5000) });
+  if (adminAssistantResponse.status !== 401) throw new Error("Admin assistant API must reject unauthenticated access.");
+  process.stdout.write("PASS /api/admin/assistant rejects unauthenticated access (401)\\n");
 
   const sharedPostId = "00000000-0000-4000-8000-000000000001";
   const sharedPostResponse = await fetch(new URL(`/post/${sharedPostId}`, origin), {
