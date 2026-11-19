@@ -128,6 +128,28 @@ export default function AdminRevenuePage() {
         </div>
       </section>
 
+      <section aria-labelledby="revenue-ai-title" className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-700">AI finance intelligence</p><h2 id="revenue-ai-title" className="mt-1 text-xl font-semibold tracking-tight">AI Revenue Analyst</h2></div>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Waiting for verified ledger</span>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center gap-2 text-indigo-700"><BarChart3 size={18}/><h3 className="font-semibold text-slate-900">Earnings briefing</h3></div>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Explain collected and settled revenue, refunds, provider fees, taxes, net revenue and operating costs with links back to source transactions.</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center gap-2 text-indigo-700"><BriefcaseBusiness size={18}/><h3 className="font-semibold text-slate-900">Sponsor performance</h3></div>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Compare approved campaigns using delivered impressions, qualified clicks, conversions, contract value and attributable costs—not enquiry budgets.</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center gap-2 text-indigo-700"><Sparkles size={18}/><h3 className="font-semibold text-slate-900">Forecast scenarios</h3></div>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Build conservative, base and upside scenarios only after enough verified history exists, with assumptions and uncertainty shown beside every estimate.</p>
+          </article>
+        </div>
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">The analyst is intentionally inactive. It will not generate earnings summaries, ROI claims or forecasts until settled transactions, refunds, expenses and campaign attribution are available in a reconciled ledger.</p>
+      </section>
+
       <section aria-labelledby="pipeline-title" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-700">Commercial pipeline</p><h2 id="pipeline-title" className="mt-1 text-xl font-semibold tracking-tight">Business enquiries</h2></div>
