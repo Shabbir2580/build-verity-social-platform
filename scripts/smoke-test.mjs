@@ -88,6 +88,11 @@ try {
     }
 
     process.stdout.write(`PASS ${path} (${response.status})\n`);
+    if (path === "/for-organizations") {
+      for (const marker of ["Advertising", "Organization plans", "Business enquiry form", "No payment details are requested"]) {
+        if (!html.includes(marker)) throw new Error(`Business page is missing expected content: ${marker}`);
+      }
+    }
     if (path === "/") {
       if (!html.includes('aria-label="Open navigation menu"') || !html.includes('aria-controls="verity-mobile-menu"') || !html.includes('id="verity-mobile-menu"')) {
         throw new Error("Home page is missing its accessible mobile navigation toggle or sidebar target.");
