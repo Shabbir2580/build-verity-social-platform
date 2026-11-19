@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, ArrowLeft, Ban, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileText, LoaderCircle, RefreshCw, ShieldCheck, Users, UserCog, Search, X } from "lucide-react";
+import { Activity, ArrowLeft, Ban, BrainCircuit, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileText, LoaderCircle, RefreshCw, ShieldCheck, Users, UserCog, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = { id: string; username: string; display_name: string; role: string; is_suspended: boolean; created_at: string };
@@ -291,6 +291,10 @@ export default function AdminPage() {
           <Link href="/verify" className="group flex min-h-24 items-center gap-4 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white"><ShieldCheck size={20}/></span>
             <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-slate-900">Trust Center</span><span className="mt-1 block text-xs text-slate-500">Review media checks and evidence context</span></span><ChevronRight size={17} className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-rose-600"/>
+          </Link>
+          <Link href="/admin/ai" className="group flex min-h-24 items-center gap-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm transition hover:border-indigo-300 hover:shadow-md">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#34477f] text-white"><BrainCircuit size={20}/></span>
+            <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-slate-900">AI command center</span><span className="mt-1 block text-xs text-slate-500">Read-only operational insights for administrators</span></span><ChevronRight size={17} className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-indigo-600"/>
           </Link>
         </div>
       </section>
