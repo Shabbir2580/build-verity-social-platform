@@ -124,7 +124,7 @@ export default function AdminPage() {
       const supabase = createClient();
       let query = supabase.from("posts")
         .select("id, author_id, title, body, status, removal_reason, created_at, edited_at", { count: "exact" })
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: false }).order("id", { ascending: false })
         .range(postPage * 20, postPage * 20 + 19);
       if (postStatus !== "all") query = query.eq("status", postStatus);
       if (postSearch.trim()) query = query.textSearch("search", postSearch.trim(), { type: "websearch" });
