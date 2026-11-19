@@ -470,6 +470,7 @@ export default function HomePage() {
         .select("id, author_id, community_id, type, title, body, link_url, source_url, declared_category, ai_disclosure, tags, status, created_at")
         .eq("status", "published")
         .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(activePage === "Saved" ? 100 : 50);
       if (activePage === "Saved") {
         postQuery = postQuery.in("id", savedPostIds.length
