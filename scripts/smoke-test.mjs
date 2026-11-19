@@ -14,6 +14,7 @@ const routes = [
   ["/guidelines", "Community guidelines"],
   ["/settings", "Loading settings..."],
   ["/support/staff", null],
+  ["/moderation", "Checking staff access"],
   ["/admin", "Checking administrator access"],
 ];
 
