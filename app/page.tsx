@@ -853,10 +853,16 @@ export default function HomePage() {
         if (!accessToken) automaticCheckFailures.push("Your session was unavailable, so automatic checks did not start.");
         else {
           if (mediaRowsToInsert.length > 0) {
-            const { data: savedMedia, error: savedMediaError } = await supabase.from("post_media").select("id, kind").eq("post_id", createdPostId);
+            const { data: savedMedia, error: savedMediaError } = await supabase.from("post_media").select("id, kind, mime_type, size_bytes").eq("post_id", createdPostId);
             if (savedMediaError) automaticCheckFailures.push("Could not retrieve uploaded media IDs for automatic checks.");
             else {
-              const mediaFailures = await Promise.all((savedMedia ?? []).map(async (media) => {
+              const analyzableMedia = (savedMedia ?? []).filter((media) => {
+                const supportedMime = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"].includes(media.mime_type);
+                const sizeLimit = media.kind === "video" ? 20 * 1024 * 1024 : 8 * 1024 * 1024;
+                if (!supportedMime || media.size_bytes > sizeLimit) automaticCheckFailures.push(`${media.mime_type} was uploaded but skipped by Gemini because its format or size is outside the analysis limits.`);
+                return supportedMime && media.size_bytes <= sizeLimit;
+              });
+              const mediaFailures = await Promise.all(analyzableMedia.map(async (media) => {
                 try {
                   const response = await fetch("/api/verify/gemini", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken }, body: JSON.stringify({ postId: createdPostId, mediaId: media.id, consent: true }) });
                   if (!response.ok) {
