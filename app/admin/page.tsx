@@ -32,6 +32,8 @@ export default function AdminPage() {
   const [suspensionTarget, setSuspensionTarget] = useState<Profile | null>(null);
   const [suspensionReason, setSuspensionReason] = useState("");
   const [search, setSearch] = useState("");
+  const [peopleRoleFilter, setPeopleRoleFilter] = useState("all");
+  const [peopleStatusFilter, setPeopleStatusFilter] = useState("all");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -69,6 +71,8 @@ export default function AdminPage() {
       if (peopleTerm) {
         peopleQuery = peopleQuery.or(`username.ilike.%${peopleTerm}%,display_name.ilike.%${peopleTerm}%`);
       }
+      if (peopleRoleFilter !== "all") peopleQuery = peopleQuery.eq("role", peopleRoleFilter);
+      if (peopleStatusFilter !== "all") peopleQuery = peopleQuery.eq("is_suspended", peopleStatusFilter === "suspended");
       const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
@@ -112,7 +116,7 @@ export default function AdminPage() {
       setEngagement({ comments: recentComments?.data?.length ?? 0, reactions: recentReactions?.data?.length ?? 0, communities: recentMemberships?.data?.length ?? 0, contributors: contributors.size });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
     finally { setLoading(false); setChecking(false); }
-  }, [peoplePage, search]);
+  }, [peoplePage, search, peopleRoleFilter, peopleStatusFilter]);
 
   const loadManagedPosts = useCallback(async () => {
     setPostsLoading(true);
@@ -262,7 +266,18 @@ export default function AdminPage() {
       </section>
       <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><UserCog size={18} className="text-indigo-600"/><h2 className="font-extrabold">People & role management</h2></div><p className="mt-1 text-xs text-slate-500">Browse all {peopleTotal.toLocaleString()} profiles · 50 per page. Role changes use protected database functions and automatically create audit records.</p>
-          <input value={search} onChange={(event) => { setSearch(event.target.value); setPeoplePage(0); }} placeholder="Search all members by username or name" className="mt-4 min-h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"/>
+          <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
+            <input value={search} onChange={(event) => { setSearch(event.target.value); setPeoplePage(0); }} placeholder="Search all members by username or name" className="min-h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"/>
+            <select value={peopleRoleFilter} onChange={(event) => { setPeopleRoleFilter(event.target.value); setPeoplePage(0); }} aria-label="Filter members by role" className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm">
+              <option value="all">All roles</option>
+              {roleOptions.map((role) => <option key={role} value={role}>{pretty(role)}</option>)}
+            </select>
+            <select value={peopleStatusFilter} onChange={(event) => { setPeopleStatusFilter(event.target.value); setPeoplePage(0); }} aria-label="Filter members by account status" className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm">
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
           <div className="mt-3 divide-y divide-slate-100">{staff.map((person) => <article key={person.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-bold">{person.display_name} <span className="font-normal text-slate-400">@{person.username}</span></p><p className="mt-1 text-xs text-slate-500">{pretty(person.role)} · {person.is_suspended ? "Suspended" : "Active"} · Joined {new Date(person.created_at).toLocaleDateString()}</p></div><div className="flex items-center gap-2"><button onClick={() => {setSelected(person);setNewRole(person.role);setReason("");setError("");}} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">Change role</button><button disabled={saving} onClick={() => { setSuspensionTarget(person); setSuspensionReason(""); setError(""); }} className={`rounded-lg px-3 py-2 text-xs font-bold ${person.is_suspended ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"} disabled:opacity-50`}>{person.is_suspended ? <><CheckCircle2 size={13} className="mr-1 inline"/>Restore</> : <><Ban size={13} className="mr-1 inline"/>Suspend</>}</button></div></article>)}</div>
           {!staff.length && <p className="py-8 text-center text-sm text-slate-500">No profiles on this page.</p>}
           <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><p className="text-xs text-slate-500">Page {peoplePage + 1} of {Math.max(1, Math.ceil(peopleTotal / 50))} · Showing {peopleTotal ? peoplePage * 50 + 1 : 0}–{Math.min((peoplePage + 1) * 50, peopleTotal)} of {peopleTotal.toLocaleString()}</p><div className="flex gap-2"><button disabled={peoplePage === 0 || loading} onClick={() => setPeoplePage((page) => Math.max(0, page - 1))} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40"><ChevronLeft size={14}/> Previous</button><button disabled={(peoplePage + 1) * 50 >= peopleTotal || loading} onClick={() => setPeoplePage((page) => page + 1)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40">Next <ChevronRight size={14}/></button></div></div>
