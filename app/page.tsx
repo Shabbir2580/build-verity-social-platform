@@ -1522,7 +1522,7 @@ export default function HomePage() {
         </aside>
       </div>
 
-      <nav className="verity-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 pt-1.5 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">{[{ name: "Home", icon: Home }, { name: "Explore", icon: Compass }, { name: "Create", icon: Plus }, { name: "Questions", icon: CircleHelp }, { name: "Support", icon: Headphones }].map(({ name, icon: Icon }) => <button key={name} type="button" onClick={() => { if (name === "Create") { setError(""); setCreateOpen(true); } else setActivePage(name); }} className={`flex min-h-12 flex-col items-center justify-center gap-1 py-1 text-[10px] font-bold ${activePage === name ? "text-indigo-700" : "text-slate-400"}`}><Icon size={20} />{name}</button>)}</nav>
+      <nav className="verity-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 pt-1.5 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">{[{ name: "Home", icon: Home }, { name: "Explore", icon: Compass }, { name: "Create", icon: Plus }, { name: "Questions", icon: CircleHelp }, { name: "Support", icon: Headphones }].map(({ name, icon: Icon }) => <button key={name} type="button" onClick={() => { if (name === "Create") { setError(""); setCreateOpen(true); } else if (name === "Questions") router.push("/questions"); else setActivePage(name); }} className={`flex min-h-12 flex-col items-center justify-center gap-1 py-1 text-[10px] font-bold ${activePage === name ? "text-indigo-700" : "text-slate-400"}`}><Icon size={20} />{name}</button>)}</nav>
 
       {createOpen && (
         <div
