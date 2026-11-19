@@ -142,8 +142,8 @@ export default function AdminAiPage() {
 
     <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:py-8">
       <section className="min-w-0 space-y-5">
-        <div className="rounded-3xl bg-[#182743] p-6 text-white sm:p-8">
-          <div className="flex items-center gap-2 text-indigo-200"><BrainCircuit size={18}/><span className="text-xs font-bold uppercase tracking-[0.15em]">Internal assistant</span></div>
+        <div className="verity-ai-hero rounded-3xl p-6 text-white sm:p-8">
+          <div className="verity-ai-accent flex items-center gap-2"><BrainCircuit size={18}/><span className="text-xs font-bold uppercase tracking-[0.15em]">Internal assistant</span></div>
           <h2 className="mt-4 max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl">Understand what needs attention.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Get a role-specific operational briefing, understand urgent work and identify next steps. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -152,8 +152,8 @@ export default function AdminAiPage() {
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Human decisions</span>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            <button type="button" disabled={!aiEnabled || !aiConsent || sending || loading} onClick={() => void ask(undefined, "Prepare today's role-specific operations briefing using the latest database snapshot.", "briefing")} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-[#1b2a43] transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"><Sparkles size={15}/> Generate daily briefing</button>
-            <button type="button" disabled={!aiEnabled || !aiConsent || sending || loading} onClick={() => void ask(undefined, "Rank the operational priorities for my role and explain the evidence for each.", "priorities")} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-45"><Flag size={14}/> Prioritise work</button>
+            <button type="button" disabled={!aiEnabled || !aiConsent || sending || loading} onClick={() => void ask(undefined, "Prepare today's role-specific operations briefing using the latest database snapshot.", "briefing")} className="verity-ai-primary inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-45"><Sparkles size={15}/> Generate daily briefing</button>
+            <button type="button" disabled={!aiEnabled || !aiConsent || sending || loading} onClick={() => void ask(undefined, "Rank the operational priorities for my role and explain the evidence for each.", "priorities")} className="verity-ai-secondary inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45"><Flag size={14}/> Prioritise work</button>
           </div>
         </div>
 
@@ -168,18 +168,18 @@ export default function AdminAiPage() {
           {staffRole && <MetricCard label="AI requests · 24h" value={metrics?.aiRequests24h ?? null} note={staffRole === "admin" ? "Across authorized staff" : "Your recorded requests"} icon={Bot}/>}
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <section className="verity-ai-panel overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div className="flex items-center gap-2"><Bot size={18} className="text-indigo-600"/><h2 className="font-semibold">Ask Verity AI</h2></div>
             <span className="text-xs text-slate-400">Operational guidance</span>
           </div>
-          <div className="min-h-72 space-y-4 bg-slate-50/70 p-4 sm:p-5">
+          <div className="verity-ai-chat min-h-72 space-y-4 p-4 sm:p-5">
             {!messages.length && <div className="mx-auto max-w-lg py-8 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"><Sparkles size={22}/></div>
               <h3 className="mt-4 font-semibold text-slate-800">What would you like to understand?</h3>
               <p className="mt-1 text-sm text-slate-500">Start with one of these questions.</p>
               <div className="mt-5 grid gap-2 text-left sm:grid-cols-2">
-                {(staffRole ? suggestionsByRole[staffRole] : suggestionsByRole.admin).map((item) => <button key={item} disabled={!aiEnabled || !aiConsent || sending} onClick={() => void ask(undefined, item)} className="rounded-xl border border-slate-200 bg-white p-3 text-left text-xs font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50">{item}</button>)}
+                {(staffRole ? suggestionsByRole[staffRole] : suggestionsByRole.admin).map((item) => <button key={item} disabled={!aiEnabled || !aiConsent || sending} onClick={() => void ask(undefined, item)} className="verity-ai-suggestion rounded-xl border border-slate-200 bg-white p-3 text-left text-xs font-medium text-slate-700 transition disabled:cursor-not-allowed disabled:opacity-50">{item}</button>)}
               </div>
             </div>}
             {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-[#34477f] px-4 py-3 text-sm leading-6 text-white" : "mr-auto max-w-[95%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700"}>
@@ -193,9 +193,9 @@ export default function AdminAiPage() {
           </label>
           <form onSubmit={(event) => void ask(event)} className="flex gap-2 border-t border-slate-100 bg-white p-3 sm:p-4">
             <input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={500} disabled={!aiEnabled || !aiConsent || sending} placeholder={!aiEnabled ? "AI assistant is currently disabled" : aiConsent ? "Ask about workload, activity or priorities…" : "Confirm the Google data-use notice to continue"} className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-indigo-300 focus:bg-white disabled:opacity-60"/>
-            <button type="submit" disabled={!aiEnabled || !aiConsent || sending || question.trim().length < 4} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#34477f] px-4 text-sm font-semibold text-white transition hover:bg-[#26375f] disabled:cursor-not-allowed disabled:opacity-40"><Send size={15}/><span className="hidden sm:inline">Ask</span></button>
+            <button type="submit" disabled={!aiEnabled || !aiConsent || sending || question.trim().length < 4} className="verity-ai-send inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"><Send size={15}/><span className="hidden sm:inline">Ask</span></button>
           </form>
-          {!aiEnabled && <div className="border-t border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900"><strong>AI is not activated.</strong> This feature requires the existing Gemini key and the explicit server setting <code>VERITY_ADMIN_AI_ENABLED=true</code>. It is deliberately off by default to prevent unexpected API usage or charges.</div>}
+          {!aiEnabled && <div className="verity-ai-note border-t px-4 py-3 text-xs leading-5"><strong>AI is not activated.</strong> This feature requires the existing Gemini key and the explicit server setting <code>VERITY_ADMIN_AI_ENABLED=true</code>. It is deliberately off by default to prevent unexpected API usage or charges.</div>}
           {error && <p role="alert" className="border-t border-rose-100 bg-rose-50 px-4 py-3 text-xs text-rose-800">{error}</p>}
         </section>
       </section>
