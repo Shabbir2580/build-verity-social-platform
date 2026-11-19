@@ -44,7 +44,7 @@ Status: **in progress**
 
 ### Phase 4 — Verity AI operations assistant
 Status: **in progress**
-- Existing assistant requests now reserve usage events in the audit log, apply best-effort per-account hourly/daily caps, and record provider token counts without storing the prompt.
+- Existing assistant requests now reserve usage events in the audit log, apply best-effort per-account hourly/daily caps, record provider token counts without storing the prompt, and require explicit staff consent before sending questions to Google.
 - Improve the existing read-only staff assistant rather than create a duplicate.
 - Provide role-scoped daily briefings, workload summaries, trend explanations and suggested next steps.
 - Add durable request limits, usage/cost observability and safe provider configuration before broad enablement.
