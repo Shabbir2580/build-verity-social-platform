@@ -88,6 +88,9 @@ try {
   for (const marker of ["suggestionsByRole", "admin: [", "moderator: [", "support: [", "role-specific operational briefing"]) {
     if (!aiPageSource.includes(marker)) throw new Error(`AI workspace is missing role-specific guidance: ${marker}`);
   }
+  for (const marker of ["12 requests per hour", "40 per day", "admin_ai_assistant_request", "promptTokens", "outputTokens", "AI usage tracking is unavailable"]) {
+    if (!adminAssistantSource.includes(marker)) throw new Error(`AI assistant is missing usage controls or token metering: ${marker}`);
+  }
   const businessApiSource = await readFile(new URL("../app/api/admin/business/route.ts", import.meta.url), "utf8");
   const businessPageSource = await readFile(new URL("../app/admin/business/page.tsx", import.meta.url), "utf8");
   for (const marker of ["[\"admin\", \"moderator\", \"support\"].includes(profile?.role || \"\")", "const canModerate = isAdmin || role === \"moderator\"", "const canSupport = isAdmin || role === \"support\"", "VERITY_ADMIN_AI_ENABLED !== \"true\"", "\"Cache-Control\": \"no-store\""]) {
