@@ -11,6 +11,7 @@ type AdminContext = {
   activeCases: number | null; urgentCases: number | null; overdueCases: number | null;
   openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
   newMembers7d: number | null; newPosts7d: number | null;
+  businessLeads: number | null; openBusinessLeads: number | null;
 };
 
 function jsonError(message: string, status: number) {
@@ -56,7 +57,7 @@ async function getContext(supabase: any, role: string): Promise<AdminContext> {
   };
   const [
     members, posts, reports, activeCases, urgentCases, overdueCases,
-    openTickets, overdueTickets, newTickets7d, newMembers, newPosts,
+    openTickets, overdueTickets, newTickets7d, newMembers, newPosts, businessLeads, openBusinessLeads,
   ] = await Promise.all([
     isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true })) : null,
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true })) : null,
@@ -69,10 +70,12 @@ async function getContext(supabase: any, role: string): Promise<AdminContext> {
     canSupport ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
+    isAdmin ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%")) : null,
+    isAdmin ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%").neq("status", "resolved")) : null,
   ]);
   return {
     generatedAt: isoNow, members, posts, reports, activeCases, urgentCases,
-    overdueCases, openTickets, overdueTickets, newTickets7d, newMembers7d: newMembers, newPosts7d: newPosts,
+    overdueCases, openTickets, overdueTickets, newTickets7d, newMembers7d: newMembers, newPosts7d: newPosts, businessLeads, openBusinessLeads,
   };
 }
 
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
       "Answer using only the verified aggregate metrics supplied below. Never invent a count, user, event, revenue, cause, or trend.",
       "If a metric is null or absent, it is outside this staff member's permissions; do not infer it or reveal it.",
       "Recommend human review for moderation decisions. Never recommend automatic bans, removals, appeal outcomes, or truth verdicts.",
-      "Do not claim that reports prove misconduct. Do not infer revenue because no financial metrics are supplied.",
+      "Do not claim that reports prove misconduct. Business enquiry counts are leads, not revenue; no financial metrics or collected payments are supplied.",
       "Be concise, practical, and clearly distinguish observed counts from suggestions.",
       "Current platform metrics (counts from the database, generated at " + metrics.generatedAt + "):",
       JSON.stringify(metrics),
