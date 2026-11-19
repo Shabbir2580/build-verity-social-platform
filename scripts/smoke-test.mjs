@@ -23,8 +23,6 @@ const routes = [
   ["/support/tickets/00000000-0000-4000-8000-000000000002", "Ticket conversation"],
   ["/support/staff", null],
   ["/moderation", "Checking staff access"],
-  ["/api/moderation/ai-summary", null],
-  ["/api/support/ai-assist", null],
   ["/admin", "Checking administrator access"],
   ["/admin/business", "Commercial workspace"],
   ["/admin/revenue", "Revenue"],
@@ -156,6 +154,21 @@ try {
   }
   if (!businessPageSource.includes("Enquiries are not revenue.") || !businessPageSource.includes("No payment processor connected")) {
     throw new Error("Business dashboard is missing its revenue transparency notices.");
+  }
+  const moderationAiSource = await readFile(new URL("../app/api/moderation/ai-summary/route.ts", import.meta.url), "utf8");
+  const supportAiSource = await readFile(new URL("../app/api/support/ai-assist/route.ts", import.meta.url), "utf8");
+  for (const marker of ['body.consent !== true', 'moderation.ai_case_summary', 'profile.role !== "admin"', 'needs_second_review', 'gemini-2.5-flash', 'does not make moderation decisions']) {
+    if (!moderationAiSource.includes(marker)) throw new Error(`Moderation AI route is missing consent, access, audit or human-review guard: ${marker}`);
+  }
+  for (const marker of ['body.consent !== true', 'support.ai_assist', 'ticket.assigned_team === "support"', 'ticket.assigned_team === "trust_safety"', 'draft_customer_reply', 'Nothing is sent or changed']) {
+    if (!supportAiSource.includes(marker)) throw new Error(`Support AI route is missing consent, team access, audit or draft-only guard: ${marker}`);
+  }
+  if (!supportPageSource.includes("Google Gemini for this request") || !supportPageSource.includes("Use in reply editor")) {
+    throw new Error("Support AI UI must require consent and keep the draft under staff control.");
+  }
+  const moderationPageSource = await readFile(new URL("../app/moderation/page.tsx", import.meta.url), "utf8");
+  if (!moderationPageSource.includes("Google Gemini for this request") || !moderationPageSource.includes("Generate case summary")) {
+    throw new Error("Moderation AI UI must require consent before requesting a case summary.");
   }
   process.stdout.write("PASS admin AI and business workspace access/cost boundaries are present\\n");
 
