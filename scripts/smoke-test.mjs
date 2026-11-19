@@ -177,6 +177,16 @@ try {
   }
   process.stdout.write("PASS /post/:id redirects to the highlighted home-feed post\\n");
 
+  const factCheckSource = await readFile(new URL("../app/api/verify/fact-check/route.ts", import.meta.url), "utf8");
+  for (const marker of ["GOOGLE_FACT_CHECK_API_KEY", "fact_check_search", "20) return fail", "Publisher's own wording"]) {
+    if (!factCheckSource.includes(marker)) throw new Error(`Published fact-check integration is missing a required guard: ${marker}`);
+  }
+  const factCheckAuthResponse = await fetch(new URL("/api/verify/fact-check?q=A sufficiently long test claim", origin), {
+    signal: AbortSignal.timeout(5000),
+  });
+  if (factCheckAuthResponse.status !== 401) throw new Error("Published fact-check API must reject unauthenticated access (401).");
+  process.stdout.write("PASS published fact-check API rejects unauthenticated access (401)\\n");
+
   const invalidCoverageResponse = await fetch(new URL("/api/verify/news?q=short", origin), {
     signal: AbortSignal.timeout(5000),
   });
