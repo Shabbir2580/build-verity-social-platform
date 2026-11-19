@@ -30,6 +30,7 @@ The live function definition for `public.guard_post_update()` matches the reposi
 ## Application AI controls
 
 - Staff AI requests are recorded in `audit_logs` without storing the question text.
+- Gemini system rules are sent through the provider's separate `systemInstruction` field; the staff question and aggregate snapshot remain in the user-content field. This improves instruction separation but is not a substitute for prompt-injection testing.
 - Model and token usage metadata are recorded when Gemini returns it. Token counts are not a currency-cost calculation.
 - Per-account hourly and daily request caps are best-effort application controls. They are not a substitute for hard provider-side quotas, which must be configured in the Google AI project.
 - Staff must consent before sending a question to Google Gemini and are instructed not to include personal data, credentials or private messages.
