@@ -237,7 +237,7 @@ export default function ModerationPage() {
   if (!authorized) return <main className="min-h-screen bg-[#f5f6fb] px-4 py-16 text-slate-900"><section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm"><ShieldCheck size={30} className="mx-auto text-indigo-600" /><h1 className="mt-3 text-2xl font-black">Staff access required</h1><p className="mt-2 text-sm text-slate-500">The moderation workspace is available only to moderators and administrators.</p><Link href="/" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white"><ArrowLeft size={16} /> Back to Verity</Link></section></main>;
 
   return (
-    <main className="min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
+    <main className="verity-workspace min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
       <header className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between border-b border-slate-200">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-700"><ArrowLeft size={17} /> Back to feed</Link>
         <Link href="/" className="text-lg font-black tracking-tight">Verity<span className="text-indigo-600">.</span></Link>
