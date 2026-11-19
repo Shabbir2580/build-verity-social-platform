@@ -85,7 +85,7 @@ try {
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
   const adminPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
   const aiPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
-  for (const marker of ["suggestionsByRole", "admin: [", "moderator: [", "support: [", "role-specific operational briefing"]) {
+  for (const marker of ["suggestionsByRole", "admin: [", "moderator: [", "support: [", "role-specific operational briefing", "aiConsent", "sent to Google Gemini", "private messages, credentials or personal data"]) {
     if (!aiPageSource.includes(marker)) throw new Error(`AI workspace is missing role-specific guidance: ${marker}`);
   }
   for (const marker of ["12 requests per hour", "40 per day", "admin_ai_assistant_request", "promptTokens", "outputTokens", "AI usage tracking is unavailable"]) {
