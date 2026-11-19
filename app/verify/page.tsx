@@ -493,7 +493,7 @@ export default function VerifyPage() {
     : "No assessment records";
 
   return (
-    <main className="min-h-[100dvh] bg-[#f5f6fb] px-4 pb-12 text-slate-900 sm:px-6 sm:pb-16">
+    <main className="verity-workspace min-h-[100dvh] bg-[#f5f6fb] px-4 pb-12 text-slate-900 sm:px-6 sm:pb-16">
       <header className="mx-auto flex min-h-[68px] max-w-[1440px] items-center justify-between gap-3 border-b border-slate-200/80 bg-[#f5f6fb]/95">
         <Link href="/" className="flex min-h-12 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100">
           <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200"><ShieldCheck size={22} /></span>
