@@ -39,4 +39,5 @@ The live function definition for `public.guard_post_update()` matches the reposi
 
 - This audit used read-only database inspection and Supabase advisor calls. No live schema, Auth setting, billing setting or project configuration was changed.
 - No production deployment was performed.
+- Public impact metrics remain unpublished. Current activity is too small for a meaningful public showcase; wait for reviewed aggregates and minimum cohort thresholds so reports cannot expose individual activity.
 - Never drop indexes or revoke helper-function grants solely to clear advisor warnings. First prove that the change preserves the relevant RLS policies and user-facing workflows.
