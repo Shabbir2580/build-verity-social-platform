@@ -95,7 +95,7 @@ export default function ModerationPage() {
       const offset = append ? casesRef.current.length : 0;
       const { data: caseRows, error: casesError } = await supabase.from("moderation_cases")
         .select("id, post_id, label_id, case_type, status, priority, assigned_to, opened_by, summary, resolution, needs_second_review, second_review_requested_by, due_at, created_at, updated_at, resolved_at")
-        .order("created_at", { ascending: false }).range(offset, offset + 99);
+        .order("created_at", { ascending: false }).order("id", { ascending: false }).range(offset, offset + 99);
       if (casesError) throw casesError;
       const fetchedRows = (caseRows ?? []) as CaseRow[];
       setHasMore(fetchedRows.length === 100);
