@@ -105,7 +105,7 @@ export default function SettingsPage() {
       } else setBlockedUsers([]);
       setProfile(profileData as Profile);
       setInterestText((profileData.interests ?? []).join(", "));
-      setPreferences({ ...preferences, ...(settingsData.notification_prefs ?? {}) });
+      setPreferences((current) => ({ ...current, ...(settingsData.notification_prefs ?? {}) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load account settings.");
     } finally {
