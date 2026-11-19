@@ -106,6 +106,11 @@ try {
   process.stdout.write("PASS profile, people, community and notification pages use the shared product shell\\n");
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  for (const token of ["--verity-navy: #142b3a", "--verity-teal: #168477", "--verity-ivory: #f5f5f0", "--verity-border: #e1e7e3", "Verity design system v3"]) {
+    if (!visualSystem.includes(token)) throw new Error("Verity v3 design token is missing: " + token);
+  }
+  const rootLayoutSource = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  if (!rootLayoutSource.includes("themeColor: '#142b3a'")) throw new Error("Browser theme colour must match the Verity navy brand.");
   for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line", "--workspace-teal", "--workspace-highlight", ".verity-ai-hero", ".verity-workspace .text-indigo-600", ".verity-admin-page .bg-indigo-600"]) {
     if (!visualSystem.includes(marker)) throw new Error(`Visual design system is missing expected rule: ${marker}`);
   }
