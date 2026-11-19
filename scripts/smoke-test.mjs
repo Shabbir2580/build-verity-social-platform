@@ -72,6 +72,12 @@ try {
     process.stdout.write(`PASS /${authPage} preserves safe return destinations\\n`);
   }
 
+  const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover"]) {
+    if (!visualSystem.includes(marker)) throw new Error(`Visual design system is missing expected rule: ${marker}`);
+  }
+  process.stdout.write("PASS editorial design system rules are present\\n");
+
   await waitForServer();
 
   for (const [path, expectedText] of routes) {
