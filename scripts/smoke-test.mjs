@@ -112,6 +112,10 @@ try {
   process.stdout.write("PASS editorial design system rules are present\\n");
 
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
+  const supportPageSource = await readFile(new URL("../app/support/staff/page.tsx", import.meta.url), "utf8");
+  if (!supportPageSource.includes('role === "admin" ? ["support", "trust_safety"] : role === "support" ? ["support"] : ["trust_safety"]')) {
+    throw new Error("Support workspace team filter must expose only the current staff role\'s permitted teams.");
+  }
   const adminPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
   const aiPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
   for (const marker of ["suggestionsByRole", "admin: [", "moderator: [", "support: [", "role-specific operational briefing", "aiConsent", "sent to Google Gemini", "private messages, credentials or personal data"]) {
