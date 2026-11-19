@@ -6,7 +6,7 @@ import { LoaderCircle, Sparkles, ShieldAlert } from "lucide-react";
 
 type MediaItem = { id: string; kind: "image" | "video" };
 
-export function GeminiMediaCheck({ postId, media }: { postId: string; media: MediaItem[] }) {
+export function GeminiMediaCheck({ postId, media, onComplete }: { postId: string; media: MediaItem[]; onComplete?: () => Promise<void> | void }) {
   const [consent, setConsent] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
@@ -36,7 +36,9 @@ export function GeminiMediaCheck({ postId, media }: { postId: string; media: Med
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Gemini assessment failed.");
-      setMessage("Gemini assessment saved. It is marked uncertain and is not proof of AI generation or authenticity. Refresh the Trust Center to view the record.");
+      setMessage("Assessment saved. Updating the evidence records…");
+      await onComplete?.();
+      setMessage("Assessment saved and added to the evidence records below. It remains uncertain and is not proof of AI generation or authenticity.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run the Gemini assessment.");
     } finally {
@@ -62,7 +64,7 @@ export function GeminiMediaCheck({ postId, media }: { postId: string; media: Med
       </div>
       {message && <p role="status" className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-emerald-800">{message}</p>}
       {error && <p role="alert" className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-rose-800"><ShieldAlert size={14} className="mr-1 inline" />{error}</p>}
-      <p className="mt-3 text-[11px] leading-5 text-violet-800">Important: Gemini is a general multimodal model, not a forensic AI/deepfake detector. Every result remains “uncertain”; it cannot prove whether media is AI-generated, genuine or manipulated. Up to 3 scans per post per hour.</p>
+      <p className="mt-3 text-[11px] leading-5 text-violet-800">Important: Gemini is a general multimodal model, not a forensic AI/deepfake detector. Every result remains “uncertain”; it cannot prove whether media is AI-generated, genuine or manipulated. Up to 6 assessment attempts per post per hour.</p>
     </section>
   );
 }
