@@ -71,16 +71,10 @@ export default function AdminBusinessPage() {
 
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Total enquiries", data?.metrics.total ?? 0, Briefcase],
-          ["Open enquiries", data?.metrics.open ?? 0, Clock3],
-          ["New enquiries", data?.metrics.received ?? 0, TrendingUp],
-          ["Resolved", data?.metrics.resolved ?? 0, CheckCircle2],
-        ].map(([label, value, Icon]) => <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">{String(label)}</p><Icon size={17} className="text-slate-400"/></div>
-          <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(Number(value))}</p>
-          <p className="mt-1 text-xs text-slate-500">From submitted business enquiry tickets</p>
-        </div>)}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">Total enquiries</p><Briefcase size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.total ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Submitted business enquiries</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">Open enquiries</p><Clock3 size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.open ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Not marked resolved</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">New enquiries</p><TrendingUp size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.received ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Awaiting first review</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">Resolved</p><CheckCircle2 size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.resolved ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Closed business enquiries</p></div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
