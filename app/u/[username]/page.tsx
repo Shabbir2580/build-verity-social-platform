@@ -39,6 +39,8 @@ export default function PublicProfilePage() {
   const username = decodeURIComponent(params.username ?? "").toLowerCase();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsHasMore, setPostsHasMore] = useState(false);
+  const [postsLoadingMore, setPostsLoadingMore] = useState(false);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -77,7 +79,7 @@ export default function PublicProfilePage() {
       const [{ data: postRows, error: postsError }, { count: followerCount, error: followerError }, { count: followingTotal, error: followingError }, { count: isFollowing, error: relationError }, { count: isBlocked, error: blockError }] = await Promise.all([
         supabase.from("posts").select("id, title, body, type, created_at, community_id")
           .eq("author_id", found.id).eq("status", "published")
-          .order("created_at", { ascending: false }).limit(30),
+          .order("created_at", { ascending: false }).range(0, 29),
         supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", found.id),
         supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", found.id),
         viewer && viewer !== found.id
@@ -93,6 +95,7 @@ export default function PublicProfilePage() {
       if (relationError) throw relationError;
       if (blockError) throw blockError;
       setPosts(postRows ?? []);
+      setPostsHasMore((postRows ?? []).length === 30);
       setFollowers(followerCount ?? 0);
       setFollowingCount(followingTotal ?? 0);
       setFollowing((isFollowing ?? 0) > 0);
@@ -105,6 +108,31 @@ export default function PublicProfilePage() {
   }, [username]);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function loadMorePosts() {
+    if (!profile || postsLoadingMore || !postsHasMore) return;
+    setPostsLoadingMore(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const start = posts.length;
+      const { data, error: postsError } = await supabase.from("posts")
+        .select("id, title, body, type, created_at, community_id")
+        .eq("author_id", profile.id).eq("status", "published")
+        .order("created_at", { ascending: false }).range(start, start + 29);
+      if (postsError) throw postsError;
+      const nextRows = (data ?? []) as Post[];
+      setPosts((current) => {
+        const existing = new Set(current.map((post) => post.id));
+        return [...current, ...nextRows.filter((post) => !existing.has(post.id))];
+      });
+      setPostsHasMore(nextRows.length === 30);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load older posts.");
+    } finally {
+      setPostsLoadingMore(false);
+    }
+  }
 
   async function toggleFollow() {
     if (!profile || busy) return;
@@ -266,7 +294,7 @@ export default function PublicProfilePage() {
 
         <div className="mt-8 flex items-center justify-between">
           <div><h2 className="text-xl font-black">Posts</h2><p className="mt-1 text-xs text-slate-500">Public posts shared by @{profile.username}</p></div>
-          <span className="text-xs font-semibold text-slate-500">{posts.length} recent</span>
+          <span className="text-xs font-semibold text-slate-500">{posts.length} loaded{postsHasMore ? " · more available" : ""}</span>
         </div>
         {posts.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"><MessageCircle className="mx-auto text-slate-300" size={30} /><p className="mt-3 font-bold">No public posts yet</p><p className="mt-1 text-sm text-slate-500">When this member shares something, it will appear here.</p></div>
@@ -298,6 +326,7 @@ export default function PublicProfilePage() {
             </article>)}
           </div>
         )}
+        {postsHasMore && <div className="mt-5 flex justify-center"><button type="button" onClick={() => void loadMorePosts()} disabled={postsLoadingMore} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm hover:border-indigo-200 hover:text-indigo-700 disabled:opacity-50">{postsLoadingMore && <LoaderCircle size={15} className="animate-spin" />}{postsLoadingMore ? "Loading older posts…" : "Load older posts"}</button></div>}
       </section>
     </main>
   );
