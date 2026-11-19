@@ -113,6 +113,11 @@ try {
 
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
   const supportPageSource = await readFile(new URL("../app/support/staff/page.tsx", import.meta.url), "utf8");
+  if (!supportPageSource.includes("const messagesRequest = useRef(0)") ||
+      !supportPageSource.includes("if (requestId !== messagesRequest.current) return;") ||
+      !supportPageSource.includes("setMessages([]);")) {
+    throw new Error("Support ticket switching must clear old messages and ignore stale conversation responses.");
+  }
   if (!supportPageSource.includes('role === "admin" ? ["support", "trust_safety"] : role === "support" ? ["support"] : ["trust_safety"]')) {
     throw new Error("Support workspace team filter must expose only the current staff role\'s permitted teams.");
   }
