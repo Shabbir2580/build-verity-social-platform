@@ -90,7 +90,7 @@ export default function AdminAiPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function ask(event?: FormEvent, preset?: string) {
+  async function ask(event?: FormEvent, preset?: string, mode: "question" | "briefing" | "priorities" | "growth" | "workflow" = "question") {
     event?.preventDefault();
     const prompt = (preset ?? question).trim();
     if (!prompt || sending) return;
@@ -109,7 +109,7 @@ export default function AdminAiPage() {
           "Content-Type": "application/json",
           Authorization: "Bearer " + sessionData.session.access_token,
         },
-        body: JSON.stringify({ question: prompt }),
+        body: JSON.stringify({ question: prompt, mode }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "The assistant could not answer.");
@@ -148,8 +148,12 @@ export default function AdminAiPage() {
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Get a role-specific operational briefing, understand urgent work and identify next steps. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">{staffRole === "admin" ? "Admin access" : staffRole === "moderator" ? "Moderator access" : staffRole === "support" ? "Support access" : "Staff access"}</span>
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Read-only</span>
+            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Read-only data</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Human decisions</span>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button type="button" disabled={!aiEnabled || !aiConsent || sending || loading} onClick={() => void ask(undefined, "Prepare today's role-specific operations briefing using the latest database snapshot.", "briefing")} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-[#1b2a43] transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"><Sparkles size={15}/> Generate daily briefing</button>
+            <button type="button" disabled={!aiEnabled || !aiConsent || sending || loading} onClick={() => void ask(undefined, "Rank the operational priorities for my role and explain the evidence for each.", "priorities")} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-45"><Flag size={14}/> Prioritise work</button>
           </div>
         </div>
 
@@ -232,7 +236,7 @@ export default function AdminAiPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2"><ShieldCheck size={17} className="text-emerald-600"/><h2 className="font-semibold">Safety boundaries</h2></div>
           <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-600">
-            <li>• AI sees aggregate operational counts, not private messages or raw user content.</li>
+            <li>• Current assistant answers are limited to aggregate operational counts; individual case and ticket records are not yet connected.</li>
             <li>• AI cannot suspend accounts, delete posts or resolve cases.</li>
             <li>• AI cannot determine whether a claim or media item is true or authentic.</li>
             <li>• Admins remain responsible for decisions and should verify records.</li>
