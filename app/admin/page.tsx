@@ -75,16 +75,6 @@ export default function AdminPage() {
         supabase.from("reports").select("id", { count: "exact", head: true }),
         supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved"),
         supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved"),
-        peopleQuery.order("created_at", { ascending: false }).range(peoplePage * 50, peoplePage * 50 + 49),");
-      if (peopleTerm) {
-        peopleQuery = peopleQuery.or(`username.ilike.%${peopleTerm}%,display_name.ilike.%${peopleTerm}%`);
-      }
-      const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("posts").select("id", { count: "exact", head: true }),
-        supabase.from("reports").select("id", { count: "exact", head: true }),
-        supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved"),
-        supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved"),
         peopleQuery.order("created_at", { ascending: false }).range(peoplePage * 50, peoplePage * 50 + 49),
         supabase.from("audit_logs").select("id, actor_id, action, entity_type, entity_id, details, created_at").order("created_at", { ascending: false }).limit(30),
         supabase.from("profiles").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
