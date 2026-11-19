@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, BrainCircuit, Clock3, Headphones, LoaderCircle, RefreshCw, Search, Send, ShieldCheck, UserRoundCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -35,6 +35,7 @@ export default function StaffSupportPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const messagesRequest = useRef(0);
 
   const selected = tickets.find((ticket) => ticket.id === selectedId) ?? null;
   const visible = useMemo(() => tickets.filter((ticket) => {
@@ -102,17 +103,22 @@ export default function StaffSupportPage() {
   }, [tickets.length, loading, loadingMore, hasMore]);
 
   const loadMessages = useCallback(async (ticketId: string) => {
-    if (!ticketId) return;
+    const requestId = ++messagesRequest.current;
+    if (!ticketId) { setMessages([]); return; }
+    // Never leave the previous ticket's private conversation visible while
+    // the next ticket is loading, and ignore responses from stale requests.
+    setMessages([]);
     const supabase = createClient();
     const { data, error: messageError } = await supabase.from("support_ticket_messages")
       .select("id, body, is_staff, is_internal, created_at, author_id")
       .eq("ticket_id", ticketId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(200);
+    if (requestId !== messagesRequest.current) return;
     if (messageError) { setError(messageError.message); return; }
     setMessages(((data ?? []) as Message[]).reverse());
   }, []);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { if (selectedId) void loadMessages(selectedId); else setMessages([]); }, [selectedId, loadMessages]);
+  useEffect(() => { void loadMessages(selectedId); }, [selectedId, loadMessages]);
 
   async function updateTicket(values: Partial<Pick<Ticket, "status" | "assigned_to">>, action: string) {
     if (!selected || saving) return;
