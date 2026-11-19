@@ -35,6 +35,9 @@ export default function StaffSupportPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [aiConsent, setAiConsent] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiResult, setAiResult] = useState<null | { summary: string; customer_goal: string; unresolved_questions: string[]; suggested_next_steps: string[]; draft_customer_reply: string; disclaimer: string }>(null);
   const messagesRequest = useRef(0);
 
   const selected = tickets.find((ticket) => ticket.id === selectedId) ?? null;
@@ -119,6 +122,7 @@ export default function StaffSupportPage() {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { void loadMessages(selectedId); }, [selectedId, loadMessages]);
+  useEffect(() => { setAiConsent(false); setAiResult(null); }, [selectedId]);
 
   async function updateTicket(values: Partial<Pick<Ticket, "status" | "assigned_to">>, action: string) {
     if (!selected || saving) return;
@@ -131,6 +135,23 @@ export default function StaffSupportPage() {
       await load();
     } catch (err) { setError(err instanceof Error ? err.message : "Could not update ticket."); }
     finally { setSaving(false); }
+  }
+
+  async function generateAiAssist() {
+    if (!selected || !aiConsent || aiBusy) return;
+    setAiBusy(true); setError(""); setAiResult(null);
+    try {
+      const supabase = createClient();
+      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = session.session?.access_token;
+      if (!token) throw new Error("Your session expired. Sign in again.");
+      const response = await fetch("/api/support/ai-assist", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ ticketId: selected.id, consent: true }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not assist with this ticket.");
+      setAiResult({ ...payload.assistant, disclaimer: payload.disclaimer || "AI-generated draft only. Verify before sending." });
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not assist with this ticket."); }
+    finally { setAiBusy(false); }
   }
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
@@ -175,6 +196,19 @@ export default function StaffSupportPage() {
           {!selected ? <div className="flex min-h-[380px] flex-col items-center justify-center text-center"><Headphones size={34} className="text-slate-300"/><h2 className="mt-3 font-extrabold">Select a ticket</h2><p className="mt-1 max-w-sm text-sm text-slate-500">The full customer conversation and staff controls will appear here.</p></div> : <>
             <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-extrabold uppercase tracking-wide text-indigo-700">VER-{String(selected.ticket_number).padStart(6,"0")} · {pretty(selected.category)}</p><h2 className="mt-1 text-xl font-black">{selected.subject}</h2><p className="mt-1 text-xs text-slate-500">From @{profiles[selected.user_id]?.username || "member"} · Opened {stamp(selected.created_at)}</p></div><span className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">{pretty(selected.status)}</span></div>
             <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="text-xs font-extrabold uppercase text-slate-500">Customer request</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{selected.description}</p></div>
+            <section className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-violet-950"><BrainCircuit size={16}/> AI support assistant</div>
+              <p className="mt-1 text-xs leading-5 text-violet-900">Summarizes this ticket and prepares a reply draft. It never sends the reply or changes ticket status.</p>
+              <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-5 text-violet-950"><input type="checkbox" checked={aiConsent} onChange={(event) => setAiConsent(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-violet-700"/><span>I authorize sending this ticket description and conversation, including internal staff notes, to Google Gemini for this request. Google's processing and data-use terms apply.</span></label>
+              <button type="button" onClick={() => void generateAiAssist()} disabled={!aiConsent || aiBusy} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-violet-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{aiBusy ? <LoaderCircle size={14} className="animate-spin"/> : <BrainCircuit size={14}/>} {aiBusy ? "Preparing assistance…" : "Summarize & draft reply"}</button>
+              {aiResult && <div className="mt-4 space-y-3 rounded-xl bg-white p-4 text-xs leading-5 text-slate-700">
+                <div><p className="font-extrabold text-slate-900">Summary</p><p className="mt-1">{aiResult.summary}</p></div>
+                <div><p className="font-extrabold text-slate-900">Customer goal</p><p className="mt-1">{aiResult.customer_goal || "Not clear from the ticket."}</p></div>
+                {([["Unresolved questions",aiResult.unresolved_questions],["Suggested next steps",aiResult.suggested_next_steps]] as [string,string[]][]).map(([heading,items]) => <div key={heading}><p className="font-extrabold text-slate-900">{heading}</p>{items.length ? <ul className="mt-1 list-disc pl-5">{items.map((item,index)=><li key={index}>{item}</li>)}</ul> : <p className="text-slate-500">None identified.</p>}</div>)}
+                <div><div className="flex items-center justify-between gap-2"><p className="font-extrabold text-slate-900">Draft customer reply</p><button type="button" onClick={() => setDraft(aiResult.draft_customer_reply)} className="rounded-lg border border-violet-200 px-2 py-1 font-bold text-violet-800">Use in reply editor</button></div><p className="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 p-3">{aiResult.draft_customer_reply}</p></div>
+                <p className="border-t border-slate-100 pt-2 text-[11px] text-amber-800">{aiResult.disclaimer}</p>
+              </div>}
+            </section>
             <div className="mt-4 flex flex-wrap items-center gap-2"><button disabled={saving || selected.assigned_to === userId} onClick={() => void updateTicket({assigned_to:userId,status:selected.status === "received" ? "under_review" : selected.status},"Ticket assigned to you.")} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-bold disabled:opacity-40"><UserRoundCheck size={14}/> {selected.assigned_to === userId ? "Assigned to you" : "Assign to me"}</button><label className="ml-auto text-xs font-bold text-slate-500">Status <select value={selected.status} disabled={saving} onChange={(event) => void updateTicket({status:event.target.value},"Ticket status updated.")} className="ml-2 min-h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">{statuses.map((status) => <option key={status} value={status}>{pretty(status)}</option>)}</select></label></div>
             <div className="mt-5 border-t border-slate-100 pt-4"><h3 className="font-extrabold">Conversation & staff notes</h3><div className="mt-3 max-h-[420px] space-y-3 overflow-y-auto pr-1">{messages.length ? messages.map((message) => <article key={message.id} className={`rounded-xl p-3 ${message.is_internal ? "border border-amber-200 bg-amber-50" : message.is_staff ? "border border-indigo-100 bg-indigo-50" : "bg-slate-50"}`}><div className="flex items-center gap-2 text-xs font-extrabold">{message.is_internal ? <><ShieldCheck size={13}/> Internal staff note</> : message.is_staff ? "Verity staff" : "Customer"}<span className="font-normal text-slate-400">· {stamp(message.created_at)}</span></div><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{message.body}</p></article>) : <p className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">No messages yet.</p>}</div>
               {selected.status !== "resolved" && <form onSubmit={(event) => void sendMessage(event)} className="mt-4"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={5000} rows={3} required placeholder={internal ? "Write an internal note for staff…" : "Write a reply visible to the customer…"} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-indigo-400"/><div className="mt-2 flex flex-wrap items-center justify-between gap-3"><label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={internal} onChange={(event) => setInternal(event.target.checked)}/> Internal note only</label><button disabled={saving || !draft.trim()} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-xs font-extrabold text-white disabled:opacity-50">{saving ? <LoaderCircle size={14} className="animate-spin"/> : <Send size={14}/>} {internal ? "Save note" : "Send reply"}</button></div></form>}
