@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     .eq("check_type", "media_origin")
     .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
   if (countError) return jsonError("Could not verify the assessment usage limit.", 503);
-  if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 Gemini assessments per hour.", 429);
+  if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 assessment attempts per hour.", 429);
 
   if (!ALLOWED_MIME.has(media.mime_type)) return recordFailure("This media format is not supported for analysis.", 415);
   const maxBytes = media.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
