@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return fail("Invalid request.", 400); }
   if (body.consent !== true) return fail("Explicit consent is required.", 400);
   if (typeof body.caseId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.caseId)) return fail("Invalid case id.", 400);
-  const { data: profile, error: roleError } = await db.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
+  const { data: profile, error: roleError } = await db.from("profiles").select("role,is_suspended").eq("id", auth.user.id).maybeSingle();
   if (roleError) return fail("Could not verify staff role.", 503);
-  if (!profile || !["admin", "moderator"].includes(profile.role)) return fail("Staff access required.", 403);
+  if (!profile || profile.is_suspended || !["admin", "moderator"].includes(profile.role)) return fail("Active moderator access required.", 403);
   const { data: c, error: caseError } = await db.from("moderation_cases").select("id,post_id,case_type,status,priority,assigned_to,summary,needs_second_review,second_review_requested_by,created_at,due_at").eq("id", body.caseId).maybeSingle();
   if (caseError || !c) return fail("Case not found.", 404);
   if (profile.role !== "admin" && ((c.assigned_to && c.assigned_to !== auth.user.id) || (c.needs_second_review && c.second_review_requested_by === auth.user.id))) return fail("You are not eligible to review this case.", 403);
