@@ -317,7 +317,7 @@ export default function QuestionsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
+    <main className="verity-product-page min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
       <header className="mx-auto flex min-h-[72px] max-w-5xl items-center justify-between border-b border-slate-200">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-700">
           <ArrowLeft size={17} /> Back to feed
