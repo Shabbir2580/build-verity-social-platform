@@ -81,7 +81,7 @@ try {
 
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
   const adminPageSource = await readFile(new URL("../app/admin/ai/page.tsx", import.meta.url), "utf8");
-  for (const marker of [\x27profile?.role !== "admin"\x27, \x27VERITY_ADMIN_AI_ENABLED !== "true"\x27, \x27Cache-Control\x22: \x22no-store\x27]) {
+  for (const marker of ["profile?.role !== \"admin\"", "VERITY_ADMIN_AI_ENABLED !== \"true\"", "\"Cache-Control\": \"no-store\""]) {
     if (!adminAssistantSource.includes(marker)) throw new Error(`Admin assistant API is missing required access/cost control: ${marker}`);
   }
   if (!adminPageSource.includes("AI is not activated.") || !adminPageSource.includes("Read-only")) {
