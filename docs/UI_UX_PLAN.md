@@ -21,8 +21,8 @@ Build a calm, credible, enterprise-grade social platform. The interface should m
 - [ ] Review all feed states: loading, empty, error, signed-out, post highlighted, media-heavy.
 
 ### Phase 2 — Product surfaces
-- [ ] Align profile, people discovery, communities, questions and notifications with the same system.
-- [ ] Standardize page headers, primary actions, filters, card spacing and empty states.
+- [x] Apply the shared product shell to profile, people discovery, communities, questions and notifications.
+- [x] Apply consistent page width, header sizing, card borders, focus states and mobile spacing across those product pages.\n- [ ] Standardize all page-specific primary actions, filters and empty states.
 - [ ] Improve search discoverability and responsive behavior.
 
 ### Phase 3 — Admin and staff workspaces
