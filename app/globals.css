@@ -375,3 +375,148 @@
 .verity-header > div > div:last-child > button:not([aria-label="Open admin console"]) { color:#e0e7ff; }
 .verity-header > div > div:last-child > a { color:#e0e7ff; }
 .verity-header > div > div:last-child > a:last-child { color:#fff; }
+
+
+/* Verity design system refresh — calm editorial surfaces, clear hierarchy, restrained motion */
+:root {
+  --verity-ink: #17243b;
+  --verity-muted: #66748a;
+  --verity-line: #e4e9f1;
+  --verity-paper: #f7f8fa;
+  --verity-indigo: #4658a8;
+  --verity-indigo-soft: #eef1fb;
+}
+body { color: var(--verity-ink); background: #fff; }
+.verity-app {
+  background: var(--verity-paper) !important;
+  background-image: none !important;
+}
+.verity-header {
+  background: rgba(255,255,255,.96) !important;
+  border-color: var(--verity-line) !important;
+  box-shadow: 0 1px 0 rgba(23,36,59,.06) !important;
+  backdrop-filter: blur(16px);
+}
+.verity-header > div > span,
+.verity-header > div > a,
+.verity-header > div > button:not(.verity-logo),
+.verity-header > div > div:last-child > button:not([aria-label="Open admin console"]),
+.verity-header > div > div:last-child > a { color: var(--verity-ink) !important; }
+.verity-header button[aria-label="Verity home"] { color: #fff !important; }
+.verity-header .verity-search {
+  background: #f3f5f8 !important;
+  border-color: #e7ebf1 !important;
+  color: var(--verity-ink) !important;
+  box-shadow: none !important;
+}
+.verity-header .verity-search input { color: var(--verity-ink) !important; }
+.verity-header .verity-search input::placeholder { color: #8995a7 !important; }
+.verity-header .verity-search span {
+  color: #7b8798 !important;
+  background: #fff !important;
+  border-color: #e2e7ef !important;
+}
+.verity-logo,
+.verity-create-button {
+  background: #34477f !important;
+  background-image: none !important;
+  animation: none !important;
+}
+.verity-app .verity-main-grid { max-width: 1360px; }
+.verity-left-sidebar { scrollbar-color: #cbd3df transparent; }
+.verity-left-sidebar > div > .mb-5:first-child {
+  background: #fff !important;
+  border-color: var(--verity-line) !important;
+  box-shadow: none !important;
+}
+.verity-nav-link { min-height: 42px; border-radius: 10px !important; }
+.verity-nav-active {
+  background: var(--verity-indigo-soft) !important;
+  color: #34477f !important;
+  box-shadow: inset 3px 0 0 #5266ad !important;
+  border-color: transparent !important;
+}
+.verity-hero {
+  background: linear-gradient(120deg,#182743 0%,#263b62 100%) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 12px 30px rgba(23,36,59,.10) !important;
+  animation: none !important;
+}
+.verity-hero-orb,
+.verity-hero-ring { animation: none !important; opacity: .35; }
+.verity-gradient-text { animation: none !important; }
+.verity-metric-card {
+  background: #fff !important;
+  border: 1px solid var(--verity-line) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  color: var(--verity-ink) !important;
+}
+.verity-metric-card:nth-child(2),
+.verity-metric-card:nth-child(3) { background: #fff !important; }
+.verity-post-card,
+.verity-community-card,
+.verity-composer,
+.verity-panel,
+.verity-sidebar-card {
+  animation: none !important;
+  border-color: var(--verity-line) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 8px rgba(23,36,59,.035) !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease !important;
+}
+.verity-post-card:hover,
+.verity-community-card:hover,
+.verity-sidebar-card:hover,
+.verity-post-card:nth-child(n) {
+  transform: none !important;
+  animation: none !important;
+}
+.verity-post-card:hover,
+.verity-community-card:hover,
+.verity-sidebar-card:hover {
+  border-color: #cbd4e4 !important;
+  box-shadow: 0 5px 16px rgba(23,36,59,.06) !important;
+}
+.verity-composer {
+  background: #fff !important;
+}
+.verity-right-sidebar > section {
+  border-color: var(--verity-line) !important;
+  border-radius: 15px !important;
+  box-shadow: none !important;
+}
+.verity-admin-page {
+  background: #f7f8fa !important;
+}
+.verity-admin-page > header {
+  border-color: var(--verity-line) !important;
+}
+.verity-admin-page > header span { color: var(--verity-ink) !important; }
+.verity-trust-card {
+  background: linear-gradient(120deg,#182743,#344a76) !important;
+}
+.verity-avatar,
+.verity-composer-icon {
+  background: #edf1fa !important;
+  color: #34477f !important;
+}
+.verity-artwork,
+.verity-orb-one,
+.verity-orb-two,
+.verity-art-glow { animation: none !important; }
+.verity-mobile-menu-open {
+  background: #fff !important;
+  border-color: var(--verity-line) !important;
+  box-shadow: 12px 0 32px rgba(23,36,59,.10) !important;
+}
+@media (max-width: 639px) {
+  .verity-app { background-image: none !important; }
+  .verity-post-card { border-radius: 14px !important; }
+  .verity-header { min-height: 62px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verity-post-card, .verity-community-card, .verity-sidebar-card,
+  .verity-hero, .verity-logo, .verity-create-button { animation: none !important; transition: none !important; }
+}
