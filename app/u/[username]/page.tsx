@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CalendarDays, LoaderCircle, MessageCircle, UserMinus, UserPlus, ShieldBan } from "lucide-react";
+import { ArrowLeft, CalendarDays, LoaderCircle, MessageCircle, UserMinus, UserPlus, ShieldBan, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -47,6 +47,10 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [postBusy, setPostBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!username) return;
@@ -122,6 +126,56 @@ export default function PublicProfilePage() {
       setFollowers((count) => Math.max(0, count + (following ? -1 : 1)));
     }
     setBusy(false);
+  }
+
+  async function saveProfilePost(postId: string) {
+    if (!profile || viewerId !== profile.id || postBusy) return;
+    if (!editBody.trim()) { setError("Post text cannot be empty."); return; }
+    if (editTitle.trim().length > 300 || editBody.trim().length > 20000) {
+      setError("The title or post text is too long.");
+      return;
+    }
+    setPostBusy(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const { data, error: updateError } = await supabase.from("posts")
+        .update({ title: editTitle.trim() || null, body: editBody.trim() })
+        .eq("id", postId).eq("author_id", profile.id).eq("status", "published")
+        .select("id, edited_at").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("This post is no longer available to edit. Refresh the page and try again.");
+      setPosts((current) => current.map((post) => post.id === postId
+        ? { ...post, title: editTitle.trim() || null, body: editBody.trim() }
+        : post));
+      setEditingPostId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update this post.");
+    } finally {
+      setPostBusy(false);
+    }
+  }
+
+  async function deleteProfilePost(postId: string) {
+    if (!profile || viewerId !== profile.id || postBusy) return;
+    if (!window.confirm("Delete this post? It will be removed from public view, while its moderation history is retained.")) return;
+    setPostBusy(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const { data, error: deleteError } = await supabase.from("posts")
+        .update({ status: "removed", removal_reason: "Deleted by the author" })
+        .eq("id", postId).eq("author_id", profile.id).eq("status", "published")
+        .select("id").maybeSingle();
+      if (deleteError) throw deleteError;
+      if (!data) throw new Error("This post is no longer available to delete. Refresh the page and try again.");
+      setPosts((current) => current.filter((post) => post.id !== postId));
+      if (editingPostId === postId) setEditingPostId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete this post.");
+    } finally {
+      setPostBusy(false);
+    }
   }
 
   async function toggleBlock() {
@@ -209,9 +263,28 @@ export default function PublicProfilePage() {
         ) : (
           <div className="mt-4 space-y-3">
             {posts.map((post) => <article key={post.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3 text-xs text-slate-500"><span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold capitalize">{post.type}</span><time dateTime={post.created_at}>{ago(post.created_at)}</time></div>
-              {post.title && <h3 className="mt-3 text-lg font-extrabold">{post.title}</h3>}
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">{post.body}</p>
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold capitalize">{post.type}</span>
+                <div className="flex items-center gap-3">
+                  <time dateTime={post.created_at}>{ago(post.created_at)}</time>
+                  {viewerId === profile.id && <div className="flex items-center gap-1">
+                    <button type="button" aria-label="Edit your post" title="Edit your post" disabled={postBusy} onClick={() => { setEditingPostId(post.id); setEditTitle(post.title ?? ""); setEditBody(post.body); setError(""); }} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-50"><Pencil size={16}/></button>
+                    <button type="button" aria-label="Delete your post" title="Delete your post" disabled={postBusy} onClick={() => void deleteProfilePost(post.id)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"><Trash2 size={16}/></button>
+                  </div>}
+                </div>
+              </div>
+              {editingPostId === post.id ? (
+                <form onSubmit={(event) => { event.preventDefault(); void saveProfilePost(post.id); }} className="mt-4 space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+                  <label className="block text-xs font-bold text-slate-600">Title<input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={300} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm" placeholder="Optional title"/></label>
+                  <label className="block text-xs font-bold text-slate-600">Post text<textarea required value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={20000} rows={5} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-3 text-sm leading-6"/></label>
+                  <div className="flex justify-end gap-2"><button type="button" disabled={postBusy} onClick={() => setEditingPostId(null)} className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold">Cancel</button><button type="submit" disabled={postBusy || !editBody.trim()} className="min-h-9 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white disabled:opacity-50">{postBusy ? "Saving…" : "Save changes"}</button></div>
+                </form>
+              ) : (
+                <>
+                  {post.title && <h3 className="mt-3 text-lg font-extrabold">{post.title}</h3>}
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">{post.body}</p>
+                </>
+              )}
             </article>)}
           </div>
         )}
