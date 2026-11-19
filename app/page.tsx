@@ -695,10 +695,6 @@ export default function HomePage() {
     }
 
     const needsExternalReview = newFiles.length > 0 || newCategory === "News";
-    if (needsExternalReview && !newVerificationConsent) {
-      setError("To run automatic media/news checks, consent to sending the selected media or claim text to Google Gemini. You can publish without external checks by removing media and choosing a non-News category.");
-      return;
-    }
 
     if (newFiles.length > 4) {
       setError("You can upload up to 4 images, or one video, per post.");
@@ -819,7 +815,7 @@ export default function HomePage() {
       }
 
       let automaticCheckFailures: string[] = [];
-      if (mediaRowsToInsert.length > 0 || (categoryValue === "news" && (newTitle.trim() + " " + newBody.trim()).trim().length >= 12)) {
+      if (newVerificationConsent && (mediaRowsToInsert.length > 0 || (categoryValue === "news" && (newTitle.trim() + " " + newBody.trim()).trim().length >= 12))) {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData.session?.access_token;
         if (!accessToken) automaticCheckFailures.push("Your session was unavailable, so automatic checks did not start.");
@@ -827,11 +823,20 @@ export default function HomePage() {
           if (mediaRowsToInsert.length > 0) {
             const { data: savedMedia, error: savedMediaError } = await supabase.from("post_media").select("id, kind").eq("post_id", createdPostId);
             if (savedMediaError) automaticCheckFailures.push("Could not retrieve uploaded media IDs for automatic checks.");
-            else for (const media of savedMedia ?? []) {
-              try {
-                const response = await fetch("/api/verify/gemini", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken }, body: JSON.stringify({ postId: createdPostId, mediaId: media.id, consent: true }) });
-                if (!response.ok) { const payload = await response.json().catch(() => ({})); automaticCheckFailures.push(payload.error || "Media review failed (" + response.status + ")."); }
-              } catch { automaticCheckFailures.push("A media review could not reach the verification service."); }
+            else {
+              const mediaFailures = await Promise.all((savedMedia ?? []).map(async (media) => {
+                try {
+                  const response = await fetch("/api/verify/gemini", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken }, body: JSON.stringify({ postId: createdPostId, mediaId: media.id, consent: true }) });
+                  if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    return payload.error || "Media review failed (" + response.status + ").";
+                  }
+                  return null;
+                } catch {
+                  return "A media review could not reach the verification service.";
+                }
+              }));
+              automaticCheckFailures.push(...mediaFailures.filter((failure): failure is string => Boolean(failure)));
             }
           }
           if (categoryValue === "news") {
@@ -845,7 +850,15 @@ export default function HomePage() {
           }
         }
       }
-      setNotice(automaticCheckFailures.length ? "Post published, but automatic verification did not complete: " + Array.from(new Set(automaticCheckFailures)).join(" ") : (mediaRowsToInsert.length || categoryValue === "news" ? "Post published. Automatic Gemini checks completed; review their uncertain results in Trust Center." : "Your post was published."));
+      const checksWereRequested = newVerificationConsent && needsExternalReview;
+      const publicationNotice = automaticCheckFailures.length
+        ? "Post published, but automatic verification did not complete: " + Array.from(new Set(automaticCheckFailures)).join(" ")
+        : checksWereRequested
+          ? "Post published. Automatic Gemini checks completed; review their uncertain results in Trust Center."
+          : needsExternalReview
+            ? "Post published. Automatic checks were skipped because you did not consent to sending content to Google. You can request available assessments later from Trust Center."
+            : "Your post was published.";
+      setNotice(publicationNotice);
       setCreateOpen(false);
       setNewTitle("");
       setNewBody("");
@@ -858,7 +871,6 @@ export default function HomePage() {
       setNewAltText("");
       setActivePage("Home");
       setFilter("Latest");
-      setNotice("Your post was published.");
       await loadFeed();
     } catch (err) {
       if (supabaseClient) {
@@ -1553,10 +1565,10 @@ export default function HomePage() {
               </label>
 
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm leading-6"><input type="checkbox" checked={newAiDisclosure} onChange={(event) => setNewAiDisclosure(event.target.checked)} className="mt-1 h-4 w-4 accent-indigo-600" /><span><strong>AI disclosure</strong><span className="block text-xs leading-5 text-slate-500">I used AI to generate or materially alter this content. This is a creator declaration, not a detector result.</span></span></label>
-               {(newFiles.length > 0 || newCategory === "News") && <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm leading-6"><input type="checkbox" checked={newVerificationConsent} onChange={(event) => setNewVerificationConsent(event.target.checked)} className="mt-1 h-4 w-4 accent-indigo-600" /><span><strong>Automatic AI and news review</strong><span className="block text-xs leading-5 text-slate-600">After publishing, Verity sends uploaded photos/videos or the News claim text to Google Gemini for a first-pass review. Google free-tier terms may allow submissions to be used to improve its products. Results are not proof of AI generation, authenticity or truth.</span></span></label>}
+               {(newFiles.length > 0 || newCategory === "News") && <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm leading-6"><input type="checkbox" checked={newVerificationConsent} onChange={(event) => setNewVerificationConsent(event.target.checked)} className="mt-1 h-4 w-4 accent-indigo-600" /><span><strong>Optional automatic AI and news review</strong><span className="block text-xs leading-5 text-slate-600">Only if you opt in, Verity sends uploaded photos/videos or the News claim text to Google Gemini for a first-pass review. You can publish without this check. Google free-tier terms may allow submissions to be used to improve its products. Results are not proof of AI generation, authenticity or truth.</span></span></label>}
 
               {error && <p role="alert" className="break-words rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{error}</p>}
-              <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Automatic checks start after upload when consent is given. Gemini is not a forensic AI/deepfake detector, and news review currently uses search-result headlines only. Missing provider configuration or exhausted quota will be reported as a failed check.</div>
+              <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Automatic checks start after upload only when you opt in. You can publish without external analysis. Gemini is not a forensic AI/deepfake detector, and news review currently uses search-result headlines only. Missing provider configuration or exhausted quota will be reported as a failed check.</div>
 
               <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
                 <button type="button" onClick={() => setCreateOpen(false)} disabled={actionLoading} className="min-h-12 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60">Cancel</button>
