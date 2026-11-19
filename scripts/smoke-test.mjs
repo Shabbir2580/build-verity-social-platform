@@ -94,6 +94,7 @@ try {
   const productPageSources = await Promise.all([
     readFile(new URL("../app/u/[username]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/people/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/questions/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/communities/[slug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/notifications/page.tsx", import.meta.url), "utf8"),
   ]);
