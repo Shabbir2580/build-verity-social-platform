@@ -15,13 +15,26 @@ type Metrics = {
 };
 type Message = { role: "user" | "assistant"; content: string };
 
-const suggestions = [
-  "What should the team prioritize today?",
-  "Summarize our current moderation workload.",
-  "How is platform activity looking this week?",
-  "What operational metrics need attention?",
-  "How many business enquiries need follow-up? Are any payments recorded?",
-];
+const suggestionsByRole = {
+  admin: [
+    "Prepare an executive operations briefing for today.",
+    "Which moderation and support queues need attention first?",
+    "Summarize platform growth over the last 7 days.",
+    "How many business enquiries need follow-up? Are any payments recorded?",
+  ],
+  moderator: [
+    "Prepare a moderation queue briefing for today.",
+    "Which cases are urgent or overdue?",
+    "What should a moderator prioritize first?",
+    "Explain the current moderation workload and its limitations.",
+  ],
+  support: [
+    "Prepare a support desk briefing for today.",
+    "Which support tickets are overdue?",
+    "What should the support team prioritize first?",
+    "Summarize the current support workload and response deadlines.",
+  ],
+} as const;
 
 function MetricCard({ label, value, note, icon: Icon }: {
   label: string; value: number | null; note: string; icon: typeof Users;
@@ -130,7 +143,7 @@ export default function AdminAiPage() {
         <div className="rounded-3xl bg-[#182743] p-6 text-white sm:p-8">
           <div className="flex items-center gap-2 text-indigo-200"><BrainCircuit size={18}/><span className="text-xs font-bold uppercase tracking-[0.15em]">Internal assistant</span></div>
           <h2 className="mt-4 max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl">Understand what needs attention.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Ask about the work available to your staff role. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Get a role-specific operational briefing, understand urgent work and identify next steps. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">{staffRole === "admin" ? "Admin access" : staffRole === "moderator" ? "Moderator access" : staffRole === "support" ? "Support access" : "Staff access"}</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Read-only</span>
@@ -159,7 +172,7 @@ export default function AdminAiPage() {
               <h3 className="mt-4 font-semibold text-slate-800">What would you like to understand?</h3>
               <p className="mt-1 text-sm text-slate-500">Start with one of these questions.</p>
               <div className="mt-5 grid gap-2 text-left sm:grid-cols-2">
-                {suggestions.map((item) => <button key={item} disabled={!aiEnabled || sending} onClick={() => void ask(undefined, item)} className="rounded-xl border border-slate-200 bg-white p-3 text-left text-xs font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50">{item}</button>)}
+                {(staffRole ? suggestionsByRole[staffRole] : suggestionsByRole.admin).map((item) => <button key={item} disabled={!aiEnabled || sending} onClick={() => void ask(undefined, item)} className="rounded-xl border border-slate-200 bg-white p-3 text-left text-xs font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50">{item}</button>)}
               </div>
             </div>}
             {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-[#34477f] px-4 py-3 text-sm leading-6 text-white" : "mr-auto max-w-[95%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700"}>
