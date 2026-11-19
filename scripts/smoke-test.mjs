@@ -113,6 +113,12 @@ try {
 
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
   const supportPageSource = await readFile(new URL("../app/support/staff/page.tsx", import.meta.url), "utf8");
+  const moderationPageSource = await readFile(new URL("../app/moderation/page.tsx", import.meta.url), "utf8");
+  if (!moderationPageSource.includes("const actionsRequest = useRef(0)") ||
+      !moderationPageSource.includes("if (requestId !== actionsRequest.current) return;") ||
+      !moderationPageSource.includes("setActions([]);")) {
+    throw new Error("Moderation case switching must clear prior audit history and ignore stale responses.");
+  }
   if (!supportPageSource.includes("const messagesRequest = useRef(0)") ||
       !supportPageSource.includes("if (requestId !== messagesRequest.current) return;") ||
       !supportPageSource.includes("setMessages([]);")) {
