@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 type Lead = {
   id: string; ticket_number: number | string; subject: string; organization: string;
   status: string; priority: string; assigned_team: string; created_at: string;
-  response_due_at: string; overdue: boolean;
+  response_due_at: string | null; overdue: boolean;
 };
 type Payload = {
   metrics: { total: number; open: number; resolved: number; received: number; overdue: number };
@@ -70,11 +70,12 @@ export default function AdminBusinessPage() {
       </section>
 
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">Total enquiries</p><Briefcase size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.total ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Submitted business enquiries</p></div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">Open enquiries</p><Clock3 size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.open ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Not marked resolved</p></div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">New enquiries</p><TrendingUp size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.received ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Awaiting first review</p></div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">Resolved</p><CheckCircle2 size={17} className="text-slate-400"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{number(data?.metrics.resolved ?? 0)}</p><p className="mt-1 text-xs text-slate-500">Closed business enquiries</p></div>
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-rose-700">Overdue follow-ups</p><Clock3 size={17} className="text-rose-500"/></div><p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-rose-800">{number(data?.metrics.overdue ?? 0)}</p><p className="mt-1 text-xs text-rose-700">Open enquiries past response deadline</p></div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
