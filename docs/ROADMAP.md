@@ -18,7 +18,7 @@ Design direction: enterprise — restrained navy, white, slate and indigo; acces
 ## Delivery phases
 
 ### Phase 1 — Admin reporting foundation
-Status: **in progress**
+Status: **complete for the initial reporting foundation**
 - Add a private Revenue & Impact workspace.
 - Separate financial reporting, commercial pipeline and platform activity.
 - Show unavailable financial measures as unavailable until a verified ledger exists.
@@ -26,6 +26,8 @@ Status: **in progress**
 - Verify role authorization, API contracts, TypeScript, production build and route smoke tests.
 
 ### Phase 2 — Enterprise design system and navigation
+Status: **in progress**
+- Shared enterprise workspace tokens and shells are now applied to admin, AI, business, revenue, moderation, support and Trust Center pages.
 - Audit all public, member, staff and admin routes for inconsistent spacing, typography, cards, navigation and mobile behavior.
 - Replace conflicting one-off visual overrides with documented design tokens and reusable patterns in small, testable steps.
 - Standardize page headers, breadcrumbs, buttons, form controls, tables, empty states, loading states, alerts and confirmation dialogs.
@@ -33,12 +35,16 @@ Status: **in progress**
 - Test keyboard navigation, visible focus, reduced motion, responsive breakpoints and contrast.
 
 ### Phase 3 — Admin and staff operating workspace
+Status: **in progress**
+- Staff AI suggestions are now tailored to administrator, moderator and support roles.
 - Make role-specific entry points explicit for admin, moderator and support staff.
 - Surface assigned work, urgent cases, overdue deadlines, unresolved tickets and follow-up queues.
 - Improve search, filters, assignment context, escalation and audit history.
 - Keep privileged actions server-authorized and auditable; require reasons and confirmation for sensitive actions.
 
 ### Phase 4 — Verity AI operations assistant
+Status: **in progress**
+- Existing assistant requests now reserve usage events in the audit log, enforce per-account hourly/daily caps, and record provider token counts without storing the prompt.
 - Improve the existing read-only staff assistant rather than create a duplicate.
 - Provide role-scoped daily briefings, workload summaries, trend explanations and suggested next steps.
 - Add durable request limits, usage/cost observability and safe provider configuration before broad enablement.
@@ -46,6 +52,8 @@ Status: **in progress**
 - AI may draft and summarize; it must not autonomously ban users, remove content, decide appeals, publish reports or approve payments.
 
 ### Phase 5 — Trust and verification quality
+Status: **in progress**
+- Added an optional authenticated Google Fact Check Tools search for previously published third-party reviews, with explicit consent, account-level usage limits and no search-text logging. It requires a restricted server-side API key and does not issue Verity verdicts.
 - Audit current media and claim flows end-to-end, including consent, ownership, upload limits, storage, status, human review and UI labels.
 - Keep separate result dimensions: media origin, manipulation indicators, claim evidence and content intent.
 - Integrate an actual media-origin/deepfake detector only after confirming model capability, licensing, privacy terms, hosting and enforceable no-cost limits.
@@ -60,6 +68,8 @@ Status: **in progress**
 - Do not sell private user data or sell verification outcomes.
 
 ### Phase 7 — Financial ledger and revenue intelligence
+Status: **foundation started; ledger not connected**
+- The private Revenue & Impact workspace now separates verified financial measures from business enquiries and public platform activity. All financial measures remain unavailable until a reconciled ledger exists.
 - Select a payment provider only after reviewing fees, settlement support, refunds, tax handling, webhooks, documentation and no-cost constraints.
 - Build a reconciled transaction ledger with payment captures, settlement status, refunds, provider fees, taxes, invoices and expenses.
 - Distinguish gross sales, collected cash, settled funds, refunds, net revenue, expenses and profit.
