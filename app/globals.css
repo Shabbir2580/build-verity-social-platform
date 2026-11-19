@@ -580,3 +580,82 @@ body { color: var(--verity-ink); background: #fff; }
 @media (prefers-reduced-motion: reduce) {
   .verity-admin-page * { transition: none !important; animation: none !important; }
 }
+
+
+/* Shared enterprise workspace shell: admin, trust, moderation and support */
+.verity-workspace {
+  --workspace-ink: #17243b;
+  --workspace-muted: #64748b;
+  --workspace-line: #e3e8f0;
+  --workspace-paper: #f6f8fb;
+  --workspace-brand: #34477f;
+  background: var(--workspace-paper) !important;
+  color: var(--workspace-ink);
+}
+.verity-workspace > header {
+  position: relative;
+  border-color: var(--workspace-line) !important;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 1px 0 rgba(23,36,59,.025);
+}
+.verity-workspace h1,
+.verity-workspace h2,
+.verity-workspace h3 {
+  color: #17243b;
+  letter-spacing: -.025em;
+}
+.verity-workspace p {
+  text-wrap: pretty;
+}
+.verity-workspace input,
+.verity-workspace select,
+.verity-workspace textarea {
+  border-color: #dce3ed;
+  border-radius: 10px;
+}
+.verity-workspace input:focus,
+.verity-workspace select:focus,
+.verity-workspace textarea:focus {
+  border-color: #7183c2;
+  outline: 3px solid rgba(82,102,173,.14);
+  outline-offset: 1px;
+}
+.verity-workspace button,
+.verity-workspace a {
+  -webkit-tap-highlight-color: transparent;
+}
+.verity-workspace button:focus-visible,
+.verity-workspace a:focus-visible {
+  outline: 3px solid rgba(82,102,173,.4);
+  outline-offset: 3px;
+}
+.verity-workspace .rounded-2xl.border,
+.verity-workspace article.rounded-2xl,
+.verity-workspace section.rounded-2xl {
+  border-color: var(--workspace-line);
+}
+.verity-workspace .shadow-sm {
+  box-shadow: 0 1px 3px rgba(23,36,59,.035);
+}
+.verity-workspace .text-slate-500,
+.verity-workspace .text-slate-400 {
+  color: var(--workspace-muted);
+}
+@media (max-width: 639px) {
+  .verity-workspace > header {
+    min-height: 60px;
+  }
+  .verity-workspace h1 {
+    overflow-wrap: anywhere;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verity-workspace *,
+  .verity-workspace *::before,
+  .verity-workspace *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
