@@ -101,6 +101,13 @@ export default function ModerationPage() {
     overdue: cases.filter((item) => item.status !== "resolved" && item.due_at && new Date(item.due_at).getTime() < Date.now()).length,
   }), [cases]);
 
+  const summaryCards = [
+    { label: "Active cases", value: queueSummary.active, note: "Cases not resolved", icon: ClipboardList },
+    { label: "Unassigned", value: queueSummary.unassigned, note: "Waiting for a reviewer", icon: Clock3 },
+    { label: "Urgent", value: queueSummary.urgent, note: "Urgent priority · open cases", icon: AlertTriangle },
+    { label: "Overdue", value: queueSummary.overdue, note: "Past their recorded due time", icon: XCircle },
+  ];
+
   const load = useCallback(async (append = false) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
@@ -243,7 +250,7 @@ export default function ModerationPage() {
         {error && <div role="alert" className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
         {notice && <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[["Active cases",queueSummary.active,"Cases not resolved",ClipboardList],["Unassigned",queueSummary.unassigned,"Waiting for a reviewer",Clock3],["Urgent",queueSummary.urgent,"Urgent priority · open cases",AlertTriangle],["Overdue",queueSummary.overdue,"Past their recorded due time",XCircle]].map(([label,value,note,Icon]) => <article key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-500">{String(label)}</span><Icon size={16} className="text-indigo-600"/></div><p className="mt-2 text-2xl font-black tabular-nums">{Number(value).toLocaleString()}</p><p className="mt-1 text-[11px] text-slate-400">{String(note)}</p></article>)}
+          {summaryCards.map(({label,value,note,icon:Icon}) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-500">{label}</span><Icon size={16} className="text-indigo-600"/></div><p className="mt-2 text-2xl font-black tabular-nums">{value.toLocaleString()}</p><p className="mt-1 text-[11px] text-slate-400">{note}</p></article>)}
         </div>
         <div className="mt-5 flex flex-col gap-3">
           <label className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search size={16} className="shrink-0 text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search case, post, report, appeal or member" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/>{search && <button type="button" onClick={() => setSearch("")} className="rounded-lg px-2 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-50">Clear</button>}</label>
