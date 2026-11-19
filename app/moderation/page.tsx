@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ClipboardList, LoaderCircle, RefreshCw, ShieldCheck, AlertTriangle, Clock3, CheckCircle2, XCircle, Search } from "lucide-react";
+import { ArrowLeft, BrainCircuit, ClipboardList, LoaderCircle, RefreshCw, ShieldCheck, AlertTriangle, Clock3, CheckCircle2, XCircle, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type CaseRow = {
@@ -245,6 +245,7 @@ export default function ModerationPage() {
       <section className="mx-auto max-w-7xl pt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div><div className="flex items-center gap-2 text-indigo-600"><ShieldCheck size={19} /><span className="text-xs font-extrabold uppercase tracking-wider">Trust & safety</span></div><h1 className="mt-2 text-3xl font-black tracking-tight">Moderation queue</h1><p className="mt-2 text-sm text-slate-500">Urgent and overdue cases are prioritized first. Review reports and appeals, record decisions, and preserve an audit trail.</p></div>
+          <Link href="/staff/assistant" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 text-sm font-bold text-indigo-700 hover:bg-indigo-50"><BrainCircuit size={15}/> Staff AI</Link>
           <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 disabled:opacity-50"><RefreshCw size={15} className={loading ? "animate-spin" : ""} />Refresh queue</button>
         </div>
         {error && <div role="alert" className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
