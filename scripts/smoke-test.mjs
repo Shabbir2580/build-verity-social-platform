@@ -88,6 +88,16 @@ try {
     process.stdout.write(`PASS ${path} (${response.status})\n`);
   }
 
+  const sharedPostId = "00000000-0000-4000-8000-000000000001";
+  const sharedPostResponse = await fetch(new URL(`/post/${sharedPostId}`, origin), {
+    redirect: "manual",
+    signal: AbortSignal.timeout(5000),
+  });
+  if (sharedPostResponse.status !== 307 || sharedPostResponse.headers.get("location") !== `/?post=${sharedPostId}`) {
+    throw new Error("Shared post permalink did not redirect to the home feed with its post ID.");
+  }
+  process.stdout.write("PASS /post/:id redirects to the highlighted home-feed post\\n");
+
   const invalidCoverageResponse = await fetch(new URL("/api/verify/news?q=short", origin), {
     signal: AbortSignal.timeout(5000),
   });
