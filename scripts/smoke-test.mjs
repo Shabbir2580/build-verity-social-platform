@@ -178,7 +178,7 @@ try {
   process.stdout.write("PASS /post/:id redirects to the highlighted home-feed post\\n");
 
   const factCheckSource = await readFile(new URL("../app/api/verify/fact-check/route.ts", import.meta.url), "utf8");
-  for (const marker of ["GOOGLE_FACT_CHECK_API_KEY", "fact_check_search", "20) return fail", "Publisher's own wording"]) {
+  for (const marker of ["GOOGLE_FACT_CHECK_API_KEY", "fact_check_search", "20) return fail", "publishers' own wording"]) {
     if (!factCheckSource.includes(marker)) throw new Error(`Published fact-check integration is missing a required guard: ${marker}`);
   }
   const factCheckAuthResponse = await fetch(new URL("/api/verify/fact-check?q=A sufficiently long test claim", origin), {
