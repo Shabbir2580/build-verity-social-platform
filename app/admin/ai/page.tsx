@@ -132,7 +132,7 @@ export default function AdminAiPage() {
           <h2 className="mt-4 max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl">Understand what needs attention.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Ask about the work available to your staff role. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Admin-only</span>
+            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">{staffRole === "admin" ? "Admin access" : staffRole === "moderator" ? "Moderator access" : staffRole === "support" ? "Support access" : "Staff access"}</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Read-only</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Human decisions</span>
           </div>
