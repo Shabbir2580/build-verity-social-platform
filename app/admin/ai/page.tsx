@@ -111,7 +111,7 @@ export default function AdminAiPage() {
     }
   }
 
-  return <main className="min-h-screen bg-[#f7f8fa] text-slate-900">
+  return <main className="verity-workspace min-h-screen bg-[#f7f8fa] text-slate-900">
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
