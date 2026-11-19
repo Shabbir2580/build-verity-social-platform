@@ -50,6 +50,7 @@ export default function ModerationPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const casesRef = useRef<CaseRow[]>([]);
+  const actionsRequest = useRef(0);
   const [saving, setSaving] = useState(false);
   const [reason, setReason] = useState("");
   const [labelValue, setLabelValue] = useState("");
@@ -189,10 +190,14 @@ export default function ModerationPage() {
   useEffect(() => { void load(); }, [load]);
 
   const openCase = async (item: CaseRow) => {
+    const requestId = ++actionsRequest.current;
     setSelectedId(item.id); setReason(""); setLabelValue(""); setError(""); setNotice(""); setAssignee(item.assigned_to ?? "");
+    // Do not display the previous case's audit history while this case loads.
+    setActions([]);
     const supabase = createClient();
     const { data, error: actionError } = await supabase.from("moderation_actions")
       .select("id, action, reason, actor_id, created_at").eq("case_id", item.id).order("created_at", { ascending: false });
+    if (requestId !== actionsRequest.current) return;
     if (actionError) setError(actionError.message);
     else setActions((data ?? []) as ActionRow[]);
   };
