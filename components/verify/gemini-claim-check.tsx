@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { LoaderCircle, SearchCheck, ShieldAlert } from "lucide-react";
 
-export function GeminiClaimCheck({ postId, claim }: { postId: string; claim: string }) {
+export function GeminiClaimCheck({ postId, claim, onComplete }: { postId: string; claim: string; onComplete?: () => Promise<void> | void }) {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -27,7 +27,9 @@ export function GeminiClaimCheck({ postId, claim }: { postId: string; claim: str
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Claim analysis failed.");
-      setMessage("Gemini claim review saved. It used search-result headlines only and remains uncertain—not a fact-check verdict. Refresh the Trust Center to see it.");
+      setMessage("Claim review saved. Updating the evidence records…");
+      await onComplete?.();
+      setMessage("Claim review saved and added to the evidence records below. It used search-result headlines only and remains uncertain—not a fact-check verdict.");
     } catch (err) { setError(err instanceof Error ? err.message : "Could not run claim analysis."); }
     finally { setBusy(false); }
   }
