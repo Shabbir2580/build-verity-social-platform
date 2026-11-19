@@ -11,7 +11,7 @@ type Metrics = {
   activeCases: number | null; urgentCases: number | null; overdueCases: number | null;
   openTickets: number | null; overdueTickets: number | null; newTickets7d: number | null;
   newMembers7d: number | null; newPosts7d: number | null;
-  businessLeads: number | null; openBusinessLeads: number | null;
+  businessLeads: number | null; openBusinessLeads: number | null; aiRequests24h: number | null;
 };
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -159,6 +159,7 @@ export default function AdminAiPage() {
           </>}
           {(staffRole === "admin" || staffRole === "moderator") && <MetricCard label="Active cases" value={metrics?.activeCases ?? null} note={`${metrics?.urgentCases ?? 0} marked urgent`} icon={Flag}/>}
           {(staffRole === "admin" || staffRole === "support") && <MetricCard label="Open support" value={metrics?.openTickets ?? null} note="Not marked resolved" icon={Headphones}/>}
+          {staffRole && <MetricCard label="AI requests · 24h" value={metrics?.aiRequests24h ?? null} note={staffRole === "admin" ? "Across authorized staff" : "Your recorded requests"} icon={Bot}/>}
         </div>
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -229,6 +230,8 @@ export default function AdminAiPage() {
             <li>• AI cannot suspend accounts, delete posts or resolve cases.</li>
             <li>• AI cannot determine whether a claim or media item is true or authentic.</li>
             <li>• Admins remain responsible for decisions and should verify records.</li>
+            <li>• Requests are capped at 12 per hour and 40 per day per staff account.</li>
+            <li>• Usage events store token counts, not the question text; token counts are not a currency-cost estimate.</li>
           </ul>
         </section>
         <Link href="/admin" className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Return to admin console</Link>
