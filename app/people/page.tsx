@@ -61,19 +61,19 @@ export default function PeoplePage() {
       if (blocksError) throw blocksError;
       if (membersError) throw membersError;
 
-      const interests = (ownProfile?.interests ?? []).filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
+      const interests = ((ownProfile?.interests ?? []) as unknown[]).filter((item: unknown): item is string => typeof item === "string" && Boolean(item.trim()));
       setMyInterests(interests);
       const excluded = new Set([
         ...(follows ?? []).map((row) => row.following_id),
         ...(blocks ?? []).map((row) => row.blocked_id),
         viewer.id,
       ]);
-      const normalizedInterests = interests.map((item) => item.trim().toLowerCase());
+      const normalizedInterests = interests.map((item: string) => item.trim().toLowerCase());
       const ranked = ((members ?? []) as Member[])
         .filter((member) => !excluded.has(member.id))
         .map((member) => {
-          const memberInterests = (member.interests ?? []).filter((item): item is string => typeof item === "string");
-          const sharedInterests = memberInterests.filter((item) => normalizedInterests.includes(item.trim().toLowerCase()));
+          const memberInterests: string[] = Array.isArray(member.interests) ? member.interests.filter((item: unknown): item is string => typeof item === "string") : [];
+          const sharedInterests = memberInterests.filter((item: string) => normalizedInterests.includes(item.trim().toLowerCase()));
           return { ...member, sharedInterests };
         })
         .sort((a, b) => b.sharedInterests.length - a.sharedInterests.length || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
