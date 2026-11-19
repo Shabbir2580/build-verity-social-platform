@@ -296,6 +296,10 @@ export default function AdminPage() {
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#34477f] text-white"><Briefcase size={20}/></span>
             <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-slate-900">Business & revenue</span><span className="mt-1 block text-xs text-slate-500">Track organization enquiries and revenue readiness</span></span><ChevronRight size={17} className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-700"/>
           </Link>
+          <Link href="/admin/revenue" className="group flex min-h-24 items-center gap-4 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white"><Activity size={20}/></span>
+            <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-slate-900">Revenue & impact</span><span className="mt-1 block text-xs text-slate-500">Separate real earnings from pipeline and public impact</span></span><ChevronRight size={17} className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-emerald-700"/>
+          </Link>
           <Link href="/admin/ai" className="group flex min-h-24 items-center gap-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm transition hover:border-indigo-300 hover:shadow-md">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#34477f] text-white"><BrainCircuit size={20}/></span>
             <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-slate-900">AI command center</span><span className="mt-1 block text-xs text-slate-500">Read-only operational insights for administrators</span></span><ChevronRight size={17} className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-indigo-600"/>
