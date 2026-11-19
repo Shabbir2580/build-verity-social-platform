@@ -25,7 +25,7 @@ const routes = [
   ["/moderation", "Checking staff access"],
   ["/admin", "Checking administrator access"],
   ["/admin/business", "Commercial workspace"],
-  ["/admin/revenue", "Revenue & impact"],
+  ["/admin/revenue", "Revenue"],
   ["/admin/ai", "AI command center"],
   ["/staff/assistant", "AI command center"],
 ];
