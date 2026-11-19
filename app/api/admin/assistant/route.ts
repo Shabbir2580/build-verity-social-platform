@@ -45,7 +45,7 @@ async function getAdmin(request: NextRequest) {
   return { supabase, userId: auth.user.id };
 }
 
-async function getContext(supabase: ReturnType<typeof createClient>) {
+async function getContext(supabase: any) {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const isoNow = now.toISOString();
