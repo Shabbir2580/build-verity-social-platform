@@ -1261,6 +1261,16 @@ export default function HomePage() {
         <div className="mx-auto flex min-h-[70px] max-w-[1680px] items-center gap-3 px-4 sm:gap-4 sm:px-6 xl:px-8">
           <button
             type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="verity-mobile-menu"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 lg:hidden"
+          >
+            {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
+          <button
+            type="button"
             onClick={() => { setActivePage("Home"); setMobileMenuOpen(false); }}
             className="flex shrink-0 items-center gap-2.5 rounded-xl text-left"
             aria-label="Verity home"
@@ -1293,7 +1303,8 @@ export default function HomePage() {
       </header>
 
       <div className="verity-main-grid mx-auto grid w-full max-w-[1680px] grid-cols-1 gap-5 px-4 sm:px-6 lg:grid-cols-[225px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[245px_minmax(0,1fr)_300px] xl:gap-7 xl:px-8">
-        <aside className={`${mobileMenuOpen ? "verity-mobile-menu-open" : "verity-mobile-menu-closed"} verity-left-sidebar lg:sticky lg:top-[70px] lg:block lg:h-[calc(100dvh-70px)] lg:overflow-y-auto`}>
+        {mobileMenuOpen && <button type="button" aria-label="Close navigation menu" onClick={() => setMobileMenuOpen(false)} className="fixed inset-x-0 top-[70px] bottom-[62px] z-30 bg-slate-950/25 backdrop-blur-[1px] lg:hidden" />}
+        <aside id="verity-mobile-menu" className={`${mobileMenuOpen ? "verity-mobile-menu-open" : "verity-mobile-menu-closed"} verity-left-sidebar lg:sticky lg:top-[70px] lg:block lg:h-[calc(100dvh-70px)] lg:overflow-y-auto`}>
           <div className="py-5 lg:py-7">
             <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
               <Avatar name={user?.email || "Verity Community"} />
