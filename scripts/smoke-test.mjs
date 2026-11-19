@@ -25,6 +25,7 @@ const routes = [
   ["/moderation", "Checking staff access"],
   ["/admin", "Checking administrator access"],
   ["/admin/business", "Commercial workspace"],
+  ["/admin/revenue", "Revenue & impact"],
   ["/admin/ai", "AI command center"],
   ["/staff/assistant", "AI command center"],
 ];
@@ -76,7 +77,7 @@ try {
   }
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover"]) {
+  for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line"]) {
     if (!visualSystem.includes(marker)) throw new Error(`Visual design system is missing expected rule: ${marker}`);
   }
   process.stdout.write("PASS editorial design system rules are present\\n");
@@ -147,6 +148,13 @@ try {
   const businessApiResponse = await fetch(new URL("/api/admin/business", origin), { signal: AbortSignal.timeout(5000) });
   if (businessApiResponse.status !== 401) throw new Error("Business dashboard API must reject unauthenticated access.");
   process.stdout.write("PASS /api/admin/business rejects unauthenticated access (401)\\n");
+
+  const revenuePageSource = await readFile(new URL("../app/admin/revenue/page.tsx", import.meta.url), "utf8");
+  if (!revenuePageSource.includes('assistantPayload.role !== "admin"') || !revenuePageSource.includes("No real earnings are recorded yet")) {
+    throw new Error("Revenue workspace is missing its administrator role check or truthful financial state.");
+  }
+  const revenueApiResponse = await fetch(new URL("/api/admin/business", origin), { signal: AbortSignal.timeout(5000) });
+  if (revenueApiResponse.status !== 401) throw new Error("Revenue data source must reject unauthenticated access (401).");
 
   const adminAssistantResponse = await fetch(new URL("/api/admin/assistant", origin), { signal: AbortSignal.timeout(5000) });
   if (adminAssistantResponse.status !== 401) throw new Error("Admin assistant API must reject unauthenticated access.");
