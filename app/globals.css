@@ -1036,3 +1036,92 @@ body { color: var(--verity-ink); background: #fff; }
 .verity-workspace .border-emerald-200 { border-color: #c5ddd2 !important; }
 .verity-workspace .text-emerald-800 { color: #286451 !important; }
 .verity-admin-page .text-emerald-600 { color: #247a78 !important; }
+
+/* Verity design system v3 — Midnight Navy / Trust Teal / Warm Ivory */
+:root {
+  color-scheme: light;
+  --verity-navy: #142b3a;
+  --verity-navy-raised: #1d394a;
+  --verity-teal: #168477;
+  --verity-teal-hover: #116e64;
+  --verity-ivory: #f5f5f0;
+  --verity-surface: #ffffff;
+  --verity-surface-subtle: #f0f2ef;
+  --verity-text: #1d2b33;
+  --verity-text-muted: #687780;
+  --verity-border: #e1e7e3;
+  --verity-amber: #d6a45c;
+  --verity-danger: #b94c4c;
+  --background: #f5f5f0; --foreground: #1d2b33;
+  --card: #ffffff; --card-foreground: #1d2b33;
+  --popover: #ffffff; --popover-foreground: #1d2b33;
+  --primary: #168477; --primary-foreground: #ffffff;
+  --secondary: #edf2ef; --secondary-foreground: #142b3a;
+  --muted: #f0f2ef; --muted-foreground: #687780;
+  --accent: #e8f2ef; --accent-foreground: #142b3a;
+  --border: #e1e7e3; --input: #d5dfda; --ring: #168477;
+  --radius: .75rem;
+  --sidebar: #ffffff; --sidebar-foreground: #1d2b33;
+  --sidebar-primary: #168477; --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f2ef; --sidebar-accent-foreground: #142b3a;
+  --sidebar-border: #e1e7e3; --sidebar-ring: #168477;
+}
+html { background: var(--verity-ivory); }
+body { color: var(--verity-text); background: var(--verity-ivory); }
+::selection { color: #fff; background: var(--verity-teal); }
+:where(button,a,input,textarea,select):focus-visible { outline-color: rgb(22 132 119 / 38%); }
+.verity-app,.verity-product-page,.verity-workspace,.verity-admin-page {
+  color: var(--verity-text); background-color: var(--verity-ivory) !important;
+}
+.verity-app .verity-header {
+  background: rgb(255 255 255 / 96%) !important;
+  border-color: var(--verity-border) !important;
+  box-shadow: 0 1px 0 rgb(20 43 58 / 5%) !important;
+}
+.verity-app .verity-logo,.verity-app .verity-create-button {
+  background: var(--verity-navy) !important; color: #fff !important;
+}
+.verity-app .verity-create-button:hover { background: var(--verity-navy-raised) !important; }
+.verity-app .verity-nav-active {
+  color: var(--verity-navy) !important; background: #e8f2ef !important;
+  box-shadow: inset 3px 0 0 var(--verity-teal) !important;
+}
+.verity-app .verity-hero {
+  background: linear-gradient(125deg,#142b3a 0%,#1d394a 100%) !important;
+  border-color: #294454 !important;
+}
+.verity-app .verity-hero-primary { color: var(--verity-navy) !important; }
+.verity-app .verity-metric-card,.verity-app .verity-post-card,
+.verity-app .verity-composer,.verity-app .verity-right-sidebar > section {
+  border-color: var(--verity-border) !important; background-color: var(--verity-surface) !important;
+}
+.verity-app .verity-trust-card { background: var(--verity-navy) !important; }
+.verity-product-page > header,.verity-workspace > header,.verity-admin-page > header {
+  border-color: var(--verity-border) !important;
+}
+.verity-product-page a:last-child { color: var(--verity-navy); }
+.verity-workspace {
+  --workspace-ink: var(--verity-text); --workspace-muted: var(--verity-text-muted);
+  --workspace-line: var(--verity-border); --workspace-paper: var(--verity-ivory);
+  --workspace-brand: var(--verity-navy); --workspace-teal: var(--verity-teal);
+  --workspace-highlight: var(--verity-amber);
+}
+.verity-workspace .verity-ai-user-message,.verity-workspace .verity-ai-send,
+.verity-workspace .bg-indigo-600,.verity-admin-page .bg-indigo-600 {
+  background-color: var(--verity-teal) !important;
+}
+.verity-workspace .verity-ai-send:hover,.verity-workspace .bg-indigo-700,
+.verity-admin-page .bg-indigo-700 { background-color: var(--verity-teal-hover) !important; }
+.verity-workspace .text-indigo-600,.verity-workspace .text-indigo-700,
+.verity-admin-page .text-indigo-600,.verity-admin-page .text-indigo-700 {
+  color: var(--verity-navy) !important;
+}
+.verity-workspace .border-indigo-100,.verity-workspace .border-indigo-200,
+.verity-admin-page .border-indigo-100,.verity-admin-page .border-indigo-200 {
+  border-color: #cbded7 !important;
+}
+.verity-mobile-menu-open { background: var(--verity-surface) !important; border-color: var(--verity-border) !important; }
+@media (max-width: 639px) {
+  .verity-app .verity-hero { border-radius: 16px !important; }
+  .verity-app .verity-post-card { border-radius: 14px !important; }
+}
