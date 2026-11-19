@@ -57,7 +57,8 @@ Verity should validate demand before adding payment processing. The platform is 
 
 ## Current implementation
 
-- `/for-organizations` explains pilot use cases and collects authenticated organization enquiries.
+- `/for-organizations` is the public Verity Business page for organization plans, advertising/sponsorship proposals, education, research and community partnerships. It collects authenticated commercial enquiries through the existing support-ticket workflow.
+- Advertising formats are presented as proposed opportunities, not active inventory. No ads are currently served and no advertising payment is collected.
 - Enquiries use the existing `support_tickets` table with category `general`; no schema migration or payment provider was added.
 - The page explicitly states that submitting an enquiry does not create a subscription or charge the user.
-- No payment processing, ad targeting, sponsor placement or paid verification is implemented.
+- No payment processing, ad targeting, live sponsor placement or paid verification is implemented.
