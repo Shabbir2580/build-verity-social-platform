@@ -106,7 +106,7 @@ try {
   process.stdout.write("PASS profile, people, community and notification pages use the shared product shell\\n");
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line"]) {
+  for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line", "--workspace-teal", "--workspace-highlight", ".verity-ai-hero"]) {
     if (!visualSystem.includes(marker)) throw new Error(`Visual design system is missing expected rule: ${marker}`);
   }
   process.stdout.write("PASS editorial design system rules are present\\n");
@@ -117,7 +117,7 @@ try {
   for (const marker of ["suggestionsByRole", "admin: [", "moderator: [", "support: [", "role-specific operational briefing", "aiConsent", "sent to Google Gemini", "private messages, credentials or personal data"]) {
     if (!aiPageSource.includes(marker)) throw new Error(`AI workspace is missing role-specific guidance: ${marker}`);
   }
-  for (const marker of ["12 requests per hour", "40 per day", "admin_ai_assistant_request", "promptTokens", "outputTokens", "AI usage tracking is unavailable"]) {
+  for (const marker of ["12 requests per hour", "40 per day", "admin_ai_assistant_request", "promptTokens", "outputTokens", "AI usage tracking is unavailable", "allowedModes", "modeInstructions", "Data limitations"]) {
     if (!adminAssistantSource.includes(marker)) throw new Error(`AI assistant is missing usage controls or token metering: ${marker}`);
   }
   const businessApiSource = await readFile(new URL("../app/api/admin/business/route.ts", import.meta.url), "utf8");
@@ -125,7 +125,7 @@ try {
   for (const marker of ["[\"admin\", \"moderator\", \"support\"].includes(profile?.role || \"\")", "const canModerate = isAdmin || role === \"moderator\"", "const canSupport = isAdmin || role === \"support\"", "VERITY_ADMIN_AI_ENABLED !== \"true\"", "\"Cache-Control\": \"no-store\""]) {
     if (!adminAssistantSource.includes(marker)) throw new Error(`Admin assistant API is missing required access/cost control: ${marker}`);
   }
-  if (!adminPageSource.includes("AI is not activated.") || !adminPageSource.includes("Read-only")) {
+  if (!adminPageSource.includes("AI is not activated.") || !adminPageSource.includes("Read-only") || !adminPageSource.includes("Generate daily briefing") || !adminPageSource.includes("Prioritise work")) {
     throw new Error("Admin AI page is missing its disabled-by-default and read-only safety states.");
   }
   if (!businessApiSource.includes('profile?.role !== "admin"') || !businessApiSource.includes("Business enquiry —%") || !businessApiSource.includes("not_configured")) {
