@@ -76,6 +76,21 @@ try {
     process.stdout.write(`PASS /${authPage} preserves safe return destinations\\n`);
   }
 
+  const homePageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const removePostStart = homePageSource.indexOf("async function deletePost(postId: string)");
+  const removePostEnd = homePageSource.indexOf("async function deleteComment", removePostStart);
+  if (removePostStart < 0 || removePostEnd < 0) throw new Error("Home feed is missing the author post-removal workflow.");
+  const removePostSource = homePageSource.slice(removePostStart, removePostEnd);
+  const postStateChangeIndex = removePostSource.indexOf('.from("posts")');
+  const mediaCleanupIndex = removePostSource.indexOf('.from("post_media")');
+  if (postStateChangeIndex < 0 || mediaCleanupIndex < 0 || postStateChangeIndex > mediaCleanupIndex) {
+    throw new Error("Author post removal must hide the post before attempting attached-media cleanup.");
+  }
+  for (const marker of ["The post is no longer publicly visible", "moderation history is retained", "Storage cleanup failed"]) {
+    if (!removePostSource.includes(marker)) throw new Error(`Author post removal is missing safe cleanup handling: ${marker}`);
+  }
+  process.stdout.write("PASS author post removal hides content before best-effort media cleanup\\n");
+
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   for (const marker of ["Verity design system refresh", "--verity-ink", "background-image: none !important", ".verity-post-card:hover", ".verity-workspace", "--workspace-line"]) {
     if (!visualSystem.includes(marker)) throw new Error(`Visual design system is missing expected rule: ${marker}`);
