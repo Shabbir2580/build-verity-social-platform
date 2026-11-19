@@ -392,6 +392,11 @@ export default function HomePage() {
 
       const currentUser = authUser ? { id: authUser.id, email: authUser.email } : null;
       setUser(currentUser);
+      const sharedPostParam = new URLSearchParams(window.location.search).get("post");
+      const sharedPostId = sharedPostParam && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sharedPostParam)
+        ? sharedPostParam
+        : null;
+      if (sharedPostId) setRequestedPostId(sharedPostId);
       let followedUserIds: string[] = [];
       if (currentUser && filter === "Following" && activePage !== "Saved") {
         const { data: followingRows, error: followingError } = await supabase
@@ -456,7 +461,16 @@ export default function HomePage() {
       const { data: postData, error: postError } = await postQuery;
       if (postError) throw postError;
 
-      const rows = (postData ?? []) as unknown as DbPost[];
+      let rows = (postData ?? []) as unknown as DbPost[];
+      if (sharedPostId && !rows.some((row) => row.id === sharedPostId)) {
+        const { data: sharedPost, error: sharedPostError } = await supabase
+          .from("posts")
+          .select("id, author_id, community_id, type, title, body, link_url, source_url, declared_category, ai_disclosure, tags, status, created_at")
+          .eq("id", sharedPostId)
+          .maybeSingle();
+        if (sharedPostError) throw sharedPostError;
+        if (sharedPost?.status === "published") rows = [sharedPost as unknown as DbPost, ...rows];
+      }
       const postIds = rows.map((row) => row.id);
       const authorIds = [...new Set(rows.map((row) => row.author_id))];
       const communityIds = [...new Set(rows.map((row) => row.community_id).filter((id): id is string => Boolean(id)))];
@@ -597,6 +611,12 @@ export default function HomePage() {
     // Refresh the query when the feed scope changes (not just its visual sort).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, activePage]);
+
+  useEffect(() => {
+    if (!requestedPostId || !posts.some((post) => post.id === requestedPostId)) return;
+    setHighlightedPostId(requestedPostId);
+    document.getElementById(`post-${requestedPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [requestedPostId, posts]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1387,7 +1407,7 @@ export default function HomePage() {
                 const isSaved = saved.includes(post.id);
                 const postComments = commentsByPost[post.id] || [];
                 const artTone = post.category.includes("meme") || post.category.includes("satire") || post.category.includes("parody") ? "rose" : post.category.includes("question") ? "cyan" : post.category.includes("ai") || post.category.includes("educational") ? "violet" : null;
-                return <article key={post.id} className="verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm"><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><Link href={`/u/${encodeURIComponent(post.username)}`} className="block truncate text-sm font-extrabold hover:text-indigo-700">{post.author}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><Link href={`/u/${encodeURIComponent(post.username)}`} className="hover:text-indigo-700">@{post.username}</Link><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div>{user?.id === post.author_id ? <><button type="button" onClick={() => { setEditingPostId(post.id); setEditTitle(post.title === "Untitled post" ? "" : post.title); setEditBody(post.body); setError(""); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-700" aria-label="Edit your post" title="Edit your post"><FileSearch size={16} /></button><button type="button" onClick={() => void deletePost(post.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your post" title="Delete your post"><Trash2 size={16} /></button></> : <button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button>}</div>
+                return <article id={`post-${post.id}`} key={post.id} className={`verity-post-card overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm ${highlightedPostId === post.id ? "ring-2 ring-indigo-500 ring-offset-2" : ""}`}><div className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={post.author} /><div className="min-w-0 flex-1"><Link href={`/u/${encodeURIComponent(post.username)}`} className="block truncate text-sm font-extrabold hover:text-indigo-700">{post.author}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"><Link href={`/u/${encodeURIComponent(post.username)}`} className="hover:text-indigo-700">@{post.username}</Link><span>·</span><span>{post.time}</span></div><p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600"><Users size={12} />{post.community}</p></div>{user?.id === post.author_id ? <><button type="button" onClick={() => { setEditingPostId(post.id); setEditTitle(post.title === "Untitled post" ? "" : post.title); setEditBody(post.body); setError(""); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-700" aria-label="Edit your post" title="Edit your post"><FileSearch size={16} /></button><button type="button" onClick={() => void deletePost(post.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete your post" title="Delete your post"><Trash2 size={16} /></button></> : <button type="button" onClick={() => { setReportError(""); setReportDetails(""); setReportReason("misinformation"); setReportingPost(post); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-700" aria-label={`Report post by ${post.author}`} title="Report post"><Flag size={17} /></button>}</div>
                   {editingPostId === post.id ? <form onSubmit={(event) => { event.preventDefault(); void savePostEdit(post.id); }} className="mt-4 space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4"><label className="block text-xs font-bold text-slate-600">Title<input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={300} className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="Optional title"/></label><label className="block text-xs font-bold text-slate-600">Post text<textarea required value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={20000} rows={5} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-indigo-400"/></label><div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingPostId(null)} disabled={editSaving} className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold">Cancel</button><button type="submit" disabled={editSaving || !editBody.trim()} className="min-h-9 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white disabled:opacity-50">{editSaving ? "Saving…" : "Save changes"}</button></div></form> : <><h3 className="mt-4 break-words text-[17px] font-extrabold leading-7 tracking-tight text-slate-900 sm:text-lg">{post.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{post.body}</p></>}
                   {artTone && <Artwork tone={artTone} />}
                   {post.media.length > 0 && <div className={`verity-post-media mt-4 grid gap-2 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{post.media.map((media) => media.kind === "video" ? <video key={media.id} controls playsInline preload="metadata" className="max-h-[560px] w-full rounded-2xl bg-slate-950 object-contain" aria-label="Post video"><source src={media.url} type={media.mime_type} />Your browser does not support HTML video.</video> : <img key={media.id} src={media.url} alt={media.alt_text || `Image shared by ${post.author}`} loading="lazy" className={`w-full rounded-2xl border border-slate-100 object-cover ${post.media.length === 1 ? "max-h-[560px]" : "aspect-square"}`} />)}</div>}
