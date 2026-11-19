@@ -300,6 +300,7 @@ export default function HomePage() {
   const [isModerator, setIsModerator] = useState(false);
   const [isSupportStaff, setIsSupportStaff] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [staffAccessMessage, setStaffAccessMessage] = useState("");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
@@ -421,10 +422,23 @@ export default function HomePage() {
           .select("id", { count: "exact", head: true }).eq("user_id", currentUser.id).is("read_at", null);
         if (unreadError) throw unreadError;
         setUnreadNotifications(unreadCount ?? 0);
-        const { data: roleData } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
-        setIsModerator(roleData?.role === "moderator" || roleData?.role === "admin");
-        setIsSupportStaff(roleData?.role === "support" || roleData?.role === "moderator" || roleData?.role === "admin");
-        setIsAdmin(roleData?.role === "admin");
+        const { data: roleData, error: roleError } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
+        if (roleError) {
+          setIsModerator(false);
+          setIsSupportStaff(false);
+          setIsAdmin(false);
+          setStaffAccessMessage("Your staff permissions could not be loaded. Refresh to try again; staff tools remain protected.");
+        } else if (!roleData) {
+          setIsModerator(false);
+          setIsSupportStaff(false);
+          setIsAdmin(false);
+          setStaffAccessMessage("Your account profile could not be found, so staff permissions are unavailable.");
+        } else {
+          setIsModerator(roleData.role === "moderator" || roleData.role === "admin");
+          setIsSupportStaff(roleData.role === "support" || roleData.role === "moderator" || roleData.role === "admin");
+          setIsAdmin(roleData.role === "admin");
+          setStaffAccessMessage("");
+        }
         const { data: membershipData, error: membershipError } = await supabase
           .from("community_memberships")
           .select("community_id, role")
@@ -437,6 +451,7 @@ export default function HomePage() {
         setIsModerator(false);
         setIsSupportStaff(false);
         setIsAdmin(false);
+        setStaffAccessMessage("");
         setUnreadNotifications(0);
         setMembershipRoles({});
       }
@@ -1287,6 +1302,7 @@ export default function HomePage() {
               ))}
             </nav>
 
+            {staffAccessMessage && user && <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><p className="font-bold">Staff menu unavailable</p><p className="mt-1">{staffAccessMessage}</p><button type="button" onClick={() => void loadFeed()} disabled={loading} className="mt-2 inline-flex min-h-8 items-center gap-1 font-bold underline underline-offset-2 disabled:opacity-50">Retry permission check</button></div>}
             <div className="my-7 border-t border-slate-200" />
             <div className="verity-sidebar-card rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><ShieldCheck size={20} /></div>
