@@ -55,6 +55,12 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
     if (error) throw new Error("One or more staff metrics could not be loaded.");
     return total ?? 0;
   };
+  // Service-role queries bypass RLS, so enforce team boundaries explicitly here.
+  // Support staff must never receive Trust & Safety ticket counts.
+  const ticketQuery = () => {
+    const query = supabase.from("support_tickets").select("id", { count: "exact", head: true });
+    return role === "support" ? query.eq("assigned_team", "support") : query;
+  };
   const [
     members, posts, reports, activeCases, urgentCases, overdueCases,
     openTickets, overdueTickets, newTickets7d, newMembers, newPosts, businessLeads, openBusinessLeads, aiRequests24h,
@@ -65,9 +71,9 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
     canModerate ? count(supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved")) : null,
     canModerate ? count(supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved").eq("priority", "urgent")) : null,
     canModerate ? count(supabase.from("moderation_cases").select("id", { count: "exact", head: true }).neq("status", "resolved").lt("due_at", isoNow)) : null,
-    canSupport ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved")) : null,
-    canSupport ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolved").lt("response_due_at", isoNow)) : null,
-    canSupport ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
+    canSupport ? count(ticketQuery().neq("status", "resolved")) : null,
+    canSupport ? count(ticketQuery().neq("status", "resolved").lt("response_due_at", isoNow)) : null,
+    canSupport ? count(ticketQuery().gte("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true }).gte("created_at", weekAgo)) : null,
     isAdmin ? count(supabase.from("support_tickets").select("id", { count: "exact", head: true }).ilike("subject", "Business enquiry —%")) : null,
