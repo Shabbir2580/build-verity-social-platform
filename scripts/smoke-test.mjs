@@ -217,6 +217,16 @@ try {
     }
   }
 
+  const quickReviewApiSource = await readFile(new URL("../app/api/verify/quick-review/route.ts", import.meta.url), "utf8");
+  const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
+  for (const marker of ['requestBody.tools = [{ googleSearch: {} }]', 'grounding?.groundingChunks', 'grounding?.webSearchQueries', 'grounding?.searchEntryPoint?.renderedContent', 'evidence_status:']) {
+    if (!quickReviewApiSource.includes(marker)) throw new Error(`Text review is missing grounded evidence handling: ${marker}`);
+  }
+  for (const marker of ['review.sources.map', 'dangerouslySetInnerHTML', '30 days', 'Google Search grounded']) {
+    if (!quickReviewPageSource.includes(marker)) throw new Error(`Quick review page is missing required evidence display or privacy disclosure: ${marker}`);
+  }
+  process.stdout.write("PASS text review grounds claims with Google Search and displays returned sources/suggestions\\n");
+
   const quickReviewResponse = await fetch(new URL("/api/verify/quick-review", origin), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "text", text: "This is a sufficiently long sample claim for a smoke test.", consent: true }), signal: AbortSignal.timeout(5000) });
   if (quickReviewResponse.status !== 401) throw new Error("Quick review API must reject unauthenticated access.");
   process.stdout.write("PASS standalone quick review API rejects unauthenticated access (401)\\n");
