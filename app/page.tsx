@@ -591,7 +591,7 @@ export default function HomePage() {
       if (postIds.length) {
         const { data, error: reactionError } = await supabase.rpc("get_post_reaction_counts", { p_post_ids: postIds });
         if (reactionError) throw reactionError;
-        reactionRows = (data ?? []) as { post_id: string; user_id: string }[];
+        reactionRows = (data ?? []) as { post_id: string; reaction_count: number }[];
 
         const { data: commentData, error: commentError } = await supabase
           .from("comments")
