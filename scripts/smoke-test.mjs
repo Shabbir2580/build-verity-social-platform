@@ -397,6 +397,20 @@ try {
   }
   process.stdout.write("PASS PPT acceptance checks: feed, post composer, questions, support, human review and AI review entry point\\n");
 
+  const adminDashboardSource = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
+  const adminEngagementMigration = await readFile(new URL("../supabase/migrations/20261120082341_admin_engagement_summary_private_aggregates.sql", import.meta.url), "utf8");
+  if (!adminDashboardSource.includes('rpc("admin_engagement_summary"')) {
+    throw new Error("Admin dashboard must use the protected aggregate engagement RPC.");
+  }
+  if (adminDashboardSource.includes('from("reactions").select("user_id, created_at")') ||
+      adminDashboardSource.includes('from("community_memberships").select("created_at")')) {
+    throw new Error("Admin dashboard must not depend on private row-level reaction or membership access for aggregate analytics.");
+  }
+  for (const marker of ["if not public.is_admin()", "count(distinct activity.user_id)", "from public.reactions", "from public.community_memberships", "from public, anon", "to authenticated, service_role"]) {
+    if (!adminEngagementMigration.includes(marker)) throw new Error("Admin aggregate analytics migration is missing a security or aggregation guard: " + marker);
+  }
+  process.stdout.write("PASS admin engagement analytics use an admin-only aggregate without exposing reaction or membership identities\\n");
+
   await waitForServer();
 
   for (const [path, expectedText] of routes) {
