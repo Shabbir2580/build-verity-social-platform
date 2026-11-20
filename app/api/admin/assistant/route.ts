@@ -5,7 +5,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const requestedModel = process.env.GEMINI_ADMIN_MODEL?.trim() || "";\nconst ADMIN_AI_MODEL = /^[a-zA-Z0-9._-]{1,100}$/.test(requestedModel) ? requestedModel : "gemini-3.5-flash-lite";
+const requestedModel = process.env.GEMINI_ADMIN_MODEL?.trim() || "";
+const ADMIN_AI_MODEL = /^[a-zA-Z0-9._-]{1,100}$/.test(requestedModel) ? requestedModel : "gemini-3.5-flash-lite";
 
 type AdminContext = {
   generatedAt: string;
