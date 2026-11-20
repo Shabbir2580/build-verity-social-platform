@@ -63,9 +63,9 @@ Semantic colours are reserved: green for success, amber for caution/overdue atte
 
 ### Current baseline (honest limitations)
 
-The current staff assistant uses Gemini 2.5 Flash and supplies aggregate counts. It does not read individual moderation cases or support tickets, inspect private content, execute staff actions, or connect to a verified revenue ledger. It is therefore an aggregate operations chatbot, not an autonomous admin agent.
+The staff assistant is grounded in a curated Verity product and operations handbook plus role-specific guidance and live aggregate counts. It can explain shipped features, staff workspaces, safe workflows and the limits of current capabilities. The general admin/staff copilot still does not read individual moderation cases or support tickets, inspect private content, execute staff actions, or connect to a verified revenue ledger. Selected-case moderation summaries and selected-ticket support drafts are separate, consent-based workflows with their own authorization checks.
 
-Gemini's media analysis is a general multimodal description workflow, not a forensic AI/deepfake detector. News discovery and third-party fact-check search are separate evidence sources. None should be collapsed into a single true/false or fake/real score.
+Gemini's media analysis is a general multimodal description workflow, not a forensic AI/deepfake detector. Automated video-origin review is not implemented. News discovery and third-party fact-check search are separate evidence sources. None should be collapsed into a single true/false or fake/real score.
 
 ### Phase A — task-specific aggregate copilot
 
