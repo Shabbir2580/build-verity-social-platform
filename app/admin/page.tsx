@@ -90,7 +90,7 @@ export default function AdminPage() {
         p_limit: 50,
         p_offset: peoplePage * 50,
       });
-      const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships] = await Promise.all([
+      const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, engagementSummary] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
         supabase.from("reports").select("id", { count: "exact", head: true }),
@@ -101,8 +101,7 @@ export default function AdminPage() {
         supabase.from("profiles").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
         supabase.from("posts").select("author_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
         supabase.from("comments").select("author_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
-        supabase.from("reactions").select("user_id, created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
-        supabase.from("community_memberships").select("created_at").gte("created_at", sinceIso).order("created_at").limit(10000),
+        supabase.rpc("admin_engagement_summary", { p_since: sinceIso }),
       ]);
       if (members.error) throw members.error;
       if (posts.error) throw posts.error;
@@ -114,8 +113,7 @@ export default function AdminPage() {
       if (recentMembers.error) throw recentMembers.error;
       if (recentPosts.error) throw recentPosts.error;
       if (recentComments.error) throw recentComments.error;
-      if (recentReactions.error) throw recentReactions.error;
-      if (recentMemberships.error) throw recentMemberships.error;
+      if (engagementSummary.error) throw engagementSummary.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
       setStaff((people.data?.rows ?? []) as Profile[]);
       setPeopleTotal(Number(people.data?.total ?? 0));
@@ -133,11 +131,13 @@ export default function AdminPage() {
       for (const row of recentPosts?.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.posts++; }
       for (const row of recentComments?.data ?? []) { const day = byDay.get(row.created_at.slice(0,10)); if (day) day.comments++; }
       setDaily(days);
-      const contributors = new Set<string>();
-      for (const row of recentPosts?.data ?? []) contributors.add(row.author_id);
-      for (const row of recentComments?.data ?? []) contributors.add(row.author_id);
-      for (const row of recentReactions?.data ?? []) contributors.add(row.user_id);
-      setEngagement({ comments: recentComments?.data?.length ?? 0, reactions: recentReactions?.data?.length ?? 0, communities: recentMemberships?.data?.length ?? 0, contributors: contributors.size });
+      const summary = (engagementSummary.data ?? {}) as { comments?: number; reactions?: number; communities?: number; contributors?: number };
+      setEngagement({
+        comments: Number(summary.comments ?? 0),
+        reactions: Number(summary.reactions ?? 0),
+        communities: Number(summary.communities ?? 0),
+        contributors: Number(summary.contributors ?? 0),
+      });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load admin dashboard."); }
     finally { setLoading(false); setChecking(false); }
   }, [peoplePage, debouncedSearch, peopleRoleFilter, peopleStatusFilter]);
