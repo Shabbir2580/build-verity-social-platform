@@ -145,17 +145,19 @@ export default function PublicProfilePage() {
     if (viewerId === profile.id) return;
     setBusy(true);
     setError("");
-    const supabase = createClient();
-    const result = following
-      ? await supabase.from("follows").delete().eq("follower_id", viewerId).eq("following_id", profile.id)
-      : await supabase.from("follows").insert({ follower_id: viewerId, following_id: profile.id });
-    if (result.error) {
-      setError(result.error.message);
-    } else {
+    try {
+      const supabase = createClient();
+      const result = following
+        ? await supabase.from("follows").delete().eq("follower_id", viewerId).eq("following_id", profile.id)
+        : await supabase.from("follows").insert({ follower_id: viewerId, following_id: profile.id });
+      if (result.error) throw result.error;
       setFollowing(!following);
       setFollowers((count) => Math.max(0, count + (following ? -1 : 1)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update this follow.");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function saveProfilePost(postId: string) {
@@ -237,30 +239,35 @@ export default function PublicProfilePage() {
     if (!window.confirm((blocked ? "Unblock " : "Block ") + "@" + profile.username + "?")) return;
     setBusy(true);
     setError("");
-    const supabase = createClient();
-    const result = blocked
-      ? await supabase.from("blocks").delete().eq("blocker_id", viewerId).eq("blocked_id", profile.id)
-      : await supabase.from("blocks").insert({ blocker_id: viewerId, blocked_id: profile.id });
-    if (result.error) {
-      setError(result.error.message);
-    } else if (blocked) {
-      // Re-fetch posts and follow state when unblocking; the initial blocked
-      // profile load intentionally kept its post list empty.
-      await load();
-    } else {
-      setBlocked(true);
-      if (following) {
-        const { error: unfollowError } = await supabase.from("follows").delete()
-          .eq("follower_id", viewerId).eq("following_id", profile.id);
-        if (unfollowError) {
-          setError("Account blocked, but the existing follow could not be removed. Please retry from your Following list.");
-        } else {
-          setFollowing(false);
-          setFollowers((count) => Math.max(0, count - 1));
+    try {
+      const supabase = createClient();
+      const result = blocked
+        ? await supabase.from("blocks").delete().eq("blocker_id", viewerId).eq("blocked_id", profile.id)
+        : await supabase.from("blocks").insert({ blocker_id: viewerId, blocked_id: profile.id });
+      if (result.error) throw result.error;
+
+      if (blocked) {
+        // Re-fetch posts and follow state when unblocking; the initial blocked
+        // profile load intentionally kept its post list empty.
+        await load();
+      } else {
+        setBlocked(true);
+        if (following) {
+          const { error: unfollowError } = await supabase.from("follows").delete()
+            .eq("follower_id", viewerId).eq("following_id", profile.id);
+          if (unfollowError) {
+            setError("Account blocked, but the existing follow could not be removed. Please retry from your Following list.");
+          } else {
+            setFollowing(false);
+            setFollowers((count) => Math.max(0, count - 1));
+          }
         }
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update this block.");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle className="animate-spin" size={18} /> Loading profile...</main>;
