@@ -630,7 +630,7 @@ try {
   }
   process.stdout.write("PASS AI assessment usage ledger indexes its auth user foreign key\\n");
   const adminPostNullActionMigration = await readFile(new URL("../supabase/migrations/20261120085218_reject_null_admin_post_action.sql", import.meta.url), "utf8");
-  if (!/if\\s+p_action\\s+is\\s+null\\s+or\\s+p_action\\s+not\\s+in\\s*\\(/i.test(adminPostNullActionMigration) || !adminPostNullActionMigration.includes("raise exception 'invalid_action'")) {
+  if (!adminPostNullActionMigration.includes("if p_action is null or p_action not in (") || !adminPostNullActionMigration.includes("raise exception 'invalid_action'")) {
     throw new Error("Admin post management must reject NULL and unsupported actions before selecting a status.");
   }
   process.stdout.write("PASS admin post management rejects NULL actions instead of defaulting to removal\\n");
