@@ -152,6 +152,8 @@ try {
   process.stdout.write("PASS editorial design system rules are present\\n");
 
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
+  const moderationAiSource = await readFile(new URL("../app/api/moderation/ai-summary/route.ts", import.meta.url), "utf8");
+  const supportAiSource = await readFile(new URL("../app/api/support/ai-assist/route.ts", import.meta.url), "utf8");
   for (const marker of [
     "const requestedModel = process.env.GEMINI_ADMIN_MODEL?.trim() ||",
     "models/${ADMIN_AI_MODEL}:generateContent",
@@ -214,8 +216,7 @@ try {
   if (!businessPageSource.includes("Enquiries are not revenue.") || !businessPageSource.includes("No payment processor connected")) {
     throw new Error("Business dashboard is missing its revenue transparency notices.");
   }
-  const moderationAiSource = await readFile(new URL("../app/api/moderation/ai-summary/route.ts", import.meta.url), "utf8");
-  const supportAiSource = await readFile(new URL("../app/api/support/ai-assist/route.ts", import.meta.url), "utf8");
+
   for (const marker of ['body.consent !== true', 'moderation.ai_case_summary', 'select("role,is_suspended")', 'profile.is_suspended', 'profile.role !== "admin"', 'needs_second_review', 'gemini-3.5-flash-lite', 'does not make moderation decisions']) {
     if (!moderationAiSource.includes(marker)) throw new Error(`Moderation AI route is missing consent, access, audit or human-review guard: ${marker}`);
   }
