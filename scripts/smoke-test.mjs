@@ -217,6 +217,13 @@ try {
     }
   }
 
+  const quickReviewQuotaMigration = await readFile(new URL("../supabase/migrations/20261120100000_atomic_quick_review_rate_limit.sql", import.meta.url), "utf8");
+  for (const marker of ["pg_advisory_xact_lock", "hashtextextended", "v_count >= 5", "to service_role"]) {
+    if (!quickReviewQuotaMigration.includes(marker)) throw new Error(`Quick review quota migration is missing atomic enforcement: ${marker}`);
+  }
+  if (!quickReviewApiSource.includes('rpc("start_verification_quick_review"')) throw new Error("Quick review API must reserve quota atomically before contacting Gemini.");
+  process.stdout.write("PASS quick review quota is atomically enforced per user\\n");
+
   const quickReviewApiSource = await readFile(new URL("../app/api/verify/quick-review/route.ts", import.meta.url), "utf8");
   const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
   for (const marker of ['requestBody.tools = [{ googleSearch: {} }]', 'grounding?.groundingChunks', 'grounding?.groundingSupports', 'grounding?.webSearchQueries', 'source_linked_statements:', 'grounding?.searchEntryPoint?.renderedContent', 'evidence_status:']) {
