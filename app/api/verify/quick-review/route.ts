@@ -10,7 +10,7 @@ const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type Review = {
-  review_priority: "low" | "medium" | "high";
+  review_risk_percent: number;
   summary: string;
   signals: string[];
   missing_context: string[];
@@ -105,11 +105,12 @@ export async function POST(request: NextRequest) {
     kind === "text"
       ? "Review the supplied text for reasons a human should verify it. Use Google Search to find current, relevant reporting and primary sources where available. Distinguish direct evidence from commentary, headlines, reposts and weak sources. Identify whether available sources support, contradict or do not address the exact claim. Cite only sources actually returned by Google Search grounding. Do not treat search-result snippets as conclusive proof."
       : "Inspect the supplied image for visible content, legible text, context gaps, and observable signs that a human reviewer should investigate. Do not infer whether it is AI-generated or manipulated from visual style.",
-    "Set review_priority to low, medium or high as a triage priority based only on visible review signals and missing context. This is NOT a probability, confidence score, model accuracy, or truth/fake verdict.",
-    "Never issue true/false, real/fake or misinformation verdicts. Do not invent facts, sources, URLs, dates, quotes or percentages.",
-    "A high priority means more human checking is warranted, not that content is false. A low priority does not certify accuracy.",
+    "Estimate review_risk_percent as an integer from 0 to 100 representing how strongly this item warrants human review based on observable risk signals, missing context, source quality and uncertainty. For images, score only visible/contextual review needs; do not infer AI generation or manipulation.",
+    "The score is an experimental, uncalibrated triage index, NOT a probability that content is false, a confidence score, measured model accuracy, or a verdict. Use 0–30 for low review need, 31–60 for medium, and 61–100 for high. Do not force a high score when evidence is insufficient; explain missing context and choose a cautious middle score.",
+    "Never issue true/false, real/fake or misinformation verdicts. Do not invent facts, sources, URLs, dates or quotes. Do not call the score a chance or likelihood that a claim is false.",
+    "A high score means more human checking is warranted, not that content is false. A low score does not certify accuracy.",
     "If sources are mixed, weak, outdated or absent, explain that uncertainty and recommend checking primary records. Never infer truth from the number of search results.",
-    "Return JSON with review_priority, summary, signals, missing_context, verification_steps and uncertainty. Use concise, specific bullet strings. If there is insufficient information, say so and use medium priority.",
+    "Return JSON with review_risk_percent, summary, signals, missing_context, verification_steps and uncertainty. Use concise, specific bullet strings. If there is insufficient information, explain it and choose a cautious score near the middle of the scale.",
   ].join("\n");
   const submittedContent = kind === "text" ? "Text to review: " + userContent : "Review the attached image.";
 
@@ -124,14 +125,14 @@ export async function POST(request: NextRequest) {
           responseSchema: {
             type: "OBJECT",
             properties: {
-              review_priority: { type: "STRING", enum: ["low", "medium", "high"] },
+              review_risk_percent: { type: "INTEGER" },
               summary: { type: "STRING" },
               signals: { type: "ARRAY", items: { type: "STRING" } },
               missing_context: { type: "ARRAY", items: { type: "STRING" } },
               verification_steps: { type: "ARRAY", items: { type: "STRING" } },
               uncertainty: { type: "STRING" },
             },
-            required: ["review_priority", "summary", "signals", "missing_context", "verification_steps", "uncertainty"],
+            required: ["review_risk_percent", "summary", "signals", "missing_context", "verification_steps", "uncertainty"],
           },
           maxOutputTokens: 1200,
           temperature: 1.0,
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
       await supabase.from("audit_logs").update({ details: { provider: "Google Gemini / " + MODEL, kind, status: "invalid_response" } }).eq("id", usage.id);
       return fail("The AI provider returned an unreadable response. No verdict was produced.", 502);
     }
-    if (!["low", "medium", "high"].includes(parsed.review_priority) || typeof parsed.summary !== "string" || typeof parsed.uncertainty !== "string") {
+    if (!Number.isInteger(parsed.review_risk_percent) || parsed.review_risk_percent < 0 || parsed.review_risk_percent > 100 || typeof parsed.summary !== "string" || typeof parsed.uncertainty !== "string") {
       await supabase.from("audit_logs").update({ details: { provider: "Google Gemini / " + MODEL, kind, status: "invalid_response" } }).eq("id", usage.id);
       return fail("The AI provider returned an incomplete review. No verdict was produced.", 502);
     }
@@ -193,7 +194,8 @@ export async function POST(request: NextRequest) {
       ? grounding.searchEntryPoint.renderedContent.slice(0, 30000)
       : null;
     const result = {
-      review_priority: parsed.review_priority,
+      review_risk_percent: parsed.review_risk_percent,
+      review_priority: parsed.review_risk_percent <= 30 ? "low" : parsed.review_risk_percent <= 60 ? "medium" : "high",
       summary: parsed.summary.slice(0, 1800),
       signals: boundedStrings(parsed.signals),
       missing_context: boundedStrings(parsed.missing_context),
