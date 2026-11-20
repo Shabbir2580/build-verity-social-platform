@@ -875,10 +875,15 @@ export default function HomePage() {
             if (savedMediaError) automaticCheckFailures.push("Could not retrieve uploaded media IDs for automatic checks.");
             else {
               const analyzableMedia = (savedMedia ?? []).filter((media) => {
-                const supportedMime = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"].includes(media.mime_type);
-                const sizeLimit = media.kind === "video" ? 20 * 1024 * 1024 : 8 * 1024 * 1024;
-                if (!supportedMime || media.size_bytes > sizeLimit) automaticCheckFailures.push(`${media.mime_type} was uploaded but skipped by Gemini because its format or size is outside the analysis limits.`);
-                return supportedMime && media.size_bytes <= sizeLimit;
+                if (media.kind === "video") {
+                  automaticCheckFailures.push("Video uploaded successfully, but automated media-origin review currently supports images only. No AI video detection was performed.");
+                  return false;
+                }
+                const supportedMime = ["image/jpeg", "image/png", "image/webp"].includes(media.mime_type);
+                if (!supportedMime || media.size_bytes > 8 * 1024 * 1024) {
+                  automaticCheckFailures.push(`${media.mime_type} was uploaded but skipped by Gemini because its format or size is outside the image-analysis limits.`);
+                }
+                return supportedMime && media.size_bytes <= 8 * 1024 * 1024;
               });
               const mediaFailures = await Promise.all(analyzableMedia.map(async (media) => {
                 try {
