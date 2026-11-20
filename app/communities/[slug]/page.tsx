@@ -111,10 +111,10 @@ export default function CommunityDetailPage() {
     }
   }
 
-  if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle className="animate-spin" size={18} /> Loading community...</main>;
-  if (!community) return <main className="min-h-screen bg-[#f5f6fb] px-5 py-16 text-center"><h1 className="text-2xl font-black">Community not found</h1><p className="mt-2 text-sm text-slate-500">This community may have been removed or the address is incorrect.</p><Link href="/" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-700"><ArrowLeft size={16} /> Back to Verity</Link></main>;
+  if (loading) return <main className="verity-product-page flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle className="animate-spin" size={18} /> Loading community...</main>;
+  if (!community) return <main className="verity-product-page min-h-screen bg-[#f5f6fb] px-5 py-16 text-center"><h1 className="text-2xl font-black">Community not found</h1><p className="mt-2 text-sm text-slate-500">This community may have been removed or the address is incorrect.</p><Link href="/" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-700"><ArrowLeft size={16} /> Back to Verity</Link></main>;
 
-  return <main className="verity-product-page min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
+  return <main className="verity-product-page verity-product-page min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
     <header className="mx-auto flex min-h-[70px] max-w-5xl items-center justify-between border-b border-slate-200"><Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-700"><ArrowLeft size={17} /> Back to feed</Link><Link href="/" className="text-lg font-black">Verity<span className="text-indigo-600">.</span></Link></header>
     <div className="mx-auto grid max-w-5xl gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_290px]">
       <section className="min-w-0">
