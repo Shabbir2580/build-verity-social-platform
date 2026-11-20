@@ -154,37 +154,24 @@ export async function POST(request: NextRequest) {
     : "question";
   if (question.length < 4 || question.length > 500) return jsonError("Enter a question between 4 and 500 characters.", 400);
 
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const [hourUsage, dayUsage] = await Promise.all([
-    access.supabase.from("audit_logs").select("id", { count: "exact", head: true })
-      .eq("actor_id", access.userId).eq("action", "admin_ai_assistant_request").gte("created_at", hourAgo),
-    access.supabase.from("audit_logs").select("id", { count: "exact", head: true })
-      .eq("actor_id", access.userId).eq("action", "admin_ai_assistant_request").gte("created_at", dayAgo),
-  ]);
-  if (hourUsage.error || dayUsage.error) {
-    return jsonError("AI usage limits could not be checked. The request was not sent.", 503);
-  }
-  if ((hourUsage.count ?? 0) >= 12 || (dayUsage.count ?? 0) >= 40) {
-    return jsonError("Your AI usage limit has been reached (12 requests per hour, 40 per day). Try again later.", 429);
-  }
-
-  // Reserve a durable usage event before calling Gemini. Never store the staff prompt.
-  const { data: usageEvent, error: usageInsertError } = await access.supabase
-    .from("audit_logs")
-    .insert({
-      actor_id: access.userId,
-      action: "admin_ai_assistant_request",
-      entity_type: "ai_assistant",
-      entity_id: null,
-      details: { model: ADMIN_AI_MODEL, mode, status: "started" },
-    })
-    .select("id")
-    .single();
-  if (usageInsertError || !usageEvent) {
-    console.error("Could not reserve AI usage event:", usageInsertError?.message);
+  // Reserve the usage slot and write its audit row atomically. The database
+  // serializes concurrent requests per staff account before checking both limits.
+  const { data: usageId, error: usageInsertError } = await access.supabase.rpc(
+    "reserve_admin_ai_assistant_request",
+    { p_actor_id: access.userId, p_model: ADMIN_AI_MODEL, p_mode: mode },
+  );
+  if (usageInsertError) {
+    console.error("Could not reserve AI usage event:", usageInsertError.message);
     return jsonError("AI usage tracking is unavailable. The request was not sent.", 503);
   }
+  if (usageId === null) {
+    return jsonError("Your AI usage limit has been reached (12 requests per hour, 40 per day). Try again later.", 429);
+  }
+  if (typeof usageId !== "number" || !Number.isSafeInteger(usageId)) {
+    console.error("Admin AI usage reservation returned an invalid event ID.");
+    return jsonError("AI usage tracking returned an invalid reservation. The request was not sent.", 503);
+  }
+  const usageEvent = { id: usageId };
 
   const updateUsage = async (details: Record<string, unknown>) => {
     const { error } = await access.supabase.from("audit_logs")
