@@ -48,7 +48,7 @@ export default function QuickReviewPage() {
         if (!response.ok) throw new Error("Could not check AI provider status.");
         return response.json();
       })
-      .then((payload) => { if (active) setAiAvailable(payload.available === true); })
+      .then((payload) => { if (active) setAiAvailable(payload.configured === true); })
       .catch(() => { if (active) setAiAvailable(false); });
     return () => { active = false; };
   }, []);
