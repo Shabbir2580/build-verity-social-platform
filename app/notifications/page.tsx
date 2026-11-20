@@ -63,13 +63,19 @@ export default function NotificationsPage() {
       }
       setUserId(auth.user.id);
       const offset = append ? rowsRef.current.length : 0;
-      const { data, error: queryError } = await supabase.from("notifications")
-        .select("id, actor_id, type, message, link, read_at, created_at")
-        .eq("user_id", auth.user.id)
-        .order("created_at", { ascending: false }).range(offset, offset + 99);
+      const [{ data, error: queryError }, { data: blockRows, error: blockError }] = await Promise.all([
+        supabase.from("notifications")
+          .select("id, actor_id, type, message, link, read_at, created_at")
+          .eq("user_id", auth.user.id)
+          .order("created_at", { ascending: false }).range(offset, offset + 99),
+        supabase.from("blocks").select("blocked_id").eq("blocker_id", auth.user.id),
+      ]);
       if (queryError) throw queryError;
-      const items = (data ?? []) as Notification[];
-      setHasMore(items.length === 100);
+      if (blockError) throw blockError;
+      const blockedActorIds = new Set((blockRows ?? []).map((row) => row.blocked_id));
+      const items = ((data ?? []) as Notification[])
+        .filter((item) => !item.actor_id || !blockedActorIds.has(item.actor_id));
+      setHasMore((data ?? []).length === 100);
       const actorIds = [...new Set(items.map((item) => item.actor_id).filter((id): id is string => Boolean(id)))];
       if (actorIds.length) {
         const { data: actors, error: actorError } = await supabase.from("profiles")
