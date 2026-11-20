@@ -140,10 +140,9 @@ export default function QuestionsPage() {
         profiles = [...profiles, ...(data ?? [])];
       }
       const answerIds = answerRows.map((row) => row.id);
-      let voteRows: { answer_id: string; user_id: string; value: number }[] = [];
+      let voteRows: { answer_id: string; score: number; my_vote: number }[] = [];
       if (answerIds.length) {
-        const { data, error: voteError } = await supabase.from("question_votes")
-          .select("answer_id, user_id, value").in("answer_id", answerIds);
+        const { data, error: voteError } = await supabase.rpc("get_question_vote_summary", { p_answer_ids: answerIds });
         if (voteError) throw voteError;
         voteRows = data ?? [];
       }
@@ -151,13 +150,13 @@ export default function QuestionsPage() {
       const answerMap: Record<string, Answer[]> = {};
       for (const row of answerRows) {
         const profile = profileMap.get(row.author_id);
-        const votes = voteRows.filter((vote) => vote.answer_id === row.id);
+        const vote = voteRows.find((item) => item.answer_id === row.id);
         const answer: Answer = {
           ...row,
           author_name: profile?.display_name || profile?.username || "Community member",
           username: profile?.username || "member",
-          score: votes.reduce((total, vote) => total + vote.value, 0),
-          myVote: currentUserId ? votes.find((vote) => vote.user_id === currentUserId)?.value ?? 0 : 0,
+          score: vote?.score ?? 0,
+          myVote: vote?.my_vote ?? 0,
         };
         answerMap[row.question_id] = [...(answerMap[row.question_id] ?? []), answer];
       }
