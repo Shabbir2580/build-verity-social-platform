@@ -110,7 +110,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f6fb] px-4 py-10 text-slate-900 sm:py-16">
+    <main className="verity-auth-page min-h-screen bg-[#f5f6fb] px-4 py-10 text-slate-900 sm:py-16">
       <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl md:grid-cols-2">
         {/* Branding panel */}
         <section className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-indigo-950 via-indigo-800 to-violet-700 p-8 text-white sm:p-10">
