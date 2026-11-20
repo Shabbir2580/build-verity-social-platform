@@ -20,7 +20,7 @@ These dimensions must remain separate. AI-generated content is not automatically
 - Comments, reactions and bookmarks
 - Interest-based communities
 - Trust Center for content checks, labels, sources and review requests
-- Standalone, consent-based text and image quick review with low/medium/high human-review priority bands
+- Standalone, consent-based text and image quick review with an experimental 0–100 human-review risk index and low/medium/high bands
 - User reporting, moderation and appeals
 - Support tickets
 - Role-aware administration foundations
