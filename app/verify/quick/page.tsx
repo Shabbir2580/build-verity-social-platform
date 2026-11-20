@@ -17,6 +17,7 @@ type Review = {
   stored: false;
   evidence_status: "visual_only" | "google_search_grounded" | "search_not_used";
   sources: { title: string; url: string }[];
+  source_linked_statements: { statement: string; sources: { title: string; url: string }[] }[];
   search_queries: string[];
   search_entry_point_html: string | null;
 };
@@ -138,6 +139,13 @@ export default function QuickReviewPage() {
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600">{review.evidence_status === "google_search_grounded" ? "Google Search grounded" : "No grounded sources returned"}</span>
           </div>
           {review.sources.length > 0 ? <ol className="mt-3 space-y-2">{review.sources.map((source, index) => <li key={source.url} className="flex items-start gap-2 text-xs leading-5"><span className="mt-0.5 text-slate-400">{index + 1}.</span><a href={source.url} target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline decoration-teal-300 underline-offset-2 hover:text-teal-950">{source.title}</a></li>)}</ol> : <p className="mt-3 text-xs leading-5 text-slate-600">Google Search did not return source citations for this response. Treat the analysis as ungrounded and verify the claim independently.</p>}
+          {review.source_linked_statements.length > 0 && <div className="mt-4 border-t border-slate-200 pt-4">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">Statements linked to sources</h4>
+            <ul className="mt-2 space-y-3">{review.source_linked_statements.map((item, index) => <li key={index} className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs leading-5 text-slate-700">{item.statement}</p>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">{item.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold text-teal-800 underline underline-offset-2">{source.title}</a>)}</div>
+            </li>)}</ul>
+          </div>}
           {review.search_queries.length > 0 && <p className="mt-3 text-[11px] leading-5 text-slate-500">Searches used: {review.search_queries.join(" · ")}</p>}
           {review.search_entry_point_html && <div className="mt-3" aria-label="Google Search suggestions" dangerouslySetInnerHTML={{ __html: review.search_entry_point_html }} />}
         </section>}
