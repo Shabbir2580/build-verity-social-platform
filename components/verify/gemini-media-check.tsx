@@ -13,10 +13,9 @@ export function GeminiMediaCheck({ postId, media, onComplete }: { postId: string
   const [error, setError] = useState("");
 
   if (media.length === 0) return null;
-  const supportedMedia = media.filter((item) => {
-    const allowed = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"].includes(item.mime_type);
-    return allowed && item.size_bytes <= (item.kind === "video" ? 20 : 8) * 1024 * 1024;
-  });
+  const supportedMedia = media.filter((item) =>
+    item.kind === "image" && ["image/jpeg", "image/png", "image/webp"].includes(item.mime_type) && item.size_bytes <= 8 * 1024 * 1024,
+  );
 
   async function run(mediaId: string) {
     setError("");
@@ -53,7 +52,7 @@ export function GeminiMediaCheck({ postId, media, onComplete }: { postId: string
   return (
     <section className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
       <div className="flex items-center gap-2 text-sm font-extrabold text-violet-950"><Sparkles size={16} /> Gemini media analysis</div>
-      <p className="mt-2 text-xs leading-5 text-violet-900">Optional AI-assisted inspection for your own uploaded media. Only the post author can submit it. Each request sends the selected file to Google.</p>
+      <p className="mt-2 text-xs leading-5 text-violet-900">Optional AI-assisted inspection for your own uploaded images. Image review is the current project scope; video analysis is not available. Only the post author can submit an image. Each request sends the selected image to Google.</p>
       <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-5 text-violet-950">
         <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-violet-700" />
         <span>I understand that this media and its post context will be sent to Google Gemini. Google’s free-tier data-use terms may allow submitted content to be used to improve Google products. I have permission to submit this media.</span>
@@ -66,8 +65,8 @@ export function GeminiMediaCheck({ postId, media, onComplete }: { postId: string
           </button>
         ))}
       </div>
-      {media.length > supportedMedia.length && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">{media.length - supportedMedia.length} item(s) are not eligible for Gemini analysis. Supported: JPG, PNG, WebP up to 8 MB; MP4, QuickTime and WebM up to 20 MB. You can still view and publish those files; they are simply not sent for this assessment.</p>}
-      {supportedMedia.length === 0 && <p className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-slate-600">No attached media matches Gemini’s current supported formats and size limits.</p>}
+      {media.length > supportedMedia.length && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">{media.length - supportedMedia.length} item(s) are not eligible for Gemini analysis. Only JPG, PNG and WebP images up to 8 MB can be analysed. Videos can still be viewed and published, but video analysis is outside the current project scope.</p>}
+      {supportedMedia.length === 0 && <p className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-slate-600">No attached image matches Gemini’s current supported formats and 8 MB size limit.</p>}
       {message && <p role="status" className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-emerald-800">{message}</p>}
       {error && <p role="alert" className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-rose-800"><ShieldAlert size={14} className="mr-1 inline" />{error}</p>}
       <p className="mt-3 text-[11px] leading-5 text-violet-800">Important: Gemini is a general multimodal model, not a forensic AI/deepfake detector. Every result remains “uncertain”; it cannot prove whether media is AI-generated, genuine or manipulated. Up to 6 assessment attempts per post per hour.</p>
