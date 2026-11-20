@@ -96,7 +96,7 @@ The Trust Center now includes opt-in Gemini routes for a post author's own uploa
 
 Verity's operating constraint is to avoid paid services, APIs, subscriptions and hidden billing. Some commercial media detectors offer free testing only or charge for production/video usage; do not enable them on a production route unless a genuinely no-cost plan with enforceable usage limits and appropriate production rights is confirmed. Open-source models need a suitable inference host and a licence that permits this use; Vercel serverless functions are not a free GPU inference service.
 
-Several database foundations (including structured Q&A, polls, follows, notifications and staff workflows) are ahead of their user-facing interfaces. Database tables alone do not mean those product features are complete.
+Structured Q&A, follows, notifications, support and moderation have user-facing workflows. Poll-voting tables exist in the database, but the current app has no poll composer or voting interface; polls are not a completed user-facing feature. Database tables alone do not mean a product feature is complete.
 
 ## Staff AI usage and reporting
 
