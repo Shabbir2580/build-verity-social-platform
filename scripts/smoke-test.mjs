@@ -219,10 +219,10 @@ try {
 
   const quickReviewApiSource = await readFile(new URL("../app/api/verify/quick-review/route.ts", import.meta.url), "utf8");
   const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
-  for (const marker of ['requestBody.tools = [{ googleSearch: {} }]', 'grounding?.groundingChunks', 'grounding?.webSearchQueries', 'grounding?.searchEntryPoint?.renderedContent', 'evidence_status:']) {
+  for (const marker of ['requestBody.tools = [{ googleSearch: {} }]', 'grounding?.groundingChunks', 'grounding?.groundingSupports', 'grounding?.webSearchQueries', 'source_linked_statements:', 'grounding?.searchEntryPoint?.renderedContent', 'evidence_status:']) {
     if (!quickReviewApiSource.includes(marker)) throw new Error(`Text review is missing grounded evidence handling: ${marker}`);
   }
-  for (const marker of ['review.sources.map', 'dangerouslySetInnerHTML', '30 days', 'Google Search grounded']) {
+  for (const marker of ['review.sources.map', 'review.source_linked_statements.map', 'dangerouslySetInnerHTML', '30 days', 'Google Search grounded']) {
     if (!quickReviewPageSource.includes(marker)) throw new Error(`Quick review page is missing required evidence display or privacy disclosure: ${marker}`);
   }
   process.stdout.write("PASS text review grounds claims with Google Search and displays returned sources/suggestions\\n");
