@@ -9,6 +9,7 @@ const routes = [
   ["/signup", "Join the conversation."],
   ["/questions", "Questions worth answering."],
   ["/verify", "See the evidence."],
+  ["/verify/quick", "Quick content review"],
   ["/for-organizations", "Grow your brand."],
   ["/notifications", "Notifications"],
   ["/privacy", "Information we handle"],
@@ -215,6 +216,10 @@ try {
       }
     }
   }
+
+  const quickReviewResponse = await fetch(new URL("/api/verify/quick-review", origin), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "text", text: "This is a sufficiently long sample claim for a smoke test.", consent: true }), signal: AbortSignal.timeout(5000) });
+  if (quickReviewResponse.status !== 401) throw new Error("Quick review API must reject unauthenticated access.");
+  process.stdout.write("PASS standalone quick review API rejects unauthenticated access (401)\\n");
 
   const businessApiResponse = await fetch(new URL("/api/admin/business", origin), { signal: AbortSignal.timeout(5000) });
   if (businessApiResponse.status !== 401) throw new Error("Business dashboard API must reject unauthenticated access.");
