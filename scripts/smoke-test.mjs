@@ -287,12 +287,12 @@ try {
   }
   for (const marker of ['review.sources.map', 'review.source_linked_statements.map', '30 days', 'Google Search grounded']) {
     if (!quickReviewPageSource.includes(marker)) throw new Error(`Quick review page is missing required evidence display or privacy disclosure: ${marker}`);
+  }
   if (quickReviewPageSource.includes("dangerouslySetInnerHTML") || quickReviewPageSource.includes("search_entry_point_html")) {
     throw new Error("Quick review must never inject external Google Search HTML into the page.");
   }
   if (quickReviewApiSource.includes("search_entry_point_html") || quickReviewApiSource.includes("searchEntryPointHtml")) {
     throw new Error("Quick review API must not return external provider HTML.");
-  }
   }
   process.stdout.write("PASS text review grounds claims with Google Search and displays returned sources/suggestions\\n");
 
