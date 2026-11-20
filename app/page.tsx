@@ -321,6 +321,7 @@ export default function HomePage() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DbComment[]>>({});
 
   const [activePage, setActivePage] = useState<string>("Home");
@@ -426,15 +427,16 @@ export default function HomePage() {
         : null;
       if (sharedPostId) setRequestedPostId(sharedPostId);
       let followedUserIds: string[] = [];
-      let blockedUserIds: string[] = [];
+      let blockedIds: string[] = [];
       if (currentUser) {
         const { data: blockRows, error: blocksError } = await supabase
           .from("blocks")
           .select("blocked_id")
           .eq("blocker_id", currentUser.id);
         if (blocksError) throw blocksError;
-        blockedUserIds = (blockRows ?? []).map((row) => row.blocked_id);
+        blockedIds = (blockRows ?? []).map((row) => row.blocked_id);
       }
+      setBlockedUserIds(blockedIds);
       if (currentUser && filter === "Following" && activePage !== "Saved") {
         const { data: followingRows, error: followingError } = await supabase
           .from("follows")
@@ -525,8 +527,8 @@ export default function HomePage() {
       }
       // A block must apply consistently to every feed scope, including saved
       // posts and direct shared-post links.
-      if (blockedUserIds.length) {
-        const blocked = new Set(blockedUserIds);
+      if (blockedIds.length) {
+        const blocked = new Set(blockedIds);
         rows = rows.filter((row) => !blocked.has(row.author_id));
       }
       const postIds = rows.map((row) => row.id);
@@ -597,12 +599,12 @@ export default function HomePage() {
 
         const { data: commentData, error: commentError } = await supabase
           .from("comments")
-          .select("post_id")
+          .select("post_id, author_id")
           .eq("is_deleted", false)
           .in("post_id", postIds)
           .limit(5000);
         if (commentError) throw commentError;
-        commentRows = (commentData ?? []) as { post_id: string }[];
+        commentRows = (commentData ?? []) as { post_id: string; author_id: string }[];
 
         if (currentUser) {
           const { data: myReactionData, error: myReactionError } = await supabase
@@ -629,7 +631,10 @@ export default function HomePage() {
       const commentCounts = new Map<string, number>();
 
       for (const row of reactionRows) reactionCounts.set(row.post_id, (reactionCounts.get(row.post_id) ?? 0) + 1);
-      for (const row of commentRows) commentCounts.set(row.post_id, (commentCounts.get(row.post_id) ?? 0) + 1);
+      for (const row of commentRows) {
+        if (blockedIds.includes(row.author_id)) continue;
+        commentCounts.set(row.post_id, (commentCounts.get(row.post_id) ?? 0) + 1);
+      }
 
       setPosts(rows.map((row) => {
         const profile = profileMap.get(row.author_id);
@@ -1097,7 +1102,8 @@ export default function HomePage() {
       return;
     }
 
-    const rows = (data ?? []) as unknown as Omit<DbComment, "display_name" | "username">[];
+    const rows = ((data ?? []) as unknown as Omit<DbComment, "display_name" | "username">[])
+      .filter((row) => !blockedUserIds.includes(row.author_id));
     const authorIds = [...new Set(rows.map((row) => row.author_id))];
     let profileRows: Profile[] = [];
 
