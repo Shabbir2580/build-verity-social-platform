@@ -138,6 +138,19 @@ try {
       throw new Error(`Product page ${index + 1} is missing the shared responsive design shell.`);
     }
   }
+  const profileDeleteStart = productPageSources[0].indexOf("async function deleteProfilePost(postId: string)");
+  const profileDeleteEnd = productPageSources[0].indexOf("async function toggleBlock", profileDeleteStart);
+  if (profileDeleteStart < 0 || profileDeleteEnd < 0) throw new Error("Profile page is missing the author post-deletion workflow.");
+  const profileDeleteSource = productPageSources[0].slice(profileDeleteStart, profileDeleteEnd);
+  const profilePostHideIndex = profileDeleteSource.indexOf('.from("posts")');
+  const profileMediaCleanupIndex = profileDeleteSource.indexOf('.from("post_media")');
+  if (profilePostHideIndex < 0 || profileMediaCleanupIndex < 0 || profilePostHideIndex > profileMediaCleanupIndex) {
+    throw new Error("Profile deletion must hide the post before attempting media cleanup.");
+  }
+  for (const marker of ["Media cleanup is pending", "Post deleted.", "moderation history has been retained"]) {
+    if (!profileDeleteSource.includes(marker)) throw new Error(`Profile post deletion is missing resilient cleanup feedback: ${marker}`);
+  }
+  process.stdout.write("PASS profile post deletion hides content before best-effort media cleanup\\n");
   process.stdout.write("PASS profile, people, community and notification pages use the shared product shell\\n");
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
