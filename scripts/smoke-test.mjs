@@ -240,7 +240,6 @@ try {
   }
   process.stdout.write("PASS quick review provider readiness is safely exposed without secrets\\n");
 
-  const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
   for (const marker of ["Experimental review-risk score", "0–30% · Low", "31–60% · Medium", "61–100% · High", "uncalibrated AI triage index", "AI review is currently unavailable", "Open Trust Center source discovery", "aiAvailable !== true"]) {
     if (!quickReviewPageSource.includes(marker)) throw new Error(`Quick review is missing honest provider-unavailable handling: ${marker}`);
   }
