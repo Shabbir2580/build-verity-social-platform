@@ -56,10 +56,11 @@ Requirements: Node.js compatible with the installed Next.js version and pnpm.
    ```env
    GEMINI_API_KEY=your_gemini_api_key
    VERITY_ADMIN_AI_ENABLED=false
+   GEMINI_ADMIN_MODEL=gemini-3.5-flash-lite
    GOOGLE_FACT_CHECK_API_KEY=your_google_fact_check_tools_api_key
    ```
 
-   Set `GEMINI_API_KEY` in the Vercel production environment to enable standalone AI text/image review and the existing post-assessment routes. Without it, Quick Review reports that the provider is unconfigured, disables AI submission and links users to source discovery; it never fabricates an AI result. Set `VERITY_ADMIN_AI_ENABLED=true` only after reviewing Gemini quotas and usage. The Google Fact Check key is optional; without it, the Trust Center's published-review search remains unavailable. Restrict that key to the Fact Check Tools API and set conservative project quotas. Never commit any of these secrets.
+   Set `GEMINI_API_KEY` in the Vercel production environment to enable standalone AI text/image review and the existing post-assessment routes. Without it, Quick Review reports that the provider is unconfigured, disables AI submission and links users to source discovery; it never fabricates an AI result. Set `VERITY_ADMIN_AI_ENABLED=true` only after reviewing Gemini quotas and usage. The staff assistant defaults to `gemini-3.5-flash-lite`; optionally set `GEMINI_ADMIN_MODEL` to another model enabled for the same Google AI Studio project. A configured key does not guarantee model access or successful inference; provider errors are reported without generating a simulated answer. The Google Fact Check key is optional; without it, the Trust Center's published-review search remains unavailable. Restrict that key to the Fact Check Tools API and set conservative project quotas. Never commit any of these secrets.
 
    The application also accepts `NEXT_PUBLIC_SUPABASE_ANON_KEY` as a fallback. Never commit service-role keys or other secrets.
 
