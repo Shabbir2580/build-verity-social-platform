@@ -184,7 +184,7 @@ try {
   for (const marker of ["12 requests per hour", "40 per day", "admin_ai_assistant_request", "promptTokens", "outputTokens", "AI usage tracking is unavailable", "allowedModes", "modeInstructions", "Data limitations", "previousMembers7d", "previousPosts7d", "previousTickets7d", "newComments7d", "previousComments7d", "newReactions7d", "previousReactions7d", "newCommunityJoins7d", "previousCommunityJoins7d", "community_memberships", "dailyActivity", "admin_daily_activity_metrics", "twoWeeksAgo", "immediately preceding seven-day period", "const ticketQuery = () =>", '.eq("assigned_team", "support")', "systemInstruction: { parts: [{ text: systemInstruction }] }"]) {
     if (!adminAssistantSource.includes(marker)) throw new Error(`AI assistant is missing usage controls or token metering: ${marker}`);
   }
-  const adminAiQuotaMigration = await readFile(new URL("../supabase/migrations/20261120060000_atomic_admin_ai_assistant_usage_quota.sql", import.meta.url), "utf8");
+  const adminAiQuotaMigration = await readFile(new URL("../supabase/migrations/20261120055604_atomic_admin_ai_assistant_usage_quota.sql", import.meta.url), "utf8");
   for (const marker of ["pg_advisory_xact_lock", "hashtextextended", "v_hour_count >= 12", "v_day_count >= 40", "from public, anon, authenticated", "to service_role"]) {
     if (!adminAiQuotaMigration.includes(marker)) throw new Error("Admin AI quota migration is missing atomic enforcement or service-role-only access: " + marker);
   }
