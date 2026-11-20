@@ -624,6 +624,12 @@ try {
   }
   process.stdout.write("PASS all AI routes use supported Gemini model, bounded runtime and actionable provider diagnostics\\n");
 
+  const assessmentUsageIndexMigration = await readFile(new URL("../supabase/migrations/20261120084849_index_post_ai_assessment_usage_user_id.sql", import.meta.url), "utf8");
+  if (!assessmentUsageIndexMigration.includes("post_ai_assessment_usage_user_id_idx") || !assessmentUsageIndexMigration.includes("on public.post_ai_assessment_usage (user_id)")) {
+    throw new Error("AI assessment usage ledger is missing its user foreign-key index.");
+  }
+  process.stdout.write("PASS AI assessment usage ledger indexes its auth user foreign key\\n");
+
   process.stdout.write(`\\nSmoke test passed for ${routes.length} production routes.\\n`);
 } finally {
   if (server.pid) {
