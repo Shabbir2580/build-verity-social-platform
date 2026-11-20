@@ -16,6 +16,7 @@ type AdminContext = {
   newReactions7d: number | null; previousReactions7d: number | null;
   newCommunityJoins7d: number | null; previousCommunityJoins7d: number | null;
   businessLeads: number | null; openBusinessLeads: number | null; aiRequests24h: number | null;
+  dailyActivity: { activity_date: string; new_members: number; published_posts: number; comments_created: number; post_reactions: number; community_joins: number }[] | null;
 };
 
 function jsonError(message: string, status: number) {
@@ -70,7 +71,7 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
     members, posts, reports, activeCases, urgentCases, overdueCases,
     openTickets, overdueTickets, newTickets7d, newMembers, newPosts, previousMembers, previousPosts, previousTickets,
     newComments, previousComments, newReactions, previousReactions, newCommunityJoins, previousCommunityJoins,
-    businessLeads, openBusinessLeads, aiRequests24h,
+    businessLeads, openBusinessLeads, aiRequests24h, dailyActivityResult,
   ] = await Promise.all([
     isAdmin ? count(supabase.from("profiles").select("id", { count: "exact", head: true })) : null,
     isAdmin ? count(supabase.from("posts").select("id", { count: "exact", head: true })) : null,
@@ -98,7 +99,9 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
       .eq("action", "admin_ai_assistant_request")
       .gte("created_at", new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString())
       .match(isAdmin ? {} : { actor_id: userId })),
+    isAdmin ? supabase.rpc("admin_daily_activity_metrics") : Promise.resolve({ data: null, error: null }),
   ]);
+  if (dailyActivityResult?.error) throw new Error("Daily activity metrics could not be loaded.");
   return {
     generatedAt: isoNow, members, posts, reports, activeCases, urgentCases,
     overdueCases, openTickets, overdueTickets, newTickets7d, newMembers7d: newMembers, newPosts7d: newPosts,
@@ -107,6 +110,7 @@ async function getContext(supabase: any, role: string, userId: string): Promise<
     newReactions7d: newReactions, previousReactions7d: previousReactions,
     newCommunityJoins7d: newCommunityJoins, previousCommunityJoins7d: previousCommunityJoins,
     businessLeads, openBusinessLeads, aiRequests24h,
+    dailyActivity: dailyActivityResult?.data ?? null,
   };
 }
 

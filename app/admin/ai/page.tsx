@@ -16,6 +16,7 @@ type Metrics = {
   newReactions7d: number | null; previousReactions7d: number | null;
   newCommunityJoins7d: number | null; previousCommunityJoins7d: number | null;
   businessLeads: number | null; openBusinessLeads: number | null; aiRequests24h: number | null;
+  dailyActivity: { activity_date: string; new_members: number; published_posts: number; comments_created: number; post_reactions: number; community_joins: number }[] | null;
 };
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -216,6 +217,27 @@ export default function AdminAiPage() {
             </>}
             <PeriodComparison label="Support tickets created" current={metrics?.newTickets7d ?? null} previous={metrics?.previousTickets7d ?? null}/>
           </div>
+          {staffRole === "admin" && <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div><h3 className="text-sm font-semibold text-slate-900">Daily platform activity</h3><p className="mt-1 text-xs text-slate-500">UTC calendar days · last 7 days · real database counts</p></div>
+              <span className="text-[11px] text-slate-400">Admin only</span>
+            </div>
+            {metrics?.dailyActivity?.length ? <div className="mt-5 space-y-3">
+              {metrics.dailyActivity.map((day) => {
+                const total = day.new_members + day.published_posts + day.comments_created + day.post_reactions + day.community_joins;
+                const peak = Math.max(...metrics.dailyActivity!.map((item) => item.new_members + item.published_posts + item.comments_created + item.post_reactions + item.community_joins), 1);
+                return <div key={day.activity_date} className="grid grid-cols-[76px_minmax(0,1fr)_42px] items-center gap-3">
+                  <span className="text-xs text-slate-500">{new Date(day.activity_date + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" })}</span>
+                  <div className="h-3 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={`${total} total recorded activities`}><div className="h-full rounded-full bg-[#168477]" style={{ width: `${(total / peak) * 100}%` }}/></div>
+                  <strong className="text-right text-xs tabular-nums text-slate-700">{total.toLocaleString()}</strong>
+                </div>;
+              })}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
+                <span>Members</span><span>Published posts</span><span>Comments</span><span>Reactions</span><span>Community joins</span>
+              </div>
+              <p className="text-[11px] leading-5 text-slate-400">Bars show combined daily volume, not unique people. A single person can create multiple activities. This is not a retention metric.</p>
+            </div> : <p className="mt-4 text-xs text-slate-500">Daily activity data is not available yet.</p>}
+          </div>}
           <p className="text-[11px] leading-5 text-slate-400">Percentage change is shown only when the previous period contains at least one record. Ticket counts follow the same team visibility rules as the support workspace.</p>
         </section>}
 
