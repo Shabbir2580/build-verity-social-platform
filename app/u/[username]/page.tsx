@@ -49,6 +49,7 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
@@ -189,26 +190,40 @@ export default function PublicProfilePage() {
     if (!window.confirm("Delete this post and its attached media? It will be removed from public view, while its moderation history is retained.")) return;
     setPostBusy(true);
     setError("");
+    setNotice("");
     try {
       const supabase = createClient();
-      const { data: mediaRows, error: mediaLookupError } = await supabase
-        .from("post_media").select("id, storage_path").eq("post_id", postId);
-      if (mediaLookupError) throw mediaLookupError;
-      const mediaPaths = (mediaRows ?? []).map((media) => media.storage_path);
-      if (mediaPaths.length) {
-        const { error: storageError } = await supabase.storage.from("post-media").remove(mediaPaths);
-        if (storageError) throw new Error("Could not remove attached media. The post was not deleted: " + storageError.message);
-        const { error: metadataError } = await supabase.from("post_media").delete().eq("post_id", postId);
-        if (metadataError) throw new Error("Media files were removed, but their records could not be cleaned up: " + metadataError.message);
-      }
+      // Hide the post first. Media cleanup is a separate storage operation and
+      // must never prevent a successful post deletion or leave a broken public post.
       const { data, error: deleteError } = await supabase.from("posts")
         .update({ status: "removed", removal_reason: "Deleted by the author" })
         .eq("id", postId).eq("author_id", profile.id).eq("status", "published")
         .select("id").maybeSingle();
       if (deleteError) throw deleteError;
       if (!data) throw new Error("This post is no longer available to delete. Refresh the page and try again.");
+
       setPosts((current) => current.filter((post) => post.id !== postId));
       if (editingPostId === postId) setEditingPostId(null);
+      setNotice("Post deleted. Its moderation history has been retained.");
+
+      const { data: mediaRows, error: mediaLookupError } = await supabase
+        .from("post_media").select("storage_path").eq("post_id", postId);
+      if (mediaLookupError) {
+        setNotice("Post deleted. Media cleanup is pending and may need staff attention.");
+        return;
+      }
+      const mediaPaths = (mediaRows ?? []).map((media) => media.storage_path).filter(Boolean);
+      if (mediaPaths.length) {
+        const { error: storageError } = await supabase.storage.from("post-media").remove(mediaPaths);
+        if (storageError) {
+          setNotice("Post deleted. Media cleanup is pending and may need staff attention.");
+          return;
+        }
+        const { error: metadataError } = await supabase.from("post_media").delete().eq("post_id", postId);
+        if (metadataError) {
+          setNotice("Post deleted. Stored media was removed, but its metadata cleanup is pending.");
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete this post.");
     } finally {
@@ -256,6 +271,7 @@ export default function PublicProfilePage() {
       </header>
       <section className="mx-auto max-w-4xl pt-8">
         {error && <div role="alert" className="mb-4 break-words rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
+        {notice && <div role="status" className="mb-4 break-words rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="h-28 bg-gradient-to-r from-slate-950 via-indigo-950 to-indigo-600" />
           <div className="px-6 pb-6 sm:px-8">
