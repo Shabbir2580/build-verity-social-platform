@@ -284,10 +284,10 @@ export default function PublicProfilePage() {
     }
   }
 
-  if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle className="animate-spin" size={18} /> Loading profile...</main>;
+  if (loading) return <main className="verity-product-page flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle className="animate-spin" size={18} /> Loading profile...</main>;
 
   if (!profile) return (
-    <main className="min-h-screen bg-[#f5f6fb] px-4 py-16 text-slate-900">
+    <main className="verity-product-page min-h-screen bg-[#f5f6fb] px-4 py-16 text-slate-900">
       <section className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-2xl font-black">Profile not found</h1>
         <p className="mt-2 text-sm text-slate-500">This username may have changed or the account may no longer be available.</p>
@@ -297,7 +297,7 @@ export default function PublicProfilePage() {
   );
 
   return (
-    <main className="verity-product-page min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
+    <main className="verity-product-page verity-product-page min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
       <header className="mx-auto flex min-h-[72px] max-w-4xl items-center justify-between border-b border-slate-200">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-700"><ArrowLeft size={17} /> Back to feed</Link>
         <Link href="/" className="text-lg font-black tracking-tight">Verity<span className="text-indigo-600">.</span></Link>
