@@ -157,7 +157,7 @@ try {
   }
   const moderationAiSource = await readFile(new URL("../app/api/moderation/ai-summary/route.ts", import.meta.url), "utf8");
   const supportAiSource = await readFile(new URL("../app/api/support/ai-assist/route.ts", import.meta.url), "utf8");
-  for (const marker of ['body.consent !== true', 'moderation.ai_case_summary', 'select("role,is_suspended")', 'profile.is_suspended', 'profile.role !== "admin"', 'needs_second_review', 'gemini-2.5-flash', 'does not make moderation decisions']) {
+  for (const marker of ['body.consent !== true', 'moderation.ai_case_summary', 'select("role,is_suspended")', 'profile.is_suspended', 'profile.role !== "admin"', 'needs_second_review', 'gemini-3.5-flash-lite', 'does not make moderation decisions']) {
     if (!moderationAiSource.includes(marker)) throw new Error(`Moderation AI route is missing consent, access, audit or human-review guard: ${marker}`);
   }
   for (const marker of ['body.consent !== true', 'support.ai_assist', 'ticket.assigned_team === "support"', 'ticket.assigned_team === "trust_safety"', 'draft_customer_reply', 'Nothing is sent or changed']) {
@@ -302,7 +302,7 @@ try {
   process.stdout.write("PASS moderation AI includes discussion context and sparse-evidence warnings\\n");
 
   const adminGeminiModelSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
-  if (!adminGeminiModelSource.includes("gemini-3.5-flash-lite") || adminGeminiModelSource.includes("gemini-2.5-flash")) throw new Error("Admin assistant must use the current Gemini 3.5 Flash-Lite model.");
+  if (!adminGeminiModelSource.includes("gemini-3.5-flash-lite") || adminGeminiModelSource.includes("gemini-3.5-flash-lite")) throw new Error("Admin assistant must use the current Gemini 3.5 Flash-Lite model.");
   if (!adminGeminiModelSource.includes("providerCode") || !adminGeminiModelSource.includes("Google Gemini denied generation access")) throw new Error("Admin assistant provider diagnostics are missing.");
   process.stdout.write("PASS admin assistant uses supported Gemini model and reports provider failures\\n");
 
