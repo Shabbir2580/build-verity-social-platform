@@ -7,14 +7,10 @@ export const maxDuration = 60;
 
 const MODEL = "gemini-3.5-flash-lite";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
-const ALLOWED_MIME = new Set([
-  "image/jpeg", "image/png", "image/webp",
-  "video/mp4", "video/quicktime", "video/webm",
-]);
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type GeminiAssessment = {
-  media_type: "image" | "video";
+  media_type: "image";
   visible_content: string;
   visible_text: string[];
   observable_signals: string[];
@@ -114,6 +110,8 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   if (mediaError || !media) return jsonError("Media item not found.", 404);
 
+  if (media.kind !== "image") return jsonError("Image analysis is the current project scope. Video analysis is not available.", 415);
+
   const recordFailure = async (message: string, status: number) => {
     const explanation = ("Automatic media assessment failed: " + message).slice(0, 4000);
     const { error: checkError } = await supabase.from("content_checks").insert({
@@ -140,8 +138,7 @@ export async function POST(request: NextRequest) {
   if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 assessment attempts per hour.", 429);
 
   if (!ALLOWED_MIME.has(media.mime_type)) return recordFailure("This media format is not supported for analysis.", 415);
-  const maxBytes = media.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
-  if (media.size_bytes > maxBytes) return recordFailure(`This ${media.kind} exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB analysis limit.`, 413);
+  if (media.size_bytes > MAX_IMAGE_BYTES) return recordFailure("This image exceeds the current 8 MB analysis limit.", 413);
 
   if (!apiKey) {
     const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
@@ -189,7 +186,7 @@ export async function POST(request: NextRequest) {
       "List observable signals separately from origin indicators. A visual oddity is not proof of editing or AI generation.",
       "If origin cannot be established from the media itself, say so clearly. Never invent confidence percentages or a detector score.",
       "Return exactly this JSON shape:",
-      '{"media_type":"image or video","visible_content":"neutral scene description","visible_text":["legible text or state none/unclear"],"observable_signals":["specific directly observable detail"],"origin_indicators":["limited clue, or no reliable origin indicator"],"limitations":["specific limitation"],"summary":"cautious reviewer summary"}',
+      '{"media_type":"image","visible_content":"neutral scene description","visible_text":["legible text or state none/unclear"],"observable_signals":["specific directly observable detail"],"origin_indicators":["limited clue, or no reliable origin indicator"],"limitations":["specific limitation"],"summary":"cautious reviewer summary"}',
       "State explicitly that this multimodal model is not a forensic AI-generated-media detector.",
       `Post context (unverified user text): ${String(post.title || "").slice(0, 300)} ${String(post.body || "").slice(0, 700)}`,
     ].join("\n");
@@ -255,7 +252,7 @@ export async function POST(request: NextRequest) {
       typeof assessment.summary !== "string" || typeof assessment.visible_content !== "string" ||
       !Array.isArray(assessment.visible_text) || !Array.isArray(assessment.observable_signals) ||
       !Array.isArray(assessment.origin_indicators) || !Array.isArray(assessment.limitations) ||
-      !["image", "video"].includes(assessment.media_type) ||
+      assessment.media_type !== "image" ||
       [...assessment.visible_text, ...assessment.observable_signals, ...assessment.origin_indicators, ...assessment.limitations].some((item) => typeof item !== "string")
     ) return recordFailure("Gemini returned an incomplete assessment. No result was stored.", 502);
 
