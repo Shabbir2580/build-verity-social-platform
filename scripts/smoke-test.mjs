@@ -134,7 +134,8 @@ try {
     "Not enough evidence",
     "This manual assessment is held only in this page current session",
     "It is not saved, sent to Google, or used to change the AI score",
-    "Copy review note",
+    "Share / copy review note",
+    "navigator.share({ title: \"Verity human review note\", text: note })",
     "navigator.clipboard.writeText(note)",
     "Review note copied. Check it before sharing.",
   ]) {
