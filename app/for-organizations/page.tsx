@@ -108,7 +108,7 @@ export default function BusinessPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f4f6fc] text-slate-900">
+    <main className="verity-org-page min-h-screen overflow-hidden bg-[#f4f6fc] text-slate-900">
       <header className="border-b border-white/10 bg-[#0c1531] text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/" className="inline-flex items-center gap-2.5 rounded-xl text-lg font-black tracking-tight">
