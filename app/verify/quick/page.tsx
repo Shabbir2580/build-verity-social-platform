@@ -103,7 +103,7 @@ export default function QuickReviewPage() {
       ? "border-amber-200 bg-amber-50 text-amber-900"
       : "border-emerald-200 bg-emerald-50 text-emerald-900";
 
-  return <main className="min-h-screen bg-[#f5f7f8] text-slate-900">
+  return <main className="verity-workspace min-h-screen bg-[#f5f7f8] text-slate-900">
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-4 sm:px-6">
         <Link href="/verify" aria-label="Back to Trust Center" className="flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"><ArrowLeft size={18}/></Link>
