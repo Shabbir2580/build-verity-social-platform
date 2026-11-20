@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     if (!mediaResponse.ok) return recordFailure("Could not retrieve the uploaded media.", 502);
     let buffer: Buffer;
     try {
-      buffer = await readBoundedBody(mediaResponse, maxBytes);
+      buffer = await readBoundedBody(mediaResponse, MAX_IMAGE_BYTES);
     } catch (error) {
       if (error instanceof Error && error.message === "MEDIA_TOO_LARGE") {
         return recordFailure("The uploaded media exceeds the enforced download limit.", 413);
