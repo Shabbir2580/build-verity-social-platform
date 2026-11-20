@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
           const title = typeof chunk?.web?.title === "string" ? chunk.web.title : "";
           try {
             const parsedUrl = new URL(uri);
-            if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") return null;
+            if (parsedUrl.protocol !== "https:") return null;
             return { title: title.slice(0, 180) || parsedUrl.hostname, url: parsedUrl.toString() };
           } catch { return null; }
         })
@@ -190,9 +190,6 @@ export async function POST(request: NextRequest) {
     const searchQueries = Array.isArray(grounding?.webSearchQueries)
       ? grounding.webSearchQueries.filter((query: unknown): query is string => typeof query === "string").slice(0, 5).map((query: string) => query.slice(0, 240))
       : [];
-    const searchEntryPointHtml = typeof grounding?.searchEntryPoint?.renderedContent === "string"
-      ? grounding.searchEntryPoint.renderedContent.slice(0, 30000)
-      : null;
     const result = {
       review_risk_percent: parsed.review_risk_percent,
       review_priority: parsed.review_risk_percent <= 30 ? "low" : parsed.review_risk_percent <= 60 ? "medium" : "high",
@@ -208,7 +205,6 @@ export async function POST(request: NextRequest) {
       sources: groundingSources,
       source_linked_statements: groundingSupports,
       search_queries: searchQueries,
-      search_entry_point_html: searchEntryPointHtml,
     };
     await supabase.from("audit_logs").update({ details: { provider: result.provider, kind, status: "completed" } }).eq("id", usage.id);
     return NextResponse.json({ review: result }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
