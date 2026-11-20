@@ -128,14 +128,16 @@ export async function POST(request: NextRequest) {
     if (caseError) console.error("Could not queue failed media assessment:", caseError.message);
     return jsonError(message, status);
   };
-  const { count, error: countError } = await supabase
-    .from("content_checks")
-    .select("id", { count: "exact", head: true })
-    .eq("post_id", post.id)
-    .eq("check_type", "media_origin")
-    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
-  if (countError) return jsonError("Could not verify the assessment usage limit.", 503);
-  if ((count ?? 0) >= 6) return jsonError("This post has reached its limit of 6 assessment attempts per hour.", 429);
+  const { data: assessmentSlot, error: quotaError } = await supabase.rpc("reserve_post_ai_assessment", {
+    p_post_id: post.id,
+    p_user_id: authData.user.id,
+    p_check_type: "media_origin",
+  });
+  if (quotaError) {
+    console.error("Could not reserve media assessment quota:", quotaError.message);
+    return jsonError("Could not verify the assessment usage limit. Try again shortly.", 503);
+  }
+  if (assessmentSlot !== true) return jsonError("This post has reached its limit of 6 assessment attempts per hour.", 429);
 
   if (!ALLOWED_MIME.has(media.mime_type)) return recordFailure("This media format is not supported for analysis.", 415);
   if (media.size_bytes > MAX_IMAGE_BYTES) return recordFailure("This image exceeds the current 8 MB analysis limit.", 413);
