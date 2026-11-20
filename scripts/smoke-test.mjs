@@ -164,7 +164,7 @@ try {
     throw new Error("Comments, their visible counts and comment row types must support blocked-author filtering.");
   }
   const profileBlockSource = productPageSources[0];
-  if (!profileBlockSource.includes("viewerBlockedProfile ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
+  if (!profileBlockSource.includes("eitherAccountBlocked ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
     throw new Error("A blocked profile must not display its public posts to the viewer who blocked it.");
   }
   const questionBlockSource = await readFile(new URL("../app/questions/page.tsx", import.meta.url), "utf8");
