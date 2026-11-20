@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { ArrowLeft, FileSearch, ImagePlus, LoaderCircle, ShieldAlert, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -39,6 +39,19 @@ export default function QuickReviewPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [review, setReview] = useState<Review | null>(null);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/verify/quick-review", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not check AI provider status.");
+        return response.json();
+      })
+      .then((payload) => { if (active) setAiAvailable(payload.available === true); })
+      .catch(() => { if (active) setAiAvailable(false); });
+    return () => { active = false; };
+  }, []);
 
   async function submit() {
     setError("");
@@ -102,6 +115,12 @@ export default function QuickReviewPage() {
           <button type="button" role="tab" aria-selected={kind === "text"} onClick={() => { setKind("text"); setReview(null); setError(""); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${kind === "text" ? "bg-[#142b3a] text-white" : "border border-slate-200 text-slate-600"}`}><FileSearch size={15} className="mr-2 inline"/>Text review</button>
           <button type="button" role="tab" aria-selected={kind === "image"} onClick={() => { setKind("image"); setReview(null); setError(""); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${kind === "image" ? "bg-[#142b3a] text-white" : "border border-slate-200 text-slate-600"}`}><ImagePlus size={15} className="mr-2 inline"/>Image review</button>
         </div>
+        {aiAvailable === false && <div role="alert" className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm font-bold text-amber-950">AI review is currently unavailable</p>
+          <p className="mt-1 text-xs leading-5 text-amber-900">The production server does not have its Gemini API key configured. No AI assessment will run, and Verity will not show a simulated result. You can still use the Trust Center to discover related news coverage and published fact-checks.</p>
+          <Link href="/verify" className="mt-3 inline-flex min-h-9 items-center rounded-lg border border-amber-400 bg-white px-3 py-2 text-xs font-bold text-amber-950 hover:bg-amber-100">Open Trust Center source discovery</Link>
+        </div>}
+        {aiAvailable === null && <p role="status" className="mt-5 text-xs text-slate-500">Checking AI provider availability…</p>}
         {kind === "text" ? <label className="mt-5 block text-sm font-semibold">Text or claim to review
           <textarea value={text} onChange={(event) => { setText(event.target.value.slice(0, 4000)); setReview(null); }} rows={7} placeholder="Paste the exact statement, headline or message. Include its date and source if known." className="mt-2 w-full rounded-2xl border border-slate-200 p-4 text-sm leading-6 outline-none focus:border-teal-600"/>
           <span className="mt-1 block text-xs font-normal text-slate-500">{text.length}/4000 characters · minimum 30</span>
@@ -116,9 +135,9 @@ export default function QuickReviewPage() {
           <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 size-4 shrink-0"/>
           <span>I explicitly consent to sending this {kind === "text" ? "text to Google Gemini and Google Search for source grounding" : "image to Google Gemini"} for this request. Google's unpaid Gemini service may use submitted content to improve Google products and may involve human review. For text grounding, Google stores prompts, context and outputs for 30 days to provide the service. Do not submit sensitive, confidential or personal information. I have permission to submit this content. Verity does not store the submitted content in its quick-review logs; only provider, request type and status are logged.</span>
         </label>
-        <button type="button" onClick={() => void submit()} disabled={busy || (kind === "text" ? text.trim().length < 30 : !file)} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#142b3a] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1b3b4e] disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button" onClick={() => void submit()} disabled={busy || aiAvailable !== true || (kind === "text" ? text.trim().length < 30 : !file)} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#142b3a] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1b3b4e] disabled:cursor-not-allowed disabled:opacity-50">
           {busy ? <LoaderCircle size={16} className="animate-spin"/> : <Sparkles size={16}/>}
-          {busy ? "Reviewing…" : "Run AI-assisted review"}
+          {busy ? "Reviewing…" : aiAvailable === false ? "AI review unavailable" : "Run AI-assisted review"}
         </button>
         <p className="mt-2 text-xs text-slate-500">Sign-in required · Up to 5 quick reviews per hour · Content is not retained in Verity's review log.</p>
         {error && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"><ShieldAlert size={15} className="mr-1 inline"/>{error}</p>}
