@@ -33,6 +33,30 @@ const routes = [
   ["/staff/assistant", "AI command center"],
 ];
 
+const aiKnowledgeSource = await readFile(new URL("../lib/ai/verity-knowledge.ts", import.meta.url), "utf8");
+const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
+for (const marker of [
+  "VERITY — PRODUCT AND OPERATIONS HANDBOOK",
+  "MEDIA ORIGIN",
+  "MODERATION WORKFLOW",
+  "SUPPORT WORKFLOW",
+  "AI ASSISTANT CAPABILITIES",
+  "video-origin review is not implemented",
+  "no connected reconciled payment ledger",
+  "getVerityAiRoleGuidance",
+]) {
+  if (!aiKnowledgeSource.includes(marker)) throw new Error(`Verity AI knowledge base is missing required product guidance: ${marker}`);
+}
+for (const marker of [
+  'import { VERITY_AI_KNOWLEDGE, getVerityAiRoleGuidance } from "@/lib/ai/verity-knowledge";',
+  "VERITY_AI_KNOWLEDGE,",
+  "getVerityAiRoleGuidance(access.role)",
+  "Never invent a count, user, event, cause, trend, SLA, outcome, or financial figure.",
+]) {
+  if (!adminAssistantSource.includes(marker)) throw new Error(`Admin assistant is not grounded in Verity product knowledge and live-data safeguards: ${marker}`);
+}
+process.stdout.write("PASS staff AI assistant receives Verity product/workflow knowledge and role-specific access guidance\\n");
+
 const env = {
   ...process.env,
   PORT: String(port),
