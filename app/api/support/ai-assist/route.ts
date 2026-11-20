@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const providerPayload = await response.json().catch(() => ({}));
       const providerCode = typeof providerPayload?.error?.status === "string" ? providerPayload.error.status.replace(/[^A-Z0-9_]/gi, "").slice(0, 48) : "";
-      const providerDetail = typeof providerPayload?.error?.message === "string" ? providerPayload.error.message.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]").replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 180) : "";
+      const providerDetail = typeof providerPayload?.error?.message === "string" ? providerPayload.error.message.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 180) : "";
       await db.from("audit_logs").update({ details: { provider: "Google Gemini", status: "provider_error", providerStatus: response.status, providerCode } }).eq("id", audit.id);
       console.error("Support Gemini provider error:", response.status, providerCode, providerDetail);
       if (response.status === 429) return fail("Gemini usage limit reached. Check Google AI Studio quota and try again later.", 429);
