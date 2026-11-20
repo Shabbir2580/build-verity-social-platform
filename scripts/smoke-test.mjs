@@ -165,7 +165,9 @@ try {
     throw new Error("A blocked profile must not display its public posts to the viewer who blocked it.");
   }
   const questionBlockSource = await readFile(new URL("../app/questions/page.tsx", import.meta.url), "utf8");
-  if (!questionBlockSource.includes('.from("blocks")') || !questionBlockSource.includes("blockedAuthors.has(row.author_id)") || !questionBlockSource.includes("blockedAuthors.has(row.author_id)")) {
+  if (!questionBlockSource.includes('.from("blocks")') ||
+      !questionBlockSource.includes("const rows = (questionRows ?? []).filter((row) => !blockedAuthors.has(row.author_id))") ||
+      !questionBlockSource.includes("answerRows = (data ?? []).filter((row) => !blockedAuthors.has(row.author_id))")) {
     throw new Error("Question authors and answers from blocked accounts must be hidden.");
   }
   const communityBlockSource = await readFile(new URL("../app/communities/[slug]/page.tsx", import.meta.url), "utf8");
