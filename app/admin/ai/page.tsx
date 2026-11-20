@@ -26,18 +26,24 @@ const suggestionsByRole = {
     "Which moderation and support queues need attention first?",
     "Summarize platform growth over the last 7 days.",
     "How many business enquiries need follow-up? Are any payments recorded?",
+    "Explain Verity's verification workflow and the limits of its AI checks.",
+    "Which tasks can the AI assist with, and which actions require a human?",
   ],
   moderator: [
     "Prepare a moderation queue briefing for today.",
     "Which cases are urgent or overdue?",
     "What should a moderator prioritize first?",
     "Explain the current moderation workload and its limitations.",
+    "Walk me through reviewing a report, label review and appeal safely.",
+    "What evidence should I check before resolving a moderation case?",
   ],
   support: [
     "Prepare a support desk briefing for today.",
     "Which support tickets are overdue?",
     "What should the support team prioritize first?",
     "Summarize the current support workload and response deadlines.",
+    "How should I investigate a ticket and prepare a safe customer reply?",
+    "Which customer promises must I avoid making without verified records?",
   ],
 } as const;
 
@@ -177,7 +183,7 @@ export default function AdminAiPage() {
         <div className="verity-ai-hero rounded-3xl p-6 text-white sm:p-8">
           <div className="verity-ai-accent flex items-center gap-2"><BrainCircuit size={18}/><span className="text-xs font-bold uppercase tracking-[0.15em]">Internal assistant</span></div>
           <h2 className="mt-4 max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl">Understand what needs attention.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Get a role-specific operational briefing, understand urgent work and identify next steps. Answers use live aggregate counts; the assistant cannot take moderation actions or make decisions for staff.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Ask how Verity works, get role-specific workflow guidance, interpret live aggregate counts and identify next steps. The assistant uses a curated product handbook plus the data supplied for each request; it cannot browse every record or make decisions for staff.</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">{staffRole === "admin" ? "Admin access" : staffRole === "moderator" ? "Moderator access" : staffRole === "support" ? "Support access" : "Staff access"}</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-100">Read-only data</span>
