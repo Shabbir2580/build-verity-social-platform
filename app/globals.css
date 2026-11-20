@@ -1642,3 +1642,52 @@ body { color: var(--verity-text); background: var(--verity-ivory); }
   .verity-admin-page .shadow-sm,
   .verity-product-page .shadow-sm { box-shadow: 0 3px 12px rgb(20 43 58 / 5%); }
 }
+
+
+/* Auth surfaces: one consistent, calm entry experience across sign-in and recovery. */
+.verity-auth-page {
+  background:
+    radial-gradient(ellipse at 12% 8%, rgb(22 132 119 / 8%), transparent 32%),
+    radial-gradient(ellipse at 88% 92%, rgb(20 43 58 / 7%), transparent 34%),
+    #f5f5f0 !important;
+}
+.verity-auth-page > div {
+  border-color: #dfe7e2 !important;
+  border-radius: 24px !important;
+  box-shadow: 0 24px 70px rgb(20 43 58 / 10%) !important;
+}
+.verity-auth-page > div > section:first-child {
+  background: linear-gradient(145deg,#142b3a 0%,#1d394a 62%,#245c5a 100%) !important;
+}
+.verity-auth-page > div > section:first-child h1 {
+  color: #fff;
+  letter-spacing: -.05em;
+  line-height: 1.08;
+}
+.verity-auth-page > div > section:last-child { background: #fff; }
+.verity-auth-page input:not([type="checkbox"]),
+.verity-auth-page textarea,
+.verity-auth-page select {
+  min-height: 44px;
+  border-color: #d9e2dd !important;
+  border-radius: 11px !important;
+}
+.verity-auth-page input:focus,
+.verity-auth-page textarea:focus,
+.verity-auth-page select:focus {
+  border-color: #168477 !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(22 132 119 / 15%);
+}
+.verity-auth-page button[type="submit"] {
+  min-height: 46px;
+  border-radius: 11px;
+  background: #168477 !important;
+}
+.verity-auth-page button[type="submit"]:hover { background: #116e64 !important; }
+.verity-auth-page a:not(:first-child) { text-underline-offset: 3px; }
+@media (max-width: 767px) {
+  .verity-auth-page { padding-top: 20px !important; padding-bottom: 20px !important; }
+  .verity-auth-page > div { border-radius: 18px !important; }
+  .verity-auth-page > div > section:first-child { padding: 24px !important; }
+}
