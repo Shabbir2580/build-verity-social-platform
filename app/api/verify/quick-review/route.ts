@@ -85,23 +85,19 @@ export async function POST(request: NextRequest) {
     imagePart = { inline_data: { mime_type: mime, data: bytes.toString("base64") } };
   }
 
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count, error: countError } = await supabase.from("audit_logs")
-    .select("id", { count: "exact", head: true })
-    .eq("actor_id", auth.user.id)
-    .eq("action", "verification_quick_review")
-    .gte("created_at", hourAgo);
-  if (countError) return fail("Review usage could not be verified. The request was not sent.", 503);
-  if ((count ?? 0) >= 5) return fail("You have reached the limit of 5 quick reviews per hour.", 429);
-
-  const { data: usage, error: usageError } = await supabase.from("audit_logs").insert({
-    actor_id: auth.user.id,
-    action: "verification_quick_review",
-    entity_type: "verification",
-    entity_id: null,
-    details: { provider: "Google Gemini / " + MODEL, kind, status: "started" },
-  }).select("id").single();
-  if (usageError || !usage) return fail("Privacy-safe usage tracking is unavailable. The request was not sent.", 503);
+  // The database RPC serializes per-user quota checks with an advisory lock.
+  // This prevents concurrent requests from racing past the five-per-hour limit.
+  const { data: usageId, error: usageError } = await supabase.rpc("start_verification_quick_review", {
+    p_actor_id: auth.user.id,
+    p_provider: "Google Gemini / " + MODEL,
+    p_kind: kind,
+  });
+  if (usageError) {
+    console.error("Quick review usage reservation failed:", usageError.message);
+    return fail("Review usage could not be verified. The request was not sent.", 503);
+  }
+  if (typeof usageId !== "number") return fail("You have reached the limit of 5 quick reviews per hour.", 429);
+  const usage = { id: usageId };
 
   const systemInstruction = [
     "You are a cautious assistant supporting a human misinformation reviewer.",
