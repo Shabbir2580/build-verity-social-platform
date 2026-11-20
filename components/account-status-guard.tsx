@@ -15,15 +15,11 @@ export function AccountStatusGuard() {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (!active || authError || !user) return;
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("is_suspended")
-        .eq("id", user.id)
-        .maybeSingle();
+      const { data: isSuspended, error: suspensionError } = await supabase.rpc("my_is_suspended");
 
-      // Fail closed for writes at the database layer; do not sign users out
-      // based on a transient profile-read failure.
-      if (!active || profileError || !profile?.is_suspended) return;
+      // Database policies independently block suspended accounts. Keep the
+      // client guard conservative: only sign out on a confirmed true result.
+      if (!active || suspensionError || isSuspended !== true) return;
 
       await supabase.auth.signOut({ scope: "local" });
       if (active) {
