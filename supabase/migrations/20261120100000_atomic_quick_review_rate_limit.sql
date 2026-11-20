@@ -10,7 +10,7 @@ create or replace function public.start_verification_quick_review(
 )
 returns bigint
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $function$
 declare
