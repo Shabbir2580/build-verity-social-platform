@@ -54,18 +54,20 @@ export default function CommunityDetailPage() {
       const current = communityData as Community;
       setCommunity(current);
 
-      const [ruleResult, memberResult, postResult, myMembership] = await Promise.all([
+      const [ruleResult, memberCountResponse, postResult, myMembership] = await Promise.all([
         supabase.from("community_rules").select("id, position, title, body").eq("community_id", current.id).order("position", { ascending: true }),
-        supabase.from("community_memberships").select("user_id", { count: "exact", head: true }).eq("community_id", current.id),
+        fetch("/api/public/community-member-count?communityId=" + encodeURIComponent(current.id), { cache: "no-store" }),
         supabase.from("posts").select("id, author_id, title, body, declared_category, created_at").eq("community_id", current.id).eq("status", "published").order("created_at", { ascending: false }).limit(50),
         currentUserId ? supabase.from("community_memberships").select("role").eq("community_id", current.id).eq("user_id", currentUserId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       ]);
       if (ruleResult.error) throw ruleResult.error;
-      if (memberResult.error) throw memberResult.error;
+      if (!memberCountResponse.ok) throw new Error("Could not load the community member count.");
+      const memberCountPayload = await memberCountResponse.json();
+      if (!Number.isSafeInteger(memberCountPayload.count) || memberCountPayload.count < 0) throw new Error("The community member count was invalid.");
       if (postResult.error) throw postResult.error;
       if (myMembership.error) throw myMembership.error;
       setRules((ruleResult.data ?? []) as Rule[]);
-      setMembers(memberResult.count ?? 0);
+      setMembers(memberCountPayload.count);
       setRole(myMembership.data?.role ?? null);
       const postRows = (postResult.data ?? []) as Post[];
       setPosts(postRows);

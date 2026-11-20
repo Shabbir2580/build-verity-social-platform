@@ -261,7 +261,16 @@ try {
   if (invalidCoverageResponse.status !== 400 || typeof invalidCoveragePayload.error !== "string") {
     throw new Error("News discovery API did not reject an undersized query safely.");
   }
-  process.stdout.write("PASS /api/verify/news rejects invalid queries (400)\n");
+  process.stdout.write("PASS /api/verify/news rejects invalid queries (400)\
+  const invalidCommunityCountResponse = await fetch(new URL("/api/public/community-member-count?communityId=invalid", origin), {
+    signal: AbortSignal.timeout(5000),
+  });
+  const invalidCommunityCountPayload = await invalidCommunityCountResponse.json();
+  if (invalidCommunityCountResponse.status !== 400 || typeof invalidCommunityCountPayload.error !== "string") {
+    throw new Error("Public community member-count API did not validate its community ID.");
+  }
+  process.stdout.write("PASS public community member-count API validates input and returns no member identities\\n");
+n");
 
   const geminiUnavailableResponse = await fetch(new URL("/api/verify/gemini", origin), {
     method: "POST",
