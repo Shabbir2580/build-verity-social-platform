@@ -153,6 +153,16 @@ try {
   process.stdout.write("PASS profile post deletion hides content before best-effort media cleanup\\n");
   process.stdout.write("PASS profile, people, community and notification pages use the shared product shell\\n");
 
+  const feedBlockSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  if (!feedBlockSource.includes('.from("blocks")') || !feedBlockSource.includes('blocked.has(row.author_id)')) {
+    throw new Error("The main feed must exclude posts from accounts blocked by the signed-in viewer.");
+  }
+  const profileBlockSource = productPageSources[0];
+  if (!profileBlockSource.includes("viewerBlockedProfile ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
+    throw new Error("A blocked profile must not display its public posts to the viewer who blocked it.");
+  }
+  process.stdout.write("PASS blocked accounts are hidden from feed and profile views\\n");
+
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   for (const token of ["--verity-navy: #142b3a", "--verity-teal: #168477", "--verity-ivory: #f5f5f0", "--verity-border: #e1e7e3", "Verity design system v3"]) {
     if (!visualSystem.includes(token)) throw new Error("Verity v3 design token is missing: " + token);
