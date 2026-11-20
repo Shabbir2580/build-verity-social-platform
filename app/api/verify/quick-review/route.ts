@@ -161,15 +161,26 @@ export async function POST(request: NextRequest) {
       return fail("The AI provider returned an incomplete review. No verdict was produced.", 502);
     }
     const grounding = payload?.candidates?.[0]?.groundingMetadata;
-    const groundingSources = Array.isArray(grounding?.groundingChunks)
-      ? grounding.groundingChunks.flatMap((chunk: { web?: { uri?: unknown; title?: unknown } }) => {
+    const rawGroundingSources = Array.isArray(grounding?.groundingChunks)
+      ? grounding.groundingChunks.map((chunk: { web?: { uri?: unknown; title?: unknown } }) => {
           const uri = typeof chunk?.web?.uri === "string" ? chunk.web.uri : "";
           const title = typeof chunk?.web?.title === "string" ? chunk.web.title : "";
           try {
             const parsedUrl = new URL(uri);
-            if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") return [];
-            return [{ title: title.slice(0, 180) || parsedUrl.hostname, url: parsedUrl.toString() }];
-          } catch { return []; }
+            if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") return null;
+            return { title: title.slice(0, 180) || parsedUrl.hostname, url: parsedUrl.toString() };
+          } catch { return null; }
+        })
+      : [];
+    const groundingSources = rawGroundingSources.filter((source): source is { title: string; url: string } => Boolean(source)).slice(0, 8);
+    const groundingSupports = Array.isArray(grounding?.groundingSupports)
+      ? grounding.groundingSupports.flatMap((support: { segment?: { text?: unknown }; groundingChunkIndices?: unknown }) => {
+          const statement = typeof support?.segment?.text === "string" ? support.segment.text.trim() : "";
+          const indices = Array.isArray(support?.groundingChunkIndices)
+            ? support.groundingChunkIndices.filter((index: unknown): index is number => Number.isInteger(index) && Number(index) >= 0 && Number(index) < rawGroundingSources.length)
+            : [];
+          const linkedSources = indices.map((index: number) => rawGroundingSources[index]).filter((source): source is { title: string; url: string } => Boolean(source)).slice(0, 4);
+          return statement && linkedSources.length ? [{ statement: statement.slice(0, 700), sources: linkedSources }] : [];
         }).slice(0, 8)
       : [];
     const searchQueries = Array.isArray(grounding?.webSearchQueries)
@@ -190,6 +201,7 @@ export async function POST(request: NextRequest) {
       stored: false,
       evidence_status: kind === "image" ? "visual_only" : groundingSources.length ? "google_search_grounded" : "search_not_used",
       sources: groundingSources,
+      source_linked_statements: groundingSupports,
       search_queries: searchQueries,
       search_entry_point_html: searchEntryPointHtml,
     };
