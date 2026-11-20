@@ -315,10 +315,12 @@ export default function AdminAiPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2"><ShieldCheck size={17} className="text-emerald-600"/><h2 className="font-semibold">Safety boundaries</h2></div>
           <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-600">
-            <li>• Current assistant answers are limited to aggregate operational counts; individual case and ticket records are not yet connected.</li>
-            <li>• AI cannot suspend accounts, delete posts or resolve cases.</li>
-            <li>• AI cannot determine whether a claim or media item is true or authentic.</li>
-            <li>• Admins remain responsible for decisions and should verify records.</li>
+            <li>• The assistant uses Verity's product and operations handbook plus role-authorized aggregate metrics supplied with each request.</li>
+            <li>• The general copilot cannot inspect individual tickets, moderation cases, private messages or member records. Open the relevant workspace for the original record.</li>
+            <li>• Selected-case moderation summaries and selected-ticket support drafts are separate, consent-based tools with their own access checks.</li>
+            <li>• AI cannot suspend accounts, delete posts, send customer replies or resolve cases. Staff must perform and audit those actions.</li>
+            <li>• AI cannot prove whether a claim is true or media is authentic. Automated video-origin review is not available.</li>
+            <li>• Admins and staff remain responsible for decisions and must verify original records.</li>
             <li>• Best-effort app limits are 12 per hour and 40 per day per staff account; provider quotas remain the hard ceiling.</li>
             <li>• Usage events store token counts, not the question text; token counts are not a currency-cost estimate.</li>
           </ul>
