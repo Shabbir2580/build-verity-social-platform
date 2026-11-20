@@ -192,6 +192,30 @@ export default function ModerationPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Keep the approval/moderation queue in sync when an administrator changes a
+  // post from another tab (for example, from Admin > Post management).
+  useEffect(() => {
+    if (!authorized) return;
+    const supabase = createClient();
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        void load();
+      }, 250);
+    };
+    const channel = supabase
+      .channel("verity-moderation-queue-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "moderation_cases" }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [authorized, load]);
+
   const openCase = async (item: CaseRow) => {
     const requestId = ++actionsRequest.current;
     setSelectedId(item.id); setReason(""); setLabelValue(""); setError(""); setNotice(""); setAssignee(item.assigned_to ?? "");
