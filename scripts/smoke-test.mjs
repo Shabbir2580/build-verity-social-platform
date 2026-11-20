@@ -229,7 +229,7 @@ try {
 
   const quickReviewStatusResponse = await fetch(new URL("/api/verify/quick-review", origin), { signal: AbortSignal.timeout(5000) });
   const quickReviewStatus = await quickReviewStatusResponse.json();
-  if (!quickReviewStatusResponse.ok || typeof quickReviewStatus.available !== "boolean" || "apiKey" in quickReviewStatus) {
+  if (!quickReviewStatusResponse.ok || typeof quickReviewStatus.configured !== "boolean" || "apiKey" in quickReviewStatus) {
     throw new Error("Quick review provider status must safely report availability without exposing credentials.");
   }
   process.stdout.write("PASS quick review provider readiness is safely exposed without secrets\\n");
