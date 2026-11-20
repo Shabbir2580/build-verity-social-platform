@@ -164,6 +164,14 @@ try {
   if (!profileBlockSource.includes("viewerBlockedProfile ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
     throw new Error("A blocked profile must not display its public posts to the viewer who blocked it.");
   }
+  const questionBlockSource = await readFile(new URL("../app/questions/page.tsx", import.meta.url), "utf8");
+  if (!questionBlockSource.includes('.from("blocks")') || !questionBlockSource.includes("blockedAuthors.has(row.author_id)") || !questionBlockSource.includes("blockedAuthors.has(row.author_id)")) {
+    throw new Error("Question authors and answers from blocked accounts must be hidden.");
+  }
+  const communityBlockSource = await readFile(new URL("../app/communities/[slug]/page.tsx", import.meta.url), "utf8");
+  if (!communityBlockSource.includes('supabase.from("blocks").select("blocked_id")') || !communityBlockSource.includes("blockedAuthors.has(post.author_id)")) {
+    throw new Error("Community feeds must exclude posts from accounts blocked by the viewer.");
+  }
   if (!profileBlockSource.includes("await load();") || !profileBlockSource.includes("if (unfollowError)")) {
     throw new Error("Unblocking must refresh the profile, and failed automatic unfollow must be reported.");
   }
