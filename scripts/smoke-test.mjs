@@ -35,6 +35,8 @@ const routes = [
 
 const aiKnowledgeSource = await readFile(new URL("../lib/ai/verity-knowledge.ts", import.meta.url), "utf8");
 const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
+const moderationAssistantSource = await readFile(new URL("../app/api/moderation/ai-summary/route.ts", import.meta.url), "utf8");
+const supportAssistantSource = await readFile(new URL("../app/api/support/ai-assist/route.ts", import.meta.url), "utf8");
 for (const marker of [
   "VERITY — PRODUCT AND OPERATIONS HANDBOOK",
   "MEDIA ORIGIN",
@@ -56,6 +58,12 @@ for (const marker of [
   if (!adminAssistantSource.includes(marker)) throw new Error(`Admin assistant is not grounded in Verity product knowledge and live-data safeguards: ${marker}`);
 }
 process.stdout.write("PASS staff AI assistant receives Verity product/workflow knowledge and role-specific access guidance\\n");
+for (const [name, source] of [["moderation", moderationAssistantSource], ["support", supportAssistantSource]]) {
+  if (!source.includes("VERITY_AI_KNOWLEDGE") || !source.includes("getVerityAiRoleGuidance(profile.role)")) {
+    throw new Error(`${name} AI workflow is missing shared Verity product knowledge and role-specific guidance.`);
+  }
+}
+process.stdout.write("PASS selected-case moderation AI and selected-ticket support AI also receive the shared Verity handbook\\n");
 
 const env = {
   ...process.env,
