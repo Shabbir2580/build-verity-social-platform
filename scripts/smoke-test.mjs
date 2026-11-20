@@ -104,6 +104,26 @@ try {
   }
   process.stdout.write("PASS public community directory supports discovery and authenticated membership actions\\n");
 
+  const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
+  const quickReviewApiSource = await readFile(new URL("../app/api/verify/quick-review/route.ts", import.meta.url), "utf8");
+  for (const [source, marker] of [
+    [quickReviewPageSource, "0–30 low, 31–60 medium and 61–100 high"],
+    [quickReviewPageSource, "not a probability or truth verdict"],
+    [quickReviewPageSource, "not yet validated against a labelled dataset"],
+    [quickReviewPageSource, 'kind === "text" ? "Text review"'],
+    [quickReviewPageSource, 'kind === "image" ? "Image review"'],
+    [quickReviewApiSource, 'body.consent !== true'],
+    [quickReviewApiSource, 'body.kind === "image"'],
+    [quickReviewApiSource, 'body.kind === "text"'],
+    [quickReviewApiSource, "NOT a probability that content is false"],
+    [quickReviewApiSource, 'parsed.review_risk_percent < 0 || parsed.review_risk_percent > 100'],
+  ]) {
+    if (!source.includes(marker)) {
+      throw new Error(`Quick review is missing a PPT-aligned requirement or responsible-AI safeguard: ${marker}`);
+    }
+  }
+  process.stdout.write("PASS quick review covers text and image with the proposed uncalibrated risk bands and explicit consent\\n");
+
   const mediaReviewSource = await readFile(new URL("../components/verify/gemini-media-check.tsx", import.meta.url), "utf8");
   const mediaReviewApiSource = await readFile(new URL("../app/api/verify/gemini/route.ts", import.meta.url), "utf8");
   for (const [source, marker] of [
