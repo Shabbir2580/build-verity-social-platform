@@ -167,6 +167,15 @@ try {
   if (!profileBlockSource.includes("await load();") || !profileBlockSource.includes("if (unfollowError)")) {
     throw new Error("Unblocking must refresh the profile, and failed automatic unfollow must be reported.");
   }
+  const followActionStart = profileBlockSource.indexOf("async function toggleFollow()");
+  const followActionEnd = profileBlockSource.indexOf("async function saveProfilePost", followActionStart);
+  const blockActionStart = profileBlockSource.indexOf("async function toggleBlock()");
+  const blockActionEnd = profileBlockSource.indexOf("if (loading) return", blockActionStart);
+  if (followActionStart < 0 || blockActionStart < 0 ||
+      !profileBlockSource.slice(followActionStart, followActionEnd).includes("finally") ||
+      !profileBlockSource.slice(blockActionStart, blockActionEnd).includes("finally")) {
+    throw new Error("Follow and block actions must release their busy state after network failures.");
+  }
   process.stdout.write("PASS blocked accounts are hidden from feed and profile views\\n");
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
