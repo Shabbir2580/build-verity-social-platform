@@ -112,7 +112,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#f5f6fb] px-4 py-8 text-slate-900 sm:px-6 sm:py-12">
+    <main className="verity-auth-page flex min-h-[100dvh] items-center justify-center bg-[#f5f6fb] px-4 py-8 text-slate-900 sm:px-6 sm:py-12">
       <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60 sm:p-9">
         <Link
           href="/"
