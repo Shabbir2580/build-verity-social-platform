@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       provider: "Google Gemini / " + MODEL,
       checked_at: new Date().toISOString(),
       stored: false,
-      evidence_status: kind === "image" ? "visual_only" : groundingSources.length ? "google_search_grounded" : "search_not_used",
+      evidence_status: kind === "image" ? "visual_only" : groundingSources.length ? "google_search_grounded" : "search_no_sources",
       sources: groundingSources,
       source_linked_statements: groundingSupports,
       search_queries: searchQueries,
