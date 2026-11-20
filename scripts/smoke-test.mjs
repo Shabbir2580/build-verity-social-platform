@@ -293,6 +293,14 @@ try {
   if (!mediaGeminiSource.includes("TimeoutError") || !claimGeminiSource.includes("TimeoutError")) throw new Error("Gemini timeout failures must be reported distinctly.");
   process.stdout.write("PASS Gemini provider failures expose sanitized diagnostic reasons\\n");
 
+  const moderationAiSource = await readFile(new URL("../app/api/moderation/ai-summary/route.ts", import.meta.url), "utf8");
+  const moderationPageSource = await readFile(new URL("../app/moderation/page.tsx", import.meta.url), "utf8");
+  for (const marker of ["discussion_comments", "evidenceCoverage", "insufficientInformation", "Insufficient case information"]) {
+    if (!moderationAiSource.includes(marker) && !moderationPageSource.includes(marker)) throw new Error(`Moderation evidence coverage is missing: ${marker}`);
+  }
+  if (!moderationAiSource.includes(".from(\"comments\")")) throw new Error("Moderation AI must include available public post discussion context.");
+  process.stdout.write("PASS moderation AI includes discussion context and sparse-evidence warnings\\n");
+
   process.stdout.write(`\\nSmoke test passed for ${routes.length} production routes.\\n`);
 } finally {
   if (server.pid) {

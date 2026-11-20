@@ -59,7 +59,7 @@ export default function ModerationPage() {
   const [assignee, setAssignee] = useState("");
   const [aiConsent, setAiConsent] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiSummary, setAiSummary] = useState<null | { overview: string; reported_concerns: string[]; available_evidence: string[]; uncertainty_and_conflicts: string[]; missing_information: string[]; suggested_human_review_steps: string[]; disclaimer: string }>(null);
+  const [aiSummary, setAiSummary] = useState<null | { overview: string; reported_concerns: string[]; available_evidence: string[]; uncertainty_and_conflicts: string[]; missing_information: string[]; suggested_human_review_steps: string[]; disclaimer: string; evidenceCoverage: { hasPostText: boolean; reportCount: number; appealCount: number; priorCheckCount: number; discussionCommentCount: number; hasSourceLink: boolean }; insufficientInformation: boolean }>(null);
 
   const selected = cases.find((item) => item.id === selectedId) ?? null;
   const canStartSelected = Boolean(selected && selected.status !== "resolved"
@@ -218,7 +218,7 @@ export default function ModerationPage() {
       const response = await fetch("/api/moderation/ai-summary", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ caseId: selected.id, consent: true }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Could not summarize this case.");
-      setAiSummary({ ...payload.summary, disclaimer: payload.disclaimer || "AI-generated aid only. Verify against original records." });
+      setAiSummary({ ...payload.summary, evidenceCoverage: payload.evidenceCoverage || { hasPostText: false, reportCount: 0, appealCount: 0, priorCheckCount: 0, discussionCommentCount: 0, hasSourceLink: false }, insufficientInformation: payload.insufficientInformation === true, disclaimer: payload.disclaimer || "AI-generated aid only. Verify against original records." });
     } catch (err) { setError(err instanceof Error ? err.message : "Could not generate case summary."); }
     finally { setAiBusy(false); }
   }
@@ -310,10 +310,12 @@ export default function ModerationPage() {
                 <p className="mt-1 text-xs leading-5 text-violet-900">Neutral case organization for a human reviewer. It does not decide violations or take actions.</p>
                 <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-5 text-violet-950">
                   <input type="checkbox" checked={aiConsent} onChange={(event) => setAiConsent(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-violet-700"/>
-                  <span>I authorize sending this case's post text, report details, appeal evidence and prior check summaries to Google Gemini for this request. Google's processing and data-use terms apply. I will verify the result against original records.</span>
+                  <span>I authorize sending this case's post text, public discussion comments, source links, report details, appeal evidence and prior check summaries to Google Gemini for this request. Google's processing and data-use terms apply. I will verify the result against original records.</span>
                 </label>
                 <button type="button" onClick={() => void generateAiSummary()} disabled={!aiConsent || aiBusy || (!canStartSelected && userRole !== "admin")} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-violet-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{aiBusy ? <LoaderCircle size={14} className="animate-spin"/> : <BrainCircuit size={14}/>} {aiBusy ? "Preparing summary…" : "Generate case summary"}</button>
                 {aiSummary && <div className="mt-4 space-y-3 rounded-xl bg-white p-4 text-xs leading-5 text-slate-700">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="font-extrabold text-slate-800">Evidence included in this summary</p><p className="mt-1 text-slate-600">{aiSummary.evidenceCoverage.hasPostText ? "Post text available" : "No post text"} · {aiSummary.evidenceCoverage.reportCount} reports · {aiSummary.evidenceCoverage.appealCount} appeals · {aiSummary.evidenceCoverage.priorCheckCount} prior checks · {aiSummary.evidenceCoverage.discussionCommentCount} comments · {aiSummary.evidenceCoverage.hasSourceLink ? "Source/link attached" : "No source link"}</p></div>
+                  {aiSummary.insufficientInformation && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 font-semibold text-amber-900">Insufficient case information. Treat this as an intake note, not a substantive case summary. Gather the original post, report details or supporting source before deciding.</div>}
                   <p className="font-bold text-slate-900">{aiSummary.overview}</p>
                   {([["Reported concerns",aiSummary.reported_concerns],["Available evidence",aiSummary.available_evidence],["Uncertainty and conflicts",aiSummary.uncertainty_and_conflicts],["Missing information",aiSummary.missing_information],["Suggested human review steps",aiSummary.suggested_human_review_steps]] as [string,string[]][]).map(([heading,items]) => <div key={heading}><p className="font-extrabold text-slate-800">{heading}</p>{items.length ? <ul className="mt-1 list-disc space-y-1 pl-5">{items.map((item,index)=><li key={index}>{item}</li>)}</ul> : <p className="mt-1 text-slate-500">Not identified from supplied records.</p>}</div>)}
                   <p className="border-t border-slate-100 pt-2 text-[11px] text-amber-800">{aiSummary.disclaimer}</p>
