@@ -40,6 +40,8 @@ export default function QuickReviewPage() {
   const [error, setError] = useState("");
   const [review, setReview] = useState<Review | null>(null);
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  const [humanReviewConfirmed, setHumanReviewConfirmed] = useState(false);
+  const [humanConclusion, setHumanConclusion] = useState<"supported" | "contradicted" | "inconclusive" | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -56,6 +58,8 @@ export default function QuickReviewPage() {
   async function submit() {
     setError("");
     setReview(null);
+    setHumanReviewConfirmed(false);
+    setHumanConclusion(null);
     if (!consent) { setError("Consent is required before sending content to Google Gemini."); return; }
     if (kind === "text" && text.trim().length < 30) { setError("Enter at least 30 characters to review."); return; }
     if (kind === "image" && !file) { setError("Choose an image first."); return; }
@@ -87,6 +91,8 @@ export default function QuickReviewPage() {
     const next = event.target.files?.[0] || null;
     setFile(next);
     setReview(null);
+    setHumanReviewConfirmed(false);
+    setHumanConclusion(null);
     setError("");
   }
 
@@ -112,8 +118,8 @@ export default function QuickReviewPage() {
 
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Content type">
-          <button type="button" role="tab" aria-selected={kind === "text"} onClick={() => { setKind("text"); setReview(null); setError(""); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${kind === "text" ? "bg-[#142b3a] text-white" : "border border-slate-200 text-slate-600"}`}><FileSearch size={15} className="mr-2 inline"/>Text review</button>
-          <button type="button" role="tab" aria-selected={kind === "image"} onClick={() => { setKind("image"); setReview(null); setError(""); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${kind === "image" ? "bg-[#142b3a] text-white" : "border border-slate-200 text-slate-600"}`}><ImagePlus size={15} className="mr-2 inline"/>Image review</button>
+          <button type="button" role="tab" aria-selected={kind === "text"} onClick={() => { setKind("text"); setReview(null); setHumanReviewConfirmed(false); setHumanConclusion(null); setError(""); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${kind === "text" ? "bg-[#142b3a] text-white" : "border border-slate-200 text-slate-600"}`}><FileSearch size={15} className="mr-2 inline"/>Text review</button>
+          <button type="button" role="tab" aria-selected={kind === "image"} onClick={() => { setKind("image"); setReview(null); setHumanReviewConfirmed(false); setHumanConclusion(null); setError(""); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${kind === "image" ? "bg-[#142b3a] text-white" : "border border-slate-200 text-slate-600"}`}><ImagePlus size={15} className="mr-2 inline"/>Image review</button>
         </div>
         {aiAvailable === false && <div role="alert" className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4">
           <p className="text-sm font-bold text-amber-950">AI review is currently unavailable</p>
@@ -122,7 +128,7 @@ export default function QuickReviewPage() {
         </div>}
         {aiAvailable === null && <p role="status" className="mt-5 text-xs text-slate-500">Checking AI provider availability…</p>}
         {kind === "text" ? <label className="mt-5 block text-sm font-semibold">Text or claim to review
-          <textarea value={text} onChange={(event) => { setText(event.target.value.slice(0, 4000)); setReview(null); }} rows={7} placeholder="Paste the exact statement, headline or message. Include its date and source if known." className="mt-2 w-full rounded-2xl border border-slate-200 p-4 text-sm leading-6 outline-none focus:border-teal-600"/>
+          <textarea value={text} onChange={(event) => { setText(event.target.value.slice(0, 4000)); setReview(null); setHumanReviewConfirmed(false); setHumanConclusion(null); }} rows={7} placeholder="Paste the exact statement, headline or message. Include its date and source if known." className="mt-2 w-full rounded-2xl border border-slate-200 p-4 text-sm leading-6 outline-none focus:border-teal-600"/>
           <span className="mt-1 block text-xs font-normal text-slate-500">{text.length}/4000 characters · minimum 30</span>
         </label> : <div className="mt-5">
           <label className="block text-sm font-semibold">Choose an image
@@ -173,6 +179,28 @@ export default function QuickReviewPage() {
           </div>}
           {review.search_queries.length > 0 && <p className="mt-3 text-[11px] leading-5 text-slate-500">Searches used: {review.search_queries.join(" · ")}</p>}
         </section>}
+        <section className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4" aria-labelledby="human-review-heading">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-teal-800">Your decision · human check</p>
+              <h3 id="human-review-heading" className="mt-1 text-sm font-semibold text-slate-900">Verify before you decide</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Open the original sources, compare dates and context, and look for primary evidence. The AI score does not choose the outcome for you.</p>
+            </div>
+            <span className="rounded-full border border-teal-200 bg-white px-3 py-1 text-[10px] font-bold text-teal-900">Human judgement required</span>
+          </div>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-teal-200 bg-white p-3 text-xs leading-5 text-slate-800">
+            <input type="checkbox" checked={humanReviewConfirmed} onChange={(event) => { setHumanReviewConfirmed(event.target.checked); setHumanConclusion(null); }} className="mt-0.5 size-4 shrink-0 accent-teal-700" />
+            <span>I have independently checked the available sources and considered the missing context listed above.</span>
+          </label>
+          <fieldset className="mt-4" disabled={!humanReviewConfirmed}>
+            <legend className="text-xs font-semibold text-slate-800">My assessment after checking</legend>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              {(["supported", "contradicted", "inconclusive"] as const).map((value) => <button key={value} type="button" aria-pressed={humanConclusion === value} onClick={() => setHumanConclusion(value)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-50 ${humanConclusion === value ? "border-teal-700 bg-teal-800 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-teal-400"}`}>{value === "supported" ? "Evidence supports it" : value === "contradicted" ? "Evidence contradicts it" : "Not enough evidence"}</button>)}
+            </div>
+          </fieldset>
+          {humanConclusion && <p role="status" className="mt-3 rounded-xl border border-teal-200 bg-white p-3 text-xs leading-5 text-teal-950">Your manual assessment: <strong>{humanConclusion === "supported" ? "Evidence supports it" : humanConclusion === "contradicted" ? "Evidence contradicts it" : "Not enough evidence"}</strong>. This is your own review, not an AI verdict.</p>}
+          <p className="mt-3 text-[11px] leading-5 text-slate-500">This manual assessment is held only in this page current session. It is not saved, sent to Google, or used to change the AI score. For images, review the original image and its provenance separately; this tool cannot authenticate image origins.</p>
+        </section>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-sm font-semibold text-amber-950">Uncertainty and limitations</h3><p className="mt-2 text-xs leading-5 text-amber-900">{review.uncertainty}</p><p className="mt-2 text-xs leading-5 text-amber-900">The percentage is an experimental, uncalibrated AI triage index—not a probability, validated risk measurement, model-accuracy score or truth verdict. High means check more carefully; it does not mean false. Low does not mean verified. These bands follow the proposed PPT interface and have not been validated against a labelled dataset.</p></div>
         <p className="text-[11px] text-slate-400">{review.provider} · {new Date(review.checked_at).toLocaleString()} · Not stored as a permanent assessment</p>
       </section>}
