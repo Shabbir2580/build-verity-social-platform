@@ -20,7 +20,6 @@ type Review = {
   sources: { title: string; url: string }[];
   source_linked_statements: { statement: string; sources: { title: string; url: string }[] }[];
   search_queries: string[];
-  search_entry_point_html: string | null;
 };
 
 function readFile(file: File): Promise<string> {
@@ -173,7 +172,6 @@ export default function QuickReviewPage() {
             </li>)}</ul>
           </div>}
           {review.search_queries.length > 0 && <p className="mt-3 text-[11px] leading-5 text-slate-500">Searches used: {review.search_queries.join(" · ")}</p>}
-          {review.search_entry_point_html && <div className="mt-3" aria-label="Google Search suggestions" dangerouslySetInnerHTML={{ __html: review.search_entry_point_html }} />}
         </section>}
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-sm font-semibold text-amber-950">Uncertainty and limitations</h3><p className="mt-2 text-xs leading-5 text-amber-900">{review.uncertainty}</p><p className="mt-2 text-xs leading-5 text-amber-900">The percentage is an experimental, uncalibrated AI triage index—not a probability, validated risk measurement, model-accuracy score or truth verdict. High means check more carefully; it does not mean false. Low does not mean verified. These bands follow the proposed PPT interface and have not been validated against a labelled dataset.</p></div>
         <p className="text-[11px] text-slate-400">{review.provider} · {new Date(review.checked_at).toLocaleString()} · Not stored as a permanent assessment</p>
