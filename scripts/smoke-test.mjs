@@ -301,9 +301,9 @@ try {
   if (!moderationEvidenceSource.includes(".from(\"comments\")")) throw new Error("Moderation AI must include available public post discussion context.");
   process.stdout.write("PASS moderation AI includes discussion context and sparse-evidence warnings\\n");
 
-  const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
-  if (!adminAssistantSource.includes("gemini-3.5-flash-lite") || adminAssistantSource.includes("gemini-2.5-flash")) throw new Error("Admin assistant must use the current Gemini 3.5 Flash-Lite model.");
-  if (!adminAssistantSource.includes("providerCode") || !adminAssistantSource.includes("Google Gemini denied generation access")) throw new Error("Admin assistant provider diagnostics are missing.");
+  const adminGeminiModelSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
+  if (!adminGeminiModelSource.includes("gemini-3.5-flash-lite") || adminGeminiModelSource.includes("gemini-2.5-flash")) throw new Error("Admin assistant must use the current Gemini 3.5 Flash-Lite model.");
+  if (!adminGeminiModelSource.includes("providerCode") || !adminGeminiModelSource.includes("Google Gemini denied generation access")) throw new Error("Admin assistant provider diagnostics are missing.");
   process.stdout.write("PASS admin assistant uses supported Gemini model and reports provider failures\\n");
 
   process.stdout.write(`\\nSmoke test passed for ${routes.length} production routes.\\n`);
