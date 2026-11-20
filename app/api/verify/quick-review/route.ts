@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
       return fail("The AI provider returned an incomplete review. No verdict was produced.", 502);
     }
     const grounding = payload?.candidates?.[0]?.groundingMetadata;
-    const rawGroundingSources = Array.isArray(grounding?.groundingChunks)
+    const rawGroundingSources: Array<{ title: string; url: string } | null> = Array.isArray(grounding?.groundingChunks)
       ? grounding.groundingChunks.map((chunk: { web?: { uri?: unknown; title?: unknown } }) => {
           const uri = typeof chunk?.web?.uri === "string" ? chunk.web.uri : "";
           const title = typeof chunk?.web?.title === "string" ? chunk.web.title : "";
