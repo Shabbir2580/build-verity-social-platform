@@ -112,6 +112,9 @@ export default function PeoplePage() {
       });
       if (insertError) {
         if (insertError.code === "23505") throw new Error("You already follow this member. Refresh the suggestions.");
+        if (insertError.code === "42501") {
+          throw new Error("You can't follow this account right now. Check that your account is active and that no block exists between the accounts.");
+        }
         throw insertError;
       }
       setSuggestions((current) => current.filter((item) => item.id !== member.id));
