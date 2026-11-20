@@ -31,20 +31,27 @@ function boundedStrings(value: unknown, limit = 6): string[] {
     : [];
 }
 
+export async function GET() {
+  return NextResponse.json(
+    { available: Boolean(process.env.GEMINI_API_KEY), provider: "Google Gemini" },
+    { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } },
+  );
+}
+
 export async function POST(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!supabaseUrl || !secret) return fail("Secure database access is not configured.", 503);
-  if (!apiKey) return fail("AI review is not configured on the server. No analysis was performed.", 503);
 
   const authorization = request.headers.get("authorization") || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   if (!token) return fail("Sign in to request a review.", 401);
+  if (!supabaseUrl || !secret) return fail("Secure database access is not configured.", 503);
 
   const supabase = createClient(supabaseUrl, secret, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: auth, error: authError } = await supabase.auth.getUser(token);
   if (authError || !auth.user) return fail("Your session is invalid. Sign in again.", 401);
+  if (!apiKey) return fail("AI review is not configured on the server. No analysis was performed.", 503);
 
   let body: { kind?: unknown; text?: unknown; mimeType?: unknown; imageBase64?: unknown; consent?: unknown };
   try { body = await request.json(); } catch { return fail("Invalid request body.", 400); }
