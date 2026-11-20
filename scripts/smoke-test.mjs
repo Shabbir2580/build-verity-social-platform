@@ -78,6 +78,10 @@ try {
     process.stdout.write(`PASS /${authPage} preserves safe return destinations\\n`);
   }
 
+  const signupPageSource = await readFile(new URL("../app/signup/page.tsx", import.meta.url), "utf8");
+  if (!signupPageSource.includes('callbackUrl.searchParams.set("next", getSafeNextPath())') || signupPageSource.includes('callbackUrl.searchParams.set("next", "/")')) {
+    throw new Error("Email signup confirmation must preserve the validated destination instead of always returning users to the home page.");
+  }
   const homePageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   for (const marker of ["Optional content review.", 'href="/verify/quick"', "Sign-in and explicit consent are required"]) {
     if (!homePageSource.includes(marker)) throw new Error(`Home feed AI review notice is missing accurate opt-in guidance: ${marker}`);
