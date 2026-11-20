@@ -170,7 +170,7 @@ export default function StaffSupportPage() {
     finally { setSaving(false); }
   }
 
-  if (loading && !tickets.length) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle size={18} className="animate-spin"/> Loading staff queue…</main>;
+  if (loading && !tickets.length) return <main className="verity-workspace flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle size={18} className="animate-spin"/> Loading staff queue…</main>;
 
   return <main className="verity-workspace min-h-screen bg-[#f5f6fb] px-4 pb-14 text-slate-900 sm:px-6">
     <header className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between border-b border-slate-200"><Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600"><ArrowLeft size={16}/> Back to Verity</Link><span className="text-lg font-black">Verity<span className="text-indigo-600">.</span></span></header>
