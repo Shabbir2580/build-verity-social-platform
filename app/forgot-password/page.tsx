@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f5f6fb] px-4 py-12 text-slate-900">
+    <main className="verity-auth-page flex min-h-screen items-center justify-center bg-[#f5f6fb] px-4 py-12 text-slate-900">
       <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-9">
         <Link
           href="/"
