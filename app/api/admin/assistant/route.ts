@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: mode === "briefing" || mode === "priorities" ? 1000 : 850 },
+        generationConfig: { maxOutputTokens: mode === "briefing" || mode === "priorities" ? 1000 : 850 },
       }),
       signal: AbortSignal.timeout(20000),
     });
@@ -264,6 +264,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     await updateUsage({ status: "failed" });
     console.error("Admin assistant request failed:", error instanceof Error ? error.message : "unknown");
-    return jsonError("The assistant request failed. Please try again.", 502);
+    return jsonError(error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError") ? "Gemini took too long to respond. Try again." : "The assistant request failed before an answer was generated. Check server diagnostics.", 502);
   }
 }

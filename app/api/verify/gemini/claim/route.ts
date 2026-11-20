@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
           },
           required: ["summary", "claim_type", "time_sensitivity", "supporting_indices", "contradicting_indices", "missing_context", "verification_steps", "uncertainty"],
         },
-        temperature: 0.1, maxOutputTokens: 1100,
+        maxOutputTokens: 1100,
       } }),
       signal: AbortSignal.timeout(20000),
     });

@@ -306,6 +306,25 @@ try {
   if (!adminGeminiModelSource.includes("providerCode") || !adminGeminiModelSource.includes("Google Gemini denied generation access")) throw new Error("Admin assistant provider diagnostics are missing.");
   process.stdout.write("PASS admin assistant uses supported Gemini model and reports provider failures\\n");
 
+  const aiRoutes = [
+    ["../app/api/admin/assistant/route.ts", 30],
+    ["../app/api/moderation/ai-summary/route.ts", 60],
+    ["../app/api/support/ai-assist/route.ts", 60],
+    ["../app/api/verify/gemini/route.ts", 60],
+    ["../app/api/verify/gemini/claim/route.ts", 30],
+  ];
+  for (const [path, duration] of aiRoutes) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8");
+    if (!source.includes("gemini-3.5-flash-lite")) throw new Error(`AI route is not using the supported Gemini model: ${path}`);
+    if (source.includes("temperature:")) throw new Error(`Gemini Flash-Lite route must not override unsupported sampling settings: ${path}`);
+    if (!source.includes(`maxDuration = ${duration}`)) throw new Error(`AI route has no expected Vercel function duration: ${path}`);
+  }
+  for (const [path, marker] of [["../app/api/moderation/ai-summary/route.ts", "Moderation Gemini provider error:"], ["../app/api/support/ai-assist/route.ts", "Support Gemini provider error:"]]) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8");
+    if (!source.includes(marker) || !source.includes("providerCode")) throw new Error(`AI provider diagnostics are missing: ${path}`);
+  }
+  process.stdout.write("PASS all AI routes use supported Gemini model, bounded runtime and actionable provider diagnostics\\n");
+
   process.stdout.write(`\\nSmoke test passed for ${routes.length} production routes.\\n`);
 } finally {
   if (server.pid) {

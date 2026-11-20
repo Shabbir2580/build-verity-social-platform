@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
               },
               required: ["media_type", "visible_content", "visible_text", "observable_signals", "origin_indicators", "limitations", "summary"],
             },
-            temperature: 0.1, maxOutputTokens: 1000,
+            maxOutputTokens: 1000,
           },
         }),
         signal: AbortSignal.timeout(45000),
