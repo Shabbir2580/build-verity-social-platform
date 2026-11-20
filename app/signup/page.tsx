@@ -106,7 +106,7 @@ export default function SignupPage() {
         window.location.origin
       );
 
-      callbackUrl.searchParams.set("next", "/");
+      callbackUrl.searchParams.set("next", getSafeNextPath());
 
       const { data, error: signupError } =
         await supabase.auth.signUp({
