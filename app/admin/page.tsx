@@ -244,8 +244,8 @@ export default function AdminPage() {
     finally { setSaving(false); }
   }
 
-  if (checking) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle size={18} className="animate-spin"/> Checking administrator access…</main>;
-  if (!authorized) return <main className="min-h-screen bg-[#f5f6fb] px-4 py-16 text-slate-900"><section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center"><ShieldCheck size={30} className="mx-auto text-indigo-600"/><h1 className="mt-3 text-2xl font-black">Administrator access required</h1><p className="mt-2 text-sm text-slate-500">This workspace is restricted to administrators.</p><Link href="/" className="mt-6 inline-flex rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white">Back to Verity</Link></section></main>;
+  if (checking) return <main className="verity-workspace verity-admin-page flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle size={18} className="animate-spin"/> Checking administrator access…</main>;
+  if (!authorized) return <main className="verity-workspace verity-admin-page min-h-screen bg-[#f5f6fb] px-4 py-16 text-slate-900"><section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center"><ShieldCheck size={30} className="mx-auto text-indigo-600"/><h1 className="mt-3 text-2xl font-black">Administrator access required</h1><p className="mt-2 text-sm text-slate-500">This workspace is restricted to administrators.</p><Link href="/" className="mt-6 inline-flex rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white">Back to Verity</Link></section></main>;
 
   const cards = [
     { label: "Members", value: stats.members, icon: Users, note: "Registered profiles" },
