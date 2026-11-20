@@ -121,7 +121,7 @@ try {
       throw new Error(`Post ownership migration is missing required authorization rule: ${marker}`);
     }
   }
-  if (/using\\s*\\([\\s\\S]*?is_moderator\\(\\)/i.test(postOwnershipMigration)) {
+  if (/using\s*\([\s\S]*?is_moderator\(\)/i.test(postOwnershipMigration)) {
     throw new Error("Direct post update/delete policies must not grant staff-wide client mutation access.");
   }
   process.stdout.write("PASS post edit/delete UI and database policies enforce author ownership; staff actions stay in audited RPCs\\n");
