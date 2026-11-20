@@ -224,10 +224,10 @@ export default function SettingsPage() {
     } finally { setUnblockingId(null); }
   }
 
-  if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle size={18} className="animate-spin" /> Loading settings...</main>;
+  if (loading) return <main className="verity-product-page flex min-h-screen items-center justify-center gap-2 bg-[#f5f6fb] text-sm text-slate-500"><LoaderCircle size={18} className="animate-spin" /> Loading settings...</main>;
 
   return (
-    <main className="min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
+    <main className="verity-product-page min-h-screen bg-[#f5f6fb] px-4 pb-16 text-slate-900 sm:px-6">
       <header className="mx-auto flex min-h-[72px] max-w-3xl items-center justify-between border-b border-slate-200">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-700"><ArrowLeft size={17} /> Back to feed</Link>
         <Link href="/" className="text-lg font-black tracking-tight">Verity<span className="text-indigo-600">.</span></Link>
