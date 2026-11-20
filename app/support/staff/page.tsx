@@ -59,10 +59,10 @@ export default function StaffSupportPage() {
       if (authError) throw authError;
       if (!auth.user) { window.location.href = "/login?next=%2Fsupport%2Fstaff"; return; }
       setUserId(auth.user.id);
-      const { data: me, error: roleError } = await supabase.from("profiles").select("role").eq("id", auth.user.id).single();
+      const { data: myRole, error: roleError } = await supabase.rpc("my_role");
       if (roleError) throw roleError;
-      if (!["support", "moderator", "admin"].includes(me.role)) throw new Error("Staff access required.");
-      setRole(me.role);
+      if (!["support", "moderator", "admin"].includes(myRole)) throw new Error("Staff access required.");
+      setRole(myRole);
       const { data, error: ticketError } = await supabase.from("support_tickets")
         .select("id, ticket_number, user_id, category, subject, description, status, priority, assigned_team, assigned_to, response_due_at, created_at, updated_at")
         .order("created_at", { ascending: false }).order("id", { ascending: false }).range(0, 99);
