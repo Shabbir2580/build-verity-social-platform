@@ -6,6 +6,7 @@ import { ArrowLeft, FileSearch, ImagePlus, LoaderCircle, ShieldAlert, Sparkles }
 import { createClient } from "@/lib/supabase/client";
 
 type Review = {
+  review_risk_percent: number;
   review_priority: "low" | "medium" | "high";
   summary: string;
   signals: string[];
@@ -145,8 +146,14 @@ export default function QuickReviewPage() {
 
       {review && <section className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7" aria-live="polite">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-teal-700">Review result</p><h2 className="mt-1 text-xl font-semibold">Human review priority</h2></div>
-          <span className={`rounded-full border px-4 py-2 text-sm font-bold uppercase ${priorityStyle}`}>{review.review_priority} priority</span>
+          <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-teal-700">Review result</p><h2 className="mt-1 text-xl font-semibold">Estimated review-risk indicator</h2></div>
+          <span className={`rounded-full border px-4 py-2 text-sm font-bold uppercase ${priorityStyle}`}>{review.review_priority} · {review.review_risk_percent}/100</span>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-wide text-slate-600">Experimental review-risk score</p><p className="text-lg font-black tabular-nums text-slate-900">{review.review_risk_percent}%</p></div>
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-200" role="img" aria-label={`Experimental review-risk score ${review.review_risk_percent} out of 100`}><div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${review.review_risk_percent}%` }} /></div>
+          <div className="mt-2 flex flex-wrap justify-between gap-2 text-[10px] font-semibold text-slate-500"><span>0–30% · Low</span><span>31–60% · Medium</span><span>61–100% · High</span></div>
+          <p className="mt-3 text-xs leading-5 text-slate-600">This score estimates how much human review is warranted. It is not the probability that the content is false.</p>
         </div>
         <p className="text-sm leading-7 text-slate-700">{review.summary}</p>
         <div className="grid gap-4 md:grid-cols-3">
@@ -168,7 +175,7 @@ export default function QuickReviewPage() {
           {review.search_queries.length > 0 && <p className="mt-3 text-[11px] leading-5 text-slate-500">Searches used: {review.search_queries.join(" · ")}</p>}
           {review.search_entry_point_html && <div className="mt-3" aria-label="Google Search suggestions" dangerouslySetInnerHTML={{ __html: review.search_entry_point_html }} />}
         </section>}
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-sm font-semibold text-amber-950">Uncertainty and limitations</h3><p className="mt-2 text-xs leading-5 text-amber-900">{review.uncertainty}</p><p className="mt-2 text-xs leading-5 text-amber-900">This priority is not a percentage, probability, model-accuracy score or truth verdict. High means check more carefully; it does not mean false. Low does not mean verified.</p></div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-sm font-semibold text-amber-950">Uncertainty and limitations</h3><p className="mt-2 text-xs leading-5 text-amber-900">{review.uncertainty}</p><p className="mt-2 text-xs leading-5 text-amber-900">The percentage is an experimental, uncalibrated AI triage index—not a probability, validated risk measurement, model-accuracy score or truth verdict. High means check more carefully; it does not mean false. Low does not mean verified. These bands follow the proposed PPT interface and have not been validated against a labelled dataset.</p></div>
         <p className="text-[11px] text-slate-400">{review.provider} · {new Date(review.checked_at).toLocaleString()} · Not stored as a permanent assessment</p>
       </section>}
     </div>
