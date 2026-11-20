@@ -146,7 +146,7 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f7fb] px-4 py-10 text-slate-900 sm:py-16">
+    <main className="verity-auth-page min-h-screen bg-[#f6f7fb] px-4 py-10 text-slate-900 sm:py-16">
       <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl md:grid-cols-2">
         <section className="flex flex-col justify-between bg-gradient-to-br from-indigo-950 via-indigo-800 to-indigo-600 p-8 text-white sm:p-10">
           <Link href="/" className="flex items-center gap-3">
