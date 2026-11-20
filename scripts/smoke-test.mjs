@@ -227,6 +227,19 @@ try {
   }
   process.stdout.write("PASS text review grounds claims with Google Search and displays returned sources/suggestions\\n");
 
+  const quickReviewStatusResponse = await fetch(new URL("/api/verify/quick-review", origin), { signal: AbortSignal.timeout(5000) });
+  const quickReviewStatus = await quickReviewStatusResponse.json();
+  if (!quickReviewStatusResponse.ok || typeof quickReviewStatus.available !== "boolean" || "apiKey" in quickReviewStatus) {
+    throw new Error("Quick review provider status must safely report availability without exposing credentials.");
+  }
+  process.stdout.write("PASS quick review provider readiness is safely exposed without secrets\\n");
+
+  const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
+  for (const marker of ["AI review is currently unavailable", "Open Trust Center source discovery", "aiAvailable !== true"]) {
+    if (!quickReviewPageSource.includes(marker)) throw new Error(`Quick review is missing honest provider-unavailable handling: ${marker}`);
+  }
+  process.stdout.write("PASS quick review disables analysis and offers source discovery when Gemini is unavailable\\n");
+
   const quickReviewResponse = await fetch(new URL("/api/verify/quick-review", origin), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "text", text: "This is a sufficiently long sample claim for a smoke test.", consent: true }), signal: AbortSignal.timeout(5000) });
   if (quickReviewResponse.status !== 401) throw new Error("Quick review API must reject unauthenticated access.");
   process.stdout.write("PASS standalone quick review API rejects unauthenticated access (401)\\n");
