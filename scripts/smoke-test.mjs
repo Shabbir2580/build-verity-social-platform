@@ -83,6 +83,12 @@ try {
   if (!signupPageSource.includes('callbackUrl.searchParams.set("next", getSafeNextPath())') || signupPageSource.includes('callbackUrl.searchParams.set("next", "/")')) {
     throw new Error("Email signup confirmation must preserve the validated destination instead of always returning users to the home page.");
   }
+  const communityDetailSource = await readFile(new URL("../app/communities/[slug]/page.tsx", import.meta.url), "utf8");
+  if (!communityDetailSource.includes("const slug = params.slug;") || communityDetailSource.includes("decodeURIComponent(params.slug)")) {
+    throw new Error("Community detail routes must use the already-decoded Next.js route parameter without decoding it a second time.");
+  }
+  process.stdout.write("PASS community detail route parameters are not decoded twice\\n");
+
   const communityDirectorySource = await readFile(new URL("../app/communities/page.tsx", import.meta.url), "utf8");
   for (const marker of [
     '.from("communities")',
