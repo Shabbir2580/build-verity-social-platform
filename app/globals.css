@@ -1816,3 +1816,96 @@ body { color: var(--verity-text); background: var(--verity-ivory); }
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Home/feed visual direction: editorial trust platform, not a generic purple dashboard. */
+.verity-app {
+  --verity-ink: #142b3a;
+  --verity-muted: #65757b;
+  --verity-line: #e0e8e3;
+  --verity-accent: #168477;
+  background-color: #f4f6f3 !important;
+  background-image: radial-gradient(rgb(20 43 58 / 4%) .8px, transparent .8px) !important;
+  background-size: 24px 24px !important;
+}
+.verity-app .verity-header {
+  background: rgb(255 255 255 / 94%) !important;
+  border-bottom: 1px solid #e1e8e3 !important;
+  box-shadow: 0 4px 22px rgb(20 43 58 / 4%) !important;
+  backdrop-filter: blur(18px);
+}
+.verity-app .verity-logo,
+.verity-app .verity-create-button {
+  background: linear-gradient(135deg,#176e68,#168477 62%,#2a9a86) !important;
+  animation: none !important;
+}
+.verity-app .verity-avatar,
+.verity-app .verity-composer-icon {
+  background: linear-gradient(135deg,#e2f2ec,#eff7f2) !important;
+  color: #176e68 !important;
+}
+.verity-app .verity-hero {
+  background:
+    radial-gradient(circle at 88% 14%,rgb(80 177 157 / 20%),transparent 28%),
+    radial-gradient(circle at 10% 95%,rgb(47 128 117 / 30%),transparent 38%),
+    linear-gradient(125deg,#142b3a 0%,#1d414a 56%,#205c59 100%) !important;
+  border: 1px solid rgb(154 207 188 / 25%) !important;
+  box-shadow: 0 22px 56px rgb(20 43 58 / 15%) !important;
+  animation: verity-enter 480ms cubic-bezier(.2,.7,.2,1) both !important;
+}
+.verity-app .verity-gradient-text {
+  background: linear-gradient(100deg,#c8f0dc,#8de0ca 55%,#fff) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+}
+.verity-app .verity-post-card,
+.verity-app .verity-community-card,
+.verity-app .verity-composer,
+.verity-app .verity-panel,
+.verity-app .verity-sidebar-card {
+  border-color: #e0e8e3 !important;
+  box-shadow: 0 6px 22px rgb(20 43 58 / 4%) !important;
+}
+.verity-app .verity-post-card { border-radius: 20px !important; }
+.verity-app .verity-post-card:hover {
+  border-color: #b8d6ca !important;
+  box-shadow: 0 14px 34px rgb(20 43 58 / 8%) !important;
+  transform: translateY(-1px);
+}
+.verity-app .verity-composer {
+  background: linear-gradient(110deg,#fff,#f8fbf8) !important;
+}
+.verity-app .verity-nav-active {
+  background: linear-gradient(100deg,#e8f4ee,#fff) !important;
+  border-color: #cfe4d9 !important;
+  box-shadow: inset 3px 0 0 #168477,0 4px 14px rgb(20 43 58 / 4%) !important;
+  color: #176e68 !important;
+}
+.verity-app .verity-metric-card {
+  border-color: rgb(174 213 197 / 22%) !important;
+  background: linear-gradient(145deg,#214b4c,#17343f) !important;
+  box-shadow: 0 10px 24px rgb(20 43 58 / 9%) !important;
+}
+.verity-app .verity-metric-card:nth-child(2) { background: linear-gradient(145deg,#245b5b,#193b45) !important; }
+.verity-app .verity-metric-card:nth-child(3) { background: linear-gradient(145deg,#365c56,#1b3c43) !important; }
+.verity-app .verity-right-sidebar > section { border-color: #e0e8e3 !important; }
+.verity-app .verity-bottom-nav {
+  border-color: #e0e8e3 !important;
+  box-shadow: 0 -8px 28px rgb(20 43 58 / 6%) !important;
+}
+.verity-app button:focus-visible,
+.verity-app a:focus-visible {
+  outline: 3px solid rgb(22 132 119 / 38%);
+  outline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .verity-app .verity-hero { border-radius: 20px !important; }
+  .verity-app .verity-post-card { border-radius: 16px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verity-app .verity-post-card,
+  .verity-app .verity-community-card,
+  .verity-app .verity-composer,
+  .verity-app .verity-panel,
+  .verity-app .verity-sidebar-card { animation: none !important; transition: none !important; }
+}
