@@ -104,6 +104,25 @@ try {
   }
   process.stdout.write("PASS public community directory supports discovery and authenticated membership actions\\n");
 
+  const mediaReviewSource = await readFile(new URL("../components/verify/gemini-media-check.tsx", import.meta.url), "utf8");
+  const mediaReviewApiSource = await readFile(new URL("../app/api/verify/gemini/route.ts", import.meta.url), "utf8");
+  for (const [source, marker] of [
+    [mediaReviewSource, 'item.kind === "image"'],
+    [mediaReviewSource, "video analysis is not available"],
+    [mediaReviewSource, "video analysis is outside the current project scope"],
+    [mediaReviewApiSource, 'if (media.kind !== "image")'],
+    [mediaReviewApiSource, 'new Set(["image/jpeg", "image/png", "image/webp"])'],
+    [mediaReviewApiSource, 'assessment.media_type !== "image"'],
+  ]) {
+    if (!source.includes(marker)) {
+      throw new Error(`Verity's current PPT scope requires image-only media analysis: missing ${marker}`);
+    }
+  }
+  if (mediaReviewApiSource.includes("MAX_VIDEO_BYTES") || mediaReviewApiSource.includes('"video/mp4"')) {
+    throw new Error("The media assessment API must not accept video analysis in the current project scope.");
+  }
+  process.stdout.write("PASS media analysis is restricted to images; video remains outside the stated project scope\\n");
+
   const homePageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   for (const marker of ["Optional content review.", 'href="/verify/quick"', "Sign-in and explicit consent are required"]) {
     if (!homePageSource.includes(marker)) throw new Error(`Home feed AI review notice is missing accurate opt-in guidance: ${marker}`);
