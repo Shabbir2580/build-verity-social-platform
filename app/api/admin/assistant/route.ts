@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
       const providerCode = typeof providerPayload?.error?.status === "string"
         ? providerPayload.error.status.replace(/[^A-Z0-9_]/gi, "").slice(0, 48) : "";
       const providerDetail = typeof providerPayload?.error?.message === "string"
-        ? providerPayload.error.message.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]").replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 220) : "";
+        ? providerPayload.error.message.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 220) : "";
       await updateUsage({ status: "provider_error", providerStatus: response.status, providerCode });
       console.error("Admin assistant provider error:", response.status, providerCode, providerDetail);
       if (response.status === 429) return jsonError("Gemini usage limit reached. Check Google AI Studio rate limits and try again later.", 429);
