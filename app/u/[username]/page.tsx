@@ -95,12 +95,13 @@ export default function PublicProfilePage() {
       if (followingError) throw followingError;
       if (relationError) throw relationError;
       if (blockError) throw blockError;
-      setPosts(postRows ?? []);
-      setPostsHasMore((postRows ?? []).length === 30);
+      const viewerBlockedProfile = (isBlocked ?? 0) > 0;
+      setPosts(viewerBlockedProfile ? [] : postRows ?? []);
+      setPostsHasMore(!viewerBlockedProfile && (postRows ?? []).length === 30);
       setFollowers(followerCount ?? 0);
       setFollowingCount(followingTotal ?? 0);
       setFollowing((isFollowing ?? 0) > 0);
-      setBlocked((isBlocked ?? 0) > 0);
+      setBlocked(viewerBlockedProfile);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load this profile.");
     } finally {
@@ -312,7 +313,9 @@ export default function PublicProfilePage() {
           <div><h2 className="text-xl font-black">Posts</h2><p className="mt-1 text-xs text-slate-500">Public posts shared by @{profile.username}</p></div>
           <span className="text-xs font-semibold text-slate-500">{posts.length} loaded{postsHasMore ? " · more available" : ""}</span>
         </div>
-        {posts.length === 0 ? (
+        {blocked ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"><ShieldBan className="mx-auto text-slate-300" size={30} /><p className="mt-3 font-bold">Posts hidden</p><p className="mt-1 text-sm text-slate-500">You blocked this account. Unblock them above to see their public posts again.</p></div>
+        ) : posts.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"><MessageCircle className="mx-auto text-slate-300" size={30} /><p className="mt-3 font-bold">No public posts yet</p><p className="mt-1 text-sm text-slate-500">When this member shares something, it will appear here.</p></div>
         ) : (
           <div className="mt-4 space-y-3">
