@@ -172,6 +172,10 @@ try {
   if (!communityBlockSource.includes('supabase.from("blocks").select("blocked_id")') || !communityBlockSource.includes("blockedAuthors.has(post.author_id)")) {
     throw new Error("Community feeds must exclude posts from accounts blocked by the viewer.");
   }
+  const notificationBlockSource = await readFile(new URL("../app/notifications/page.tsx", import.meta.url), "utf8");
+  if (!notificationBlockSource.includes('supabase.from("blocks").select("blocked_id")') || !notificationBlockSource.includes("blockedActorIds.has(item.actor_id)")) {
+    throw new Error("Notifications from accounts blocked by the viewer must be hidden.");
+  }
   if (!profileBlockSource.includes("await load();") || !profileBlockSource.includes("if (unfollowError)")) {
     throw new Error("Unblocking must refresh the profile, and failed automatic unfollow must be reported.");
   }
