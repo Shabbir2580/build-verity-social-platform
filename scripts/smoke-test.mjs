@@ -104,19 +104,19 @@ try {
   }
   process.stdout.write("PASS public community directory supports discovery and authenticated membership actions\\n");
 
-  const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
-  const quickReviewApiSource = await readFile(new URL("../app/api/verify/quick-review/route.ts", import.meta.url), "utf8");
+  const pptScopeQuickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
+  const pptScopeQuickReviewApiSource = await readFile(new URL("../app/api/verify/quick-review/route.ts", import.meta.url), "utf8");
   for (const [source, marker] of [
-    [quickReviewPageSource, "0–30 low, 31–60 medium and 61–100 high"],
-    [quickReviewPageSource, "not a probability or truth verdict"],
-    [quickReviewPageSource, "not yet validated against a labelled dataset"],
-    [quickReviewPageSource, "/>Text review</button>"],
-    [quickReviewPageSource, "/>Image review</button>"],
-    [quickReviewApiSource, 'body.consent !== true'],
-    [quickReviewApiSource, 'body.kind === "image"'],
-    [quickReviewApiSource, 'body.kind === "text"'],
-    [quickReviewApiSource, "NOT a probability that content is false"],
-    [quickReviewApiSource, 'parsed.review_risk_percent < 0 || parsed.review_risk_percent > 100'],
+    [pptScopeQuickReviewPageSource, "0–30 low, 31–60 medium and 61–100 high"],
+    [pptScopeQuickReviewPageSource, "not a probability or truth verdict"],
+    [pptScopeQuickReviewPageSource, "not yet validated against a labelled dataset"],
+    [pptScopeQuickReviewPageSource, "/>Text review</button>"],
+    [pptScopeQuickReviewPageSource, "/>Image review</button>"],
+    [pptScopeQuickReviewApiSource, 'body.consent !== true'],
+    [pptScopeQuickReviewApiSource, 'body.kind === "image"'],
+    [pptScopeQuickReviewApiSource, 'body.kind === "text"'],
+    [pptScopeQuickReviewApiSource, "NOT a probability that content is false"],
+    [pptScopeQuickReviewApiSource, 'parsed.review_risk_percent < 0 || parsed.review_risk_percent > 100'],
   ]) {
     if (!source.includes(marker)) {
       throw new Error(`Quick review is missing a PPT-aligned requirement or responsible-AI safeguard: ${marker}`);
