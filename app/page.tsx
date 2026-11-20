@@ -426,6 +426,15 @@ export default function HomePage() {
         : null;
       if (sharedPostId) setRequestedPostId(sharedPostId);
       let followedUserIds: string[] = [];
+      let blockedUserIds: string[] = [];
+      if (currentUser) {
+        const { data: blockRows, error: blocksError } = await supabase
+          .from("blocks")
+          .select("blocked_id")
+          .eq("blocker_id", currentUser.id);
+        if (blocksError) throw blocksError;
+        blockedUserIds = (blockRows ?? []).map((row) => row.blocked_id);
+      }
       if (currentUser && filter === "Following" && activePage !== "Saved") {
         const { data: followingRows, error: followingError } = await supabase
           .from("follows")
@@ -513,6 +522,12 @@ export default function HomePage() {
           .maybeSingle();
         if (sharedPostError) throw sharedPostError;
         if (sharedPost?.status === "published") rows = [sharedPost as unknown as DbPost, ...rows];
+      }
+      // A block must apply consistently to every feed scope, including saved
+      // posts and direct shared-post links.
+      if (blockedUserIds.length) {
+        const blocked = new Set(blockedUserIds);
+        rows = rows.filter((row) => !blocked.has(row.author_id));
       }
       const postIds = rows.map((row) => row.id);
       const authorIds = [...new Set(rows.map((row) => row.author_id))];
