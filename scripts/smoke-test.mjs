@@ -221,12 +221,11 @@ try {
   for (const marker of ["pg_advisory_xact_lock", "hashtextextended", "v_count >= 5", "to service_role"]) {
     if (!quickReviewQuotaMigration.includes(marker)) throw new Error(`Quick review quota migration is missing atomic enforcement: ${marker}`);
   }
-  if (!quickReviewApiSource.includes('rpc("start_verification_quick_review"')) throw new Error("Quick review API must reserve quota atomically before contacting Gemini.");
-  process.stdout.write("PASS quick review quota is atomically enforced per user\\n");
-
   const quickReviewApiSource = await readFile(new URL("../app/api/verify/quick-review/route.ts", import.meta.url), "utf8");
   const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
-  for (const marker of ['requestBody.tools = [{ googleSearch: {} }]', 'grounding?.groundingChunks', 'grounding?.groundingSupports', 'grounding?.webSearchQueries', 'source_linked_statements:', 'grounding?.searchEntryPoint?.renderedContent', 'evidence_status:']) {
+  if (!quickReviewApiSource.includes('rpc("start_verification_quick_review"')) throw new Error("Quick review API must reserve quota atomically before contacting Gemini.");
+  process.stdout.write("PASS quick review quota is atomically enforced per user\\n");
+  for (const marker of ['review_risk_percent: { type: "INTEGER" }', 'parsed.review_risk_percent < 0', 'review_priority: parsed.review_risk_percent <= 30', 'requestBody.tools = [{ googleSearch: {} }]', 'grounding?.groundingChunks', 'grounding?.groundingSupports', 'grounding?.webSearchQueries', 'source_linked_statements:', 'grounding?.searchEntryPoint?.renderedContent', 'evidence_status:']) {
     if (!quickReviewApiSource.includes(marker)) throw new Error(`Text review is missing grounded evidence handling: ${marker}`);
   }
   for (const marker of ['review.sources.map', 'review.source_linked_statements.map', 'dangerouslySetInnerHTML', '30 days', 'Google Search grounded']) {
@@ -242,7 +241,7 @@ try {
   process.stdout.write("PASS quick review provider readiness is safely exposed without secrets\\n");
 
   const quickReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
-  for (const marker of ["AI review is currently unavailable", "Open Trust Center source discovery", "aiAvailable !== true"]) {
+  for (const marker of ["Experimental review-risk score", "0–30% · Low", "31–60% · Medium", "61–100% · High", "uncalibrated AI triage index", "AI review is currently unavailable", "Open Trust Center source discovery", "aiAvailable !== true"]) {
     if (!quickReviewPageSource.includes(marker)) throw new Error(`Quick review is missing honest provider-unavailable handling: ${marker}`);
   }
   process.stdout.write("PASS quick review disables analysis and offers source discovery when Gemini is unavailable\\n");
