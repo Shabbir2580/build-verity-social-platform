@@ -157,6 +157,9 @@ try {
   if (!feedBlockSource.includes('.from("blocks")') || !feedBlockSource.includes('blocked.has(row.author_id)')) {
     throw new Error("The main feed must exclude posts from accounts blocked by the signed-in viewer.");
   }
+  if (!feedBlockSource.includes('.select("post_id, author_id")') || !feedBlockSource.includes("blockedUserIds.includes(row.author_id)")) {
+    throw new Error("Comments and their visible counts must exclude authors blocked by the signed-in viewer.");
+  }
   const profileBlockSource = productPageSources[0];
   if (!profileBlockSource.includes("viewerBlockedProfile ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
     throw new Error("A blocked profile must not display its public posts to the viewer who blocked it.");
