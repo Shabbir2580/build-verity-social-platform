@@ -1473,3 +1473,172 @@ body { color: var(--verity-text); background: var(--verity-ivory); }
 @media (prefers-reduced-motion: reduce) {
   .verity-app .verity-post-card:hover { transform: none; }
 }
+
+
+/* Verity product-wide page polish — shared treatment for every non-feed workspace.
+   Keep feature markup and behavior intact; improve hierarchy, density, controls and responsive flow. */
+:root {
+  --verity-focus: 0 0 0 3px rgb(22 132 119 / 16%);
+  --verity-card-shadow: 0 8px 24px rgb(20 43 58 / 5%);
+}
+.verity-workspace,
+.verity-admin-page,
+.verity-product-page {
+  color: var(--verity-text, #1d2b33);
+  font-feature-settings: "ss01" on;
+}
+.verity-workspace > header,
+.verity-admin-page > header,
+.verity-product-page > header {
+  min-height: 68px;
+  border-color: var(--verity-border, #e1e7e3) !important;
+}
+.verity-workspace > section,
+.verity-admin-page > section,
+.verity-product-page > section {
+  padding-bottom: clamp(28px, 4vw, 56px);
+}
+.verity-workspace h1,
+.verity-admin-page h1,
+.verity-product-page h1 {
+  color: #142b3a;
+  letter-spacing: -.045em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.verity-workspace h2,
+.verity-admin-page h2,
+.verity-product-page h2 {
+  color: #1d3542;
+  letter-spacing: -.025em;
+}
+.verity-workspace p,
+.verity-admin-page p,
+.verity-product-page p {
+  text-wrap: pretty;
+}
+.verity-workspace section.rounded-2xl,
+.verity-workspace article.rounded-2xl,
+.verity-workspace .rounded-2xl.border,
+.verity-admin-page section.rounded-2xl,
+.verity-admin-page article.rounded-2xl,
+.verity-admin-page .rounded-2xl.border,
+.verity-product-page section.rounded-2xl,
+.verity-product-page article.rounded-2xl,
+.verity-product-page .rounded-2xl.border {
+  border-color: #e1e7e3;
+  box-shadow: var(--verity-card-shadow);
+}
+.verity-workspace input:not([type="checkbox"]):not([type="radio"]),
+.verity-workspace textarea,
+.verity-workspace select,
+.verity-admin-page input:not([type="checkbox"]):not([type="radio"]),
+.verity-admin-page textarea,
+.verity-admin-page select,
+.verity-product-page input:not([type="checkbox"]):not([type="radio"]),
+.verity-product-page textarea,
+.verity-product-page select {
+  border-color: #d9e2dd;
+  border-radius: 11px;
+  color: #1d2b33;
+}
+.verity-workspace input:focus,
+.verity-workspace textarea:focus,
+.verity-workspace select:focus,
+.verity-admin-page input:focus,
+.verity-admin-page textarea:focus,
+.verity-admin-page select:focus,
+.verity-product-page input:focus,
+.verity-product-page textarea:focus,
+.verity-product-page select:focus {
+  border-color: #168477;
+  outline: none;
+  box-shadow: var(--verity-focus);
+}
+.verity-workspace button,
+.verity-admin-page button,
+.verity-product-page button {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.verity-workspace button:disabled,
+.verity-admin-page button:disabled,
+.verity-product-page button:disabled {
+  cursor: not-allowed;
+}
+.verity-workspace a:focus-visible,
+.verity-admin-page a:focus-visible,
+.verity-product-page a:focus-visible,
+.verity-workspace button:focus-visible,
+.verity-admin-page button:focus-visible,
+.verity-product-page button:focus-visible {
+  outline: 3px solid rgb(22 132 119 / 35%);
+  outline-offset: 3px;
+}
+.verity-workspace .text-slate-500,
+.verity-admin-page .text-slate-500,
+.verity-product-page .text-slate-500 { color: #687780; }
+.verity-workspace .text-slate-400,
+.verity-admin-page .text-slate-400,
+.verity-product-page .text-slate-400 { color: #7c898e; }
+.verity-workspace .border-slate-200,
+.verity-admin-page .border-slate-200,
+.verity-product-page .border-slate-200 { border-color: #e1e7e3; }
+.verity-workspace .bg-slate-50,
+.verity-admin-page .bg-slate-50,
+.verity-product-page .bg-slate-50 { background-color: #f5f7f5; }
+.verity-workspace .rounded-xl.border,
+.verity-admin-page .rounded-xl.border,
+.verity-product-page .rounded-xl.border { border-color: #e1e7e3; }
+.verity-workspace table,
+.verity-admin-page table,
+.verity-product-page table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.verity-workspace th,
+.verity-admin-page th,
+.verity-product-page th {
+  color: #617078;
+  background: #f5f7f5;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.verity-workspace td,
+.verity-admin-page td,
+.verity-product-page td { border-color: #edf0ed; }
+.verity-workspace .overflow-x-auto,
+.verity-admin-page .overflow-x-auto,
+.verity-product-page .overflow-x-auto { scrollbar-width: thin; }
+.verity-workspace [role="alert"],
+.verity-admin-page [role="alert"],
+.verity-product-page [role="alert"] { border-radius: 12px; }
+.verity-workspace [role="status"],
+.verity-admin-page [role="status"],
+.verity-product-page [role="status"] { border-radius: 12px; }
+@media (max-width: 767px) {
+  .verity-workspace > header,
+  .verity-admin-page > header,
+  .verity-product-page > header { min-height: 60px; }
+  .verity-workspace > section,
+  .verity-admin-page > section,
+  .verity-product-page > section { padding-top: 22px; }
+  .verity-workspace h1,
+  .verity-admin-page h1,
+  .verity-product-page h1 { font-size: clamp(1.65rem, 7vw, 2.25rem); }
+  .verity-workspace .grid,
+  .verity-admin-page .grid,
+  .verity-product-page .grid { min-width: 0; }
+  .verity-workspace .overflow-x-auto,
+  .verity-admin-page .overflow-x-auto,
+  .verity-product-page .overflow-x-auto { max-width: 100%; }
+}
+@media (max-width: 480px) {
+  .verity-workspace,
+  .verity-admin-page,
+  .verity-product-page { padding-left: 12px !important; padding-right: 12px !important; }
+  .verity-workspace .rounded-2xl,
+  .verity-admin-page .rounded-2xl,
+  .verity-product-page .rounded-2xl { border-radius: 14px; }
+  .verity-workspace .shadow-sm,
+  .verity-admin-page .shadow-sm,
+  .verity-product-page .shadow-sm { box-shadow: 0 3px 12px rgb(20 43 58 / 5%); }
+}
