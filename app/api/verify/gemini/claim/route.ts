@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   const recordFailure = async (message: string, status: number) => {
     const explanation = ("Automatic news claim assessment failed: " + message).slice(0, 4000);
     const { error: checkError } = await supabase.from("content_checks").insert({
-      post_id: post.id, provider: "Google Gemini / gemini-2.5-flash", check_type: "claim",
+      post_id: post.id, provider: "Google Gemini / gemini-3.5-flash-lite", check_type: "claim",
       status: "failed", claim: claim.slice(0, 1000), signals: [], supporting: [], contradicting: [],
       explanation, uncertainty: "No true/false conclusion was produced. Search-result headlines are not sufficient proof; human review is required.",
       is_demo: false, assessed_at: null,
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       "Claim: " + claim,
       "Search results: " + JSON.stringify(evidenceContext),
     ].join("\n");
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: {
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     const validIndices = (indices: number[]) => [...new Set(indices.filter((index) => Number.isInteger(index) && index >= 1 && index <= evidenceContext.length))].slice(0, 10);
     const selectSources = (indices: number[]) => validIndices(indices).map((index) => evidenceContext.find((item) => item.index === index)).filter(Boolean).map((item) => ({ title: item!.title, detail: "Headline from " + (item!.publisher || "publisher not identified") + "; relevance is model-assessed and this headline is not verified evidence.", url: item!.url }));
     const { data: saved, error: saveError } = await supabase.from("content_checks").insert({
-      post_id: post.id, provider: "Google Gemini / gemini-2.5-flash", check_type: "claim", status: "uncertain",
+      post_id: post.id, provider: "Google Gemini / gemini-3.5-flash-lite", check_type: "claim", status: "uncertain",
       claim: claim.slice(0, 1000), signals: [
         { kind: "claim_analysis", source_count: evidenceContext.length, method: "Google News RSS headlines reviewed by Gemini", claim_type: result.claim_type.slice(0, 120), time_sensitivity: result.time_sensitivity.slice(0, 120) },
         ...result.missing_context.slice(0, 6).map((detail) => ({ kind: "missing_context", detail: detail.slice(0, 500) })),
