@@ -108,7 +108,7 @@ export default function QuickReviewPage() {
       <section className="rounded-3xl bg-[#142b3a] p-6 text-white sm:p-9">
         <div className="flex items-center gap-2 text-teal-200"><Sparkles size={18}/><span className="text-xs font-bold uppercase tracking-[0.16em]">AI-assisted triage</span></div>
         <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">Pause. Review. Verify.</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">Submit text or an image for a cautious review. Text reviews can use live Google Search sources; image reviews inspect visible details and context only. This is a review-priority aid—not a truth detector or forensic AI-image detector.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">Submit text or an image for an experimental 0–100 human-review risk index. The proposed bands are 0–30 low, 31–60 medium and 61–100 high. Text reviews can use live Google Search sources; image reviews inspect visible details and context only. The score is not a probability or truth verdict, and it is not yet validated against a labelled dataset.</p>
       </section>
 
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
