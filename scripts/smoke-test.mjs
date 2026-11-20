@@ -150,7 +150,7 @@ try {
   for (const marker of ["Media cleanup is pending", "Post deleted.", "moderation history has been retained"]) {
     if (!profileDeleteSource.includes(marker)) throw new Error(`Profile post deletion is missing resilient cleanup feedback: ${marker}`);
   }
-  for (const marker of ['rpc("is_blocked_between", { a: viewer, b: found.id })', "const profileBlockedViewer = Boolean(blockedBetween) && !viewerBlockedProfile", "blocked || blockedByProfile", "!blockedByProfile && <button", "This account has blocked you"]) {
+  for (const marker of ['rpc("is_blocked_between", { a: viewer, b: found.id })', "const profileBlockedViewer = Boolean(blockedBetween) && !viewerBlockedProfile", "blocked || blockedByProfile", "if (blockedByProfile)", "!blockedByProfile && <button", "This account has blocked you"]) {
     if (!profileBlockSource.includes(marker)) throw new Error(`Profile visibility must respect both directions of a block: ${marker}`);
   }
   process.stdout.write("PASS profile post deletion hides content before best-effort media cleanup\\n");
@@ -165,7 +165,7 @@ try {
   }
   const profileBlockSource = productPageSources[0];
   if (!profileBlockSource.includes("eitherAccountBlocked ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
-    throw new Error("A blocked profile must not display its public posts to the viewer who blocked it.");
+    throw new Error("A profile must not display posts when either account has blocked the other.");
   }
   const questionBlockSource = await readFile(new URL("../app/questions/page.tsx", import.meta.url), "utf8");
   if (!questionBlockSource.includes('.from("blocks")') ||
