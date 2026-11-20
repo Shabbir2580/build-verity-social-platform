@@ -59,7 +59,7 @@ Requirements: Node.js compatible with the installed Next.js version and pnpm.
    GOOGLE_FACT_CHECK_API_KEY=your_google_fact_check_tools_api_key
    ```
 
-   Set `VERITY_ADMIN_AI_ENABLED=true` only after reviewing Gemini quotas and usage. The Google Fact Check key is optional; without it, the Trust Center's published-review search remains unavailable. Restrict that key to the Fact Check Tools API and set conservative project quotas. Never commit any of these secrets.
+   Set `GEMINI_API_KEY` in the Vercel production environment to enable standalone AI text/image review and the existing post-assessment routes. Without it, Quick Review reports that the provider is unconfigured, disables AI submission and links users to source discovery; it never fabricates an AI result. Set `VERITY_ADMIN_AI_ENABLED=true` only after reviewing Gemini quotas and usage. The Google Fact Check key is optional; without it, the Trust Center's published-review search remains unavailable. Restrict that key to the Fact Check Tools API and set conservative project quotas. Never commit any of these secrets.
 
    The application also accepts `NEXT_PUBLIC_SUPABASE_ANON_KEY` as a fallback. Never commit service-role keys or other secrets.
 
