@@ -23,6 +23,15 @@ type GeminiAssessment = {
   summary: string;
 };
 
+function providerFailureMessage(payload: unknown, status: number): string {
+  const data = payload && typeof payload === "object" ? payload as { error?: { status?: unknown; message?: unknown } } : {};
+  const code = typeof data.error?.status === "string" ? data.error.status.replace(/[^A-Z0-9_]/gi, "").slice(0, 48) : "";
+  const detail = typeof data.error?.message === "string"
+    ? data.error.message.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 220)
+    : "";
+  return `Gemini API returned HTTP ${status}${code ? ` (${code})` : ""}${detail ? `: ${detail}` : ""}.`;
+}
+
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
@@ -220,11 +229,13 @@ export async function POST(request: NextRequest) {
 
     if (!geminiResponse.ok) {
       const providerPayload = await geminiResponse.json().catch(() => ({}));
-      const providerMessage = typeof providerPayload?.error?.message === "string" ? providerPayload.error.message : "";
-      if (geminiResponse.status === 429) return recordFailure("Gemini free-tier quota is currently exhausted. Try again later.", 429);
-      if (geminiResponse.status === 400) return recordFailure("Gemini rejected this media format or request.", 422);
-      console.error("Gemini media assessment failed:", geminiResponse.status, providerMessage.slice(0, 300));
-      return recordFailure("Gemini could not complete this assessment. No result was stored.", 502);
+      const diagnostic = providerFailureMessage(providerPayload, geminiResponse.status);
+      console.error("Gemini media assessment failed:", diagnostic);
+      if (geminiResponse.status === 429) return recordFailure(diagnostic + " Check the Google AI quota and billing for this key.", 429);
+      if (geminiResponse.status === 400) return recordFailure(diagnostic + " Check the media MIME type and request format.", 422);
+      if (geminiResponse.status === 403) return recordFailure(diagnostic + " Check that the API key is valid and the Gemini API is enabled for its Google project.", 503);
+      if (geminiResponse.status === 404) return recordFailure(diagnostic + " The configured model endpoint was not found.", 503);
+      return recordFailure(diagnostic + " No assessment was stored.", 502);
     }
 
     const payload = await geminiResponse.json();
@@ -292,6 +303,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ assessment: saved, queuedForHumanReview: !caseError }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("Gemini media route error:", error instanceof Error ? error.message : "unknown error");
-    return recordFailure("Media analysis timed out or failed.", 502);
+    return recordFailure(error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError") ? "Gemini media analysis timed out. Retry with a smaller supported file." : "Media analysis failed before a result could be stored. Check server logs for the request error.", 502);
   }
 }

@@ -285,7 +285,15 @@ try {
   }
   process.stdout.write("PASS /api/verify/gemini/claim fails closed without auth/configuration\\n");
 
-  process.stdout.write(`\nSmoke test passed for ${routes.length} production routes.\n`);
+  const mediaGeminiSource = await readFile(new URL("../app/api/verify/gemini/route.ts", import.meta.url), "utf8");
+  const claimGeminiSource = await readFile(new URL("../app/api/verify/gemini/claim/route.ts", import.meta.url), "utf8");
+  for (const marker of ["providerFailureMessage", "Gemini API returned HTTP", "Check the Google AI quota and billing"]) {
+    if (!mediaGeminiSource.includes(marker) || !claimGeminiSource.includes(marker)) throw new Error(`Gemini diagnostics are missing: ${marker}`);
+  }
+  if (!mediaGeminiSource.includes("TimeoutError") || !claimGeminiSource.includes("TimeoutError")) throw new Error("Gemini timeout failures must be reported distinctly.");
+  process.stdout.write("PASS Gemini provider failures expose sanitized diagnostic reasons\\n");
+
+  process.stdout.write(`\\nSmoke test passed for ${routes.length} production routes.\\n`);
 } finally {
   if (server.pid) {
     try {

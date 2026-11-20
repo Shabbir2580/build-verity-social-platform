@@ -35,6 +35,15 @@ function parseNews(xml: string): NewsItem[] {
   return items;
 }
 
+function providerFailureMessage(payload: unknown, status: number): string {
+  const data = payload && typeof payload === "object" ? payload as { error?: { status?: unknown; message?: unknown } } : {};
+  const code = typeof data.error?.status === "string" ? data.error.status.replace(/[^A-Z0-9_]/gi, "").slice(0, 48) : "";
+  const detail = typeof data.error?.message === "string"
+    ? data.error.message.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 220)
+    : "";
+  return `Gemini API returned HTTP ${status}${code ? ` (${code})` : ""}${detail ? `: ${detail}` : ""}.`;
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -137,9 +146,13 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) {
-      if (response.status === 429) return recordFailure("Gemini free-tier quota is currently exhausted. Try again later.", 429);
-      console.error("Gemini claim assessment failed:", response.status);
-      return recordFailure("Gemini could not complete this assessment. No result was stored.", 502);
+      const providerPayload = await response.json().catch(() => ({}));
+      const diagnostic = providerFailureMessage(providerPayload, response.status);
+      console.error("Gemini claim assessment failed:", diagnostic);
+      if (response.status === 429) return recordFailure(diagnostic + " Check the Google AI quota and billing for this key.", 429);
+      if (response.status === 403) return recordFailure(diagnostic + " Check that the API key is valid and the Gemini API is enabled for its Google project.", 503);
+      if (response.status === 404) return recordFailure(diagnostic + " The configured model endpoint was not found.", 503);
+      return recordFailure(diagnostic + " Check the claim request and provider configuration.", 502);
     }
     const payload = await response.json();
     const raw = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim();
@@ -171,6 +184,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ assessment: saved, sourcesFound: evidenceContext.length, queuedForHumanReview: !caseError }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("Gemini claim route error:", error instanceof Error ? error.message : "unknown error");
-    return recordFailure("Claim analysis timed out or failed.", 502);
+    return recordFailure(error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError") ? "Gemini claim analysis timed out. Retry later." : "Claim analysis failed before a result could be stored. Check server logs for the request error.", 502);
   }
 }
