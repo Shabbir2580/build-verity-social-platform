@@ -172,6 +172,21 @@ try {
   }
   process.stdout.write("PASS admin AI and business workspace access/cost boundaries are present\\n");
 
+  const feedSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const questionsSource = await readFile(new URL("../app/questions/page.tsx", import.meta.url), "utf8");
+  const trustCenterSource = await readFile(new URL("../app/verify/page.tsx", import.meta.url), "utf8");
+  const quickReviewUiSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
+  for (const marker of ["Create a post", "Post type", "Community", "Title", "Caption", "Submit a ticket", "Request human review", "Communities"]) {
+    if (!feedSource.includes(marker)) throw new Error(`PPT community/feed requirement is missing: ${marker}`);
+  }
+  for (const marker of ["Ask the community", "Publish question", "Add an answer"]) {
+    if (!questionsSource.includes(marker)) throw new Error(`PPT questions/discussion requirement is missing: ${marker}`);
+  }
+  if (!trustCenterSource.includes("/verify/quick") || !quickReviewUiSource.includes("Quick content review")) {
+    throw new Error("PPT text/image AI review entry point is missing from the Trust Center.");
+  }
+  process.stdout.write("PASS PPT acceptance checks: feed, post composer, questions, support, human review and AI review entry point\\n");
+
   await waitForServer();
 
   for (const [path, expectedText] of routes) {
