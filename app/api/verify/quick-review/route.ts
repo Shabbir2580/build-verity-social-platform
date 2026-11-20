@@ -64,11 +64,11 @@ export async function POST(request: NextRequest) {
     const mime = typeof body.mimeType === "string" ? body.mimeType : "";
     const encoded = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
     if (!ALLOWED_IMAGE_TYPES.has(mime)) return fail("Use a JPG, PNG or WebP image.", 415);
-    if (!encoded || encoded.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 8) return fail("Image must be no larger than 8 MB.", 413);
+    if (!encoded || encoded.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 8) return fail("Image must be no larger than 3 MB.", 413);
     const data = encoded.replace(/^data:[^;]+;base64,/, "");
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return fail("The image data is invalid.", 400);
     const bytes = Buffer.from(data, "base64");
-    if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return fail("Image must be no larger than 8 MB.", 413);
+    if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return fail("Image must be no larger than 3 MB.", 413);
     const matches = mime === "image/jpeg"
       ? bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
       : mime === "image/png"
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     "Never issue true/false, real/fake or misinformation verdicts. Do not invent facts, sources, URLs, dates, quotes or percentages.",
     "A high priority means more human checking is warranted, not that content is false. A low priority does not certify accuracy.",
     "Return JSON with review_priority, summary, signals, missing_context, verification_steps and uncertainty. Use concise, specific bullet strings. If there is insufficient information, say so and use medium priority.",
-  ].join("\\n");
+  ].join("\n");
   const submittedContent = kind === "text" ? "Text to review: " + userContent : "Review the attached image.";
 
   try {
