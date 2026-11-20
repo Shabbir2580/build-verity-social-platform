@@ -39,7 +39,7 @@ const moderationAssistantSource = await readFile(new URL("../app/api/moderation/
 const supportAssistantSource = await readFile(new URL("../app/api/support/ai-assist/route.ts", import.meta.url), "utf8");
 for (const marker of [
   "VERITY — PRODUCT AND OPERATIONS HANDBOOK",
-  "MEDIA ORIGIN",
+  "Media origin/provenance",
   "MODERATION WORKFLOW",
   "SUPPORT WORKFLOW",
   "AI ASSISTANT CAPABILITIES",
