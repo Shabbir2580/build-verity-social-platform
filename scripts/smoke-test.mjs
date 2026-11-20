@@ -150,6 +150,9 @@ try {
   for (const marker of ["Media cleanup is pending", "Post deleted.", "moderation history has been retained"]) {
     if (!profileDeleteSource.includes(marker)) throw new Error(`Profile post deletion is missing resilient cleanup feedback: ${marker}`);
   }
+  for (const marker of ['rpc("is_blocked_between", { a: viewer, b: found.id })', "const profileBlockedViewer = Boolean(blockedBetween) && !viewerBlockedProfile", "blocked || blockedByProfile", "!blockedByProfile && <button", "This account has blocked you"]) {
+    if (!profileBlockSource.includes(marker)) throw new Error(`Profile visibility must respect both directions of a block: ${marker}`);
+  }
   process.stdout.write("PASS profile post deletion hides content before best-effort media cleanup\\n");
   process.stdout.write("PASS profile, people, community and notification pages use the shared product shell\\n");
 
