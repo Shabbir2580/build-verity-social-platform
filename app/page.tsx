@@ -562,7 +562,7 @@ export default function HomePage() {
 
       let profiles: Profile[] = [];
       let communityRows: Community[] = [];
-      let reactionRows: { post_id: string; user_id: string }[] = [];
+      let reactionRows: { post_id: string; reaction_count: number }[] = [];
       let commentRows: { post_id: string; author_id: string }[] = [];
       let myReactionRows: { post_id: string }[] = [];
       let myBookmarkRows: { post_id: string }[] = [];
@@ -589,11 +589,7 @@ export default function HomePage() {
       }
 
       if (postIds.length) {
-        const { data, error: reactionError } = await supabase
-          .from("reactions")
-          .select("post_id, user_id")
-          .in("post_id", postIds)
-          .limit(5000);
+        const { data, error: reactionError } = await supabase.rpc("get_post_reaction_counts", { p_post_ids: postIds });
         if (reactionError) throw reactionError;
         reactionRows = (data ?? []) as { post_id: string; user_id: string }[];
 
@@ -630,7 +626,7 @@ export default function HomePage() {
       const reactionCounts = new Map<string, number>();
       const commentCounts = new Map<string, number>();
 
-      for (const row of reactionRows) reactionCounts.set(row.post_id, (reactionCounts.get(row.post_id) ?? 0) + 1);
+      for (const row of reactionRows) reactionCounts.set(row.post_id, row.reaction_count);
       for (const row of commentRows) {
         if (blockedIds.includes(row.author_id)) continue;
         commentCounts.set(row.post_id, (commentCounts.get(row.post_id) ?? 0) + 1);
