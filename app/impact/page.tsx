@@ -51,7 +51,7 @@ export default function ImpactPage() {
   useEffect(() => { void load(); }, []);
 
   return (
-    <main className="min-h-screen bg-[#f5f7f6] px-4 pb-16 text-slate-900 sm:px-6">
+    <main className="verity-public-page min-h-screen bg-[#f5f7f6] px-4 pb-16 text-slate-900 sm:px-6">
       <header className="mx-auto flex min-h-[72px] max-w-6xl items-center justify-between border-b border-slate-200">
         <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={16}/> Back to Verity</Link>
         <span className="text-lg font-black tracking-tight">verity<span className="text-teal-700">.</span></span>
