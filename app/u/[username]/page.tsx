@@ -44,6 +44,7 @@ export default function PublicProfilePage() {
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [blockedByProfile, setBlockedByProfile] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,7 +78,7 @@ export default function PublicProfilePage() {
       const viewer = auth.user?.id ?? null;
       setViewerId(viewer);
       setProfile(found);
-      const [{ data: postRows, error: postsError }, { count: followerCount, error: followerError }, { count: followingTotal, error: followingError }, { count: isFollowing, error: relationError }, { count: isBlocked, error: blockError }] = await Promise.all([
+      const [{ data: postRows, error: postsError }, { count: followerCount, error: followerError }, { count: followingTotal, error: followingError }, { count: isFollowing, error: relationError }, { count: isBlocked, error: blockError }, { data: blockedBetween, error: blockedBetweenError }] = await Promise.all([
         supabase.from("posts").select("id, title, body, type, created_at, community_id")
           .eq("author_id", found.id).eq("status", "published")
           .order("created_at", { ascending: false }).range(0, 29),
@@ -89,19 +90,26 @@ export default function PublicProfilePage() {
         viewer && viewer !== found.id
           ? supabase.from("blocks").select("blocked_id", { count: "exact", head: true }).eq("blocker_id", viewer).eq("blocked_id", found.id)
           : Promise.resolve({ count: 0, error: null }),
+        viewer && viewer !== found.id
+          ? supabase.rpc("is_blocked_between", { a: viewer, b: found.id })
+          : Promise.resolve({ data: false, error: null }),
       ]);
       if (postsError) throw postsError;
       if (followerError) throw followerError;
       if (followingError) throw followingError;
       if (relationError) throw relationError;
       if (blockError) throw blockError;
+      if (blockedBetweenError) throw blockedBetweenError;
       const viewerBlockedProfile = (isBlocked ?? 0) > 0;
-      setPosts(viewerBlockedProfile ? [] : postRows ?? []);
-      setPostsHasMore(!viewerBlockedProfile && (postRows ?? []).length === 30);
+      const profileBlockedViewer = Boolean(blockedBetween) && !viewerBlockedProfile;
+      const eitherAccountBlocked = Boolean(blockedBetween);
+      setPosts(eitherAccountBlocked ? [] : postRows ?? []);
+      setPostsHasMore(!eitherAccountBlocked && (postRows ?? []).length === 30);
       setFollowers(followerCount ?? 0);
       setFollowingCount(followingTotal ?? 0);
       setFollowing((isFollowing ?? 0) > 0);
       setBlocked(viewerBlockedProfile);
+      setBlockedByProfile(profileBlockedViewer);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load this profile.");
     } finally {
@@ -112,7 +120,7 @@ export default function PublicProfilePage() {
   useEffect(() => { void load(); }, [load]);
 
   async function loadMorePosts() {
-    if (!profile || postsLoadingMore || !postsHasMore) return;
+    if (!profile || blocked || blockedByProfile || postsLoadingMore || !postsHasMore) return;
     setPostsLoadingMore(true);
     setError("");
     try {
@@ -138,6 +146,10 @@ export default function PublicProfilePage() {
 
   async function toggleFollow() {
     if (!profile || busy) return;
+    if (blockedByProfile) {
+      setError("You cannot follow this account because it has blocked you.");
+      return;
+    }
     if (!viewerId) {
       router.push("/login?next=" + encodeURIComponent("/u/" + username));
       return;
@@ -307,16 +319,17 @@ export default function PublicProfilePage() {
                   <button type="button" onClick={() => void toggleBlock()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:border-rose-200 hover:text-rose-700 disabled:opacity-60">
                     <ShieldBan size={15} />{blocked ? "Unblock" : "Block"}
                   </button>
-                  <button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
+                  {!blockedByProfile && <button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
                     {busy ? <LoaderCircle size={15} className="animate-spin" /> : following ? <UserMinus size={15} /> : <UserPlus size={15} />}
                     {following ? "Following" : "Follow"}
-                  </button>
+                  </button>}
                 </div>
               ) : null}
             </div>
             <h1 className="mt-4 text-2xl font-black tracking-tight">{profile.display_name}</h1>
             <p className="mt-1 text-sm text-slate-500">@{profile.username}</p>
             {blocked && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">You have blocked this account. You can unblock it from here or in Settings.</p>}
+            {blockedByProfile && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">This account has blocked you. You cannot follow it or view its posts.</p>}
             {profile.bio && <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-slate-700">{profile.bio}</p>}
             <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
               <span><strong className="text-slate-900">{followers}</strong> followers</span>
@@ -331,8 +344,8 @@ export default function PublicProfilePage() {
           <div><h2 className="text-xl font-black">Posts</h2><p className="mt-1 text-xs text-slate-500">Public posts shared by @{profile.username}</p></div>
           <span className="text-xs font-semibold text-slate-500">{posts.length} loaded{postsHasMore ? " · more available" : ""}</span>
         </div>
-        {blocked ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"><ShieldBan className="mx-auto text-slate-300" size={30} /><p className="mt-3 font-bold">Posts hidden</p><p className="mt-1 text-sm text-slate-500">You blocked this account. Unblock them above to see their public posts again.</p></div>
+        {blocked || blockedByProfile ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"><ShieldBan className="mx-auto text-slate-300" size={30} /><p className="mt-3 font-bold">Posts hidden</p><p className="mt-1 text-sm text-slate-500">{blocked ? "You blocked this account. Unblock them above to see their public posts again." : "This account has blocked you, so its posts are not available to your account."}</p></div>
         ) : posts.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"><MessageCircle className="mx-auto text-slate-300" size={30} /><p className="mt-3 font-bold">No public posts yet</p><p className="mt-1 text-sm text-slate-500">When this member shares something, it will appear here.</p></div>
         ) : (
