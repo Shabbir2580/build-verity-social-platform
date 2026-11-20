@@ -202,6 +202,7 @@ export async function POST(request: NextRequest) {
       "Do not claim that reports prove misconduct. Business enquiries are leads, not revenue. No payment ledger, collected payments, expenses, or verified financial metrics are supplied.",
       "Never recommend automatic bans, removals, appeal outcomes, truth verdicts, or other consequential decisions. Recommend a human review and link staff to the relevant workspace in prose when appropriate.",
       "Be specific and concise. Avoid generic filler, unsupported causal explanations, fabricated urgency, and repeating the entire dataset. Distinguish observed facts, interpretation, and recommendations.",
+      "For product, feature, policy-boundary, or how-to questions, answer from the Verity handbook even when no metric is relevant. Do not say you lack context when the handbook contains the answer. For live record questions, use only supplied metrics and explain which workspace a staff member must open when an individual record is needed.",
       modeInstructions[mode],
     ].join("\n\n");
     const prompt = [
