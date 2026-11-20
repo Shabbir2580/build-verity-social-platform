@@ -15,6 +15,10 @@ type Review = {
   provider: string;
   checked_at: string;
   stored: false;
+  evidence_status: "visual_only" | "google_search_grounded" | "search_not_used";
+  sources: { title: string; url: string }[];
+  search_queries: string[];
+  search_entry_point_html: string | null;
 };
 
 function readFile(file: File): Promise<string> {
@@ -89,7 +93,7 @@ export default function QuickReviewPage() {
       <section className="rounded-3xl bg-[#142b3a] p-6 text-white sm:p-9">
         <div className="flex items-center gap-2 text-teal-200"><Sparkles size={18}/><span className="text-xs font-bold uppercase tracking-[0.16em]">AI-assisted triage</span></div>
         <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">Pause. Review. Verify.</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">Submit text or an image for a cautious review of observable signals, missing context and useful next checks. This is a review-priority aid—not a truth detector or forensic AI-image detector.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">Submit text or an image for a cautious review. Text reviews can use live Google Search sources; image reviews inspect visible details and context only. This is a review-priority aid—not a truth detector or forensic AI-image detector.</p>
       </section>
 
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -104,7 +108,7 @@ export default function QuickReviewPage() {
           <label className="block text-sm font-semibold">Choose an image
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFileChange} className="mt-2 block w-full rounded-xl border border-slate-200 p-3 text-sm"/>
           </label>
-          <p className="mt-2 text-xs text-slate-500">JPG, PNG or WebP · maximum 3 MB. The model can describe visible details and context gaps; it cannot prove whether an image is AI-generated or manipulated.</p>
+          <p className="mt-2 text-xs text-slate-500">JPG, PNG or WebP · maximum 3 MB. The model can describe visible details and context gaps; it cannot prove whether an image is AI-generated or manipulated. Text-only web source grounding is not used for images.</p>
           {file && <p className="mt-2 text-xs text-slate-600">{file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB</p>}
         </div>}
         <label className="mt-5 flex cursor-pointer items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-950">
@@ -128,6 +132,15 @@ export default function QuickReviewPage() {
         <div className="grid gap-4 md:grid-cols-3">
           {[[ "Signals to inspect", review.signals ], [ "Missing context", review.missing_context ], [ "Next verification steps", review.verification_steps ]].map(([heading, items]) => <div key={String(heading)} className="rounded-2xl border border-slate-200 p-4"><h3 className="text-sm font-semibold">{heading}</h3>{(items as string[]).length ? <ul className="mt-3 list-disc space-y-2 pl-4 text-xs leading-5 text-slate-600">{(items as string[]).map((item, index) => <li key={index}>{item}</li>)}</ul> : <p className="mt-3 text-xs text-slate-500">No specific items returned.</p>}</div>)}
         </div>
+        {kind === "text" && <section className="rounded-2xl border border-slate-200 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">Evidence and source checks</h3>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600">{review.evidence_status === "google_search_grounded" ? "Google Search grounded" : "No grounded sources returned"}</span>
+          </div>
+          {review.sources.length > 0 ? <ol className="mt-3 space-y-2">{review.sources.map((source, index) => <li key={source.url} className="flex items-start gap-2 text-xs leading-5"><span className="mt-0.5 text-slate-400">{index + 1}.</span><a href={source.url} target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline decoration-teal-300 underline-offset-2 hover:text-teal-950">{source.title}</a></li>)}</ol> : <p className="mt-3 text-xs leading-5 text-slate-600">Google Search did not return source citations for this response. Treat the analysis as ungrounded and verify the claim independently.</p>}
+          {review.search_queries.length > 0 && <p className="mt-3 text-[11px] leading-5 text-slate-500">Searches used: {review.search_queries.join(" · ")}</p>}
+          {review.search_entry_point_html && <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white"><p className="px-3 pt-3 text-[10px] font-bold uppercase tracking-wide text-slate-500">Google Search suggestions</p><iframe title="Google Search suggestions" srcDoc={review.search_entry_point_html} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" className="h-28 w-full border-0" /></div>}
+        </section>}
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-sm font-semibold text-amber-950">Uncertainty and limitations</h3><p className="mt-2 text-xs leading-5 text-amber-900">{review.uncertainty}</p><p className="mt-2 text-xs leading-5 text-amber-900">This priority is not a percentage, probability, model-accuracy score or truth verdict. High means check more carefully; it does not mean false. Low does not mean verified.</p></div>
         <p className="text-[11px] text-slate-400">{review.provider} · {new Date(review.checked_at).toLocaleString()} · Not stored as a permanent assessment</p>
       </section>}
