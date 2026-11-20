@@ -190,6 +190,12 @@ try {
       !profileBlockSource.slice(blockActionStart, blockActionEnd).includes("finally")) {
     throw new Error("Follow and block actions must release their busy state after network failures.");
   }
+  const peopleDiscoverySource = await readFile(new URL("../app/people/page.tsx", import.meta.url), "utf8");
+  if (!peopleDiscoverySource.includes('insertError.code === "42501"') || !peopleDiscoverySource.includes("You can't follow this account right now.") || !peopleDiscoverySource.includes("no block exists between the accounts")) {
+    throw new Error("People discovery must explain blocked or restricted follow failures without exposing raw database errors.");
+  }
+  process.stdout.write("PASS people discovery gives clear feedback for blocked or restricted follow attempts\\n");
+
   process.stdout.write("PASS blocked accounts are hidden from feed and profile views\\n");
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
