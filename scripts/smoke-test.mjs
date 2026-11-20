@@ -217,7 +217,7 @@ try {
     }
   }
 
-  const quickReviewQuotaMigration = await readFile(new URL("../supabase/migrations/20261120100000_atomic_quick_review_rate_limit.sql", import.meta.url), "utf8");
+  const quickReviewQuotaMigration = await readFile(new URL("../supabase/migrations/20261120045416_atomic_quick_review_rate_limit.sql", import.meta.url), "utf8");
   for (const marker of ["pg_advisory_xact_lock", "hashtextextended", "v_count >= 5", "to service_role"]) {
     if (!quickReviewQuotaMigration.includes(marker)) throw new Error(`Quick review quota migration is missing atomic enforcement: ${marker}`);
   }
