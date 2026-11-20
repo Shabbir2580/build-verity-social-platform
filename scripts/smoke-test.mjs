@@ -302,7 +302,7 @@ try {
   process.stdout.write("PASS moderation AI includes discussion context and sparse-evidence warnings\\n");
 
   const adminGeminiModelSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
-  if (!adminGeminiModelSource.includes("gemini-3.5-flash-lite") || adminGeminiModelSource.includes("gemini-3.5-flash-lite")) throw new Error("Admin assistant must use the current Gemini 3.5 Flash-Lite model.");
+  if (!adminGeminiModelSource.includes("gemini-3.5-flash-lite")) throw new Error("Admin assistant must use the current Gemini 3.5 Flash-Lite model.");
   if (!adminGeminiModelSource.includes("providerCode") || !adminGeminiModelSource.includes("Google Gemini denied generation access")) throw new Error("Admin assistant provider diagnostics are missing.");
   process.stdout.write("PASS admin assistant uses supported Gemini model and reports provider failures\\n");
 
