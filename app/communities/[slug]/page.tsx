@@ -54,11 +54,12 @@ export default function CommunityDetailPage() {
       const current = communityData as Community;
       setCommunity(current);
 
-      const [ruleResult, memberCountResponse, postResult, myMembership] = await Promise.all([
+      const [ruleResult, memberCountResponse, postResult, myMembership, blockResult] = await Promise.all([
         supabase.from("community_rules").select("id, position, title, body").eq("community_id", current.id).order("position", { ascending: true }),
         fetch("/api/public/community-member-count?communityId=" + encodeURIComponent(current.id), { cache: "no-store" }),
         supabase.from("posts").select("id, author_id, title, body, declared_category, created_at").eq("community_id", current.id).eq("status", "published").order("created_at", { ascending: false }).limit(50),
         currentUserId ? supabase.from("community_memberships").select("role").eq("community_id", current.id).eq("user_id", currentUserId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        currentUserId ? supabase.from("blocks").select("blocked_id").eq("blocker_id", currentUserId) : Promise.resolve({ data: [], error: null }),
       ]);
       if (ruleResult.error) throw ruleResult.error;
       if (!memberCountResponse.ok) throw new Error("Could not load the community member count.");
@@ -66,10 +67,12 @@ export default function CommunityDetailPage() {
       if (!Number.isSafeInteger(memberCountPayload.count) || memberCountPayload.count < 0) throw new Error("The community member count was invalid.");
       if (postResult.error) throw postResult.error;
       if (myMembership.error) throw myMembership.error;
+      if (blockResult.error) throw blockResult.error;
       setRules((ruleResult.data ?? []) as Rule[]);
       setMembers(memberCountPayload.count);
       setRole(myMembership.data?.role ?? null);
-      const postRows = (postResult.data ?? []) as Post[];
+      const blockedAuthors = new Set((blockResult.data ?? []).map((row) => row.blocked_id));
+      const postRows = ((postResult.data ?? []) as Post[]).filter((post) => !blockedAuthors.has(post.author_id));
       setPosts(postRows);
       const ids = [...new Set(postRows.map((post) => post.author_id))];
       if (ids.length) {
