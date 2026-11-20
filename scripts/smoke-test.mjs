@@ -20,6 +20,7 @@ const routes = [
   ["/forgot-password", "Forgot your password?"],
   ["/reset-password", "Checking your recovery link"],
   ["/u/verity-smoke-test-user", "Loading profile..."],
+  ["/communities", "Find your people."],
   ["/communities/verity-smoke-test-community", "Loading community..."],
   ["/support/tickets/00000000-0000-4000-8000-000000000002", "Ticket conversation"],
   ["/support/staff", null],
@@ -82,6 +83,21 @@ try {
   if (!signupPageSource.includes('callbackUrl.searchParams.set("next", getSafeNextPath())') || signupPageSource.includes('callbackUrl.searchParams.set("next", "/")')) {
     throw new Error("Email signup confirmation must preserve the validated destination instead of always returning users to the home page.");
   }
+  const communityDirectorySource = await readFile(new URL("../app/communities/page.tsx", import.meta.url), "utf8");
+  for (const marker of [
+    '.from("communities")',
+    '.from("community_memberships")',
+    'router.push("/login?next=%2Fcommunities")',
+    'currentRole === "owner"',
+    'role="alert"',
+    'role="status"',
+  ]) {
+    if (!communityDirectorySource.includes(marker)) {
+      throw new Error(`Public community directory is missing required discovery or membership behavior: ${marker}`);
+    }
+  }
+  process.stdout.write("PASS public community directory supports discovery and authenticated membership actions\\n");
+
   const homePageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   for (const marker of ["Optional content review.", 'href="/verify/quick"', "Sign-in and explicit consent are required"]) {
     if (!homePageSource.includes(marker)) throw new Error(`Home feed AI review notice is missing accurate opt-in guidance: ${marker}`);
