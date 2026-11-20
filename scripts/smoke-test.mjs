@@ -673,6 +673,12 @@ try {
   }
   process.stdout.write("PASS appeal notifications link to the existing Trust Center route\\n");
 
+  const adminAppealNotificationMigration = await readFile(new URL("../supabase/migrations/20261120093200_fix_admin_appeal_notification_deep_link.sql", import.meta.url), "utf8");
+  if (!adminAppealNotificationMigration.includes("admin_manage_post(uuid,text,text)") || !adminAppealNotificationMigration.includes("'/support?tab=appeals'") || !adminAppealNotificationMigration.includes("'/verify'")) {
+    throw new Error("Administrator-triggered appeal notifications must link to the existing Trust Center route.");
+  }
+  process.stdout.write("PASS administrator appeal notifications link to the existing Trust Center route\\n");
+
   const adminDirectorySource = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
   if (!adminDirectorySource.includes('p_offset: peoplePage * 50') || !adminDirectorySource.includes('setStaff((people.data?.rows ?? []) as Profile[])') || !adminDirectorySource.includes('setPeopleTotal(Number(people.data?.total ?? 0))')) {
     throw new Error("Admin staff directory must consume the paginated JSON rows and total returned by admin_list_profiles.");
