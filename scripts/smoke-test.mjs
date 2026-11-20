@@ -641,6 +641,15 @@ try {
   }
   process.stdout.write("PASS appeal notifications link to the existing Trust Center route\\n");
 
+  const adminDirectorySource = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
+  if (!adminDirectorySource.includes('p_offset: peoplePage * 50') || !adminDirectorySource.includes('setStaff((people.data?.rows ?? []) as Profile[])') || !adminDirectorySource.includes('setPeopleTotal(Number(people.data?.total ?? 0))')) {
+    throw new Error("Admin staff directory must consume the paginated JSON rows and total returned by admin_list_profiles.");
+  }
+  if (adminDirectorySource.includes('peopleQuery.order("created_at"') || adminDirectorySource.includes("peopleQuery.range(")) {
+    throw new Error("Do not apply table ordering or range pagination to the admin_list_profiles JSON RPC response.");
+  }
+  process.stdout.write("PASS admin staff directory consumes server-paginated JSON RPC results\\n");
+
   process.stdout.write(`\\nSmoke test passed for ${routes.length} production routes.\\n`);
 } finally {
   if (server.pid) {
