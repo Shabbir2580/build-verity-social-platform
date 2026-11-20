@@ -563,7 +563,7 @@ export default function HomePage() {
       let profiles: Profile[] = [];
       let communityRows: Community[] = [];
       let reactionRows: { post_id: string; user_id: string }[] = [];
-      let commentRows: { post_id: string }[] = [];
+      let commentRows: { post_id: string; author_id: string }[] = [];
       let myReactionRows: { post_id: string }[] = [];
       let myBookmarkRows: { post_id: string }[] = [];
 
