@@ -116,7 +116,7 @@ export default function SupportTicketPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f6fb] px-4 pb-12 text-slate-900 sm:px-6">
+    <main className="verity-workspace min-h-screen bg-[#f5f6fb] px-4 pb-12 text-slate-900 sm:px-6">
       <header className="mx-auto flex min-h-[72px] max-w-4xl items-center justify-between border-b border-slate-200">
         <Link href="/" className="text-xl font-black tracking-tight">verity<span className="text-indigo-600">.</span></Link>
         <Link href="/" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold"><ArrowLeft size={15}/> Back to feed</Link>
