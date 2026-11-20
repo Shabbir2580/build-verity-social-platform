@@ -217,6 +217,13 @@ try {
   for (const marker of ['body.consent !== true', 'support.ai_assist', 'ticket.assigned_team === "support"', 'ticket.assigned_team === "trust_safety"', 'draft_customer_reply', 'Nothing is sent or changed']) {
     if (!supportAiSource.includes(marker)) throw new Error(`Support AI route is missing consent, team access, audit or draft-only guard: ${marker}`);
   }
+  const staffAiQuotaMigration = await readFile(new URL("../supabase/migrations/20261120055855_atomic_support_and_moderation_ai_usage_quota.sql", import.meta.url), "utf8");
+  for (const marker of ["pg_advisory_xact_lock", "v_hour_count >= 10", "support.ai_assist", "moderation.ai_case_summary", "from public, anon, authenticated", "to service_role"]) {
+    if (!staffAiQuotaMigration.includes(marker)) throw new Error("Staff AI quota migration is missing atomic enforcement or restricted RPC access: " + marker);
+  }
+  if (!supportAiSource.includes('rpc("reserve_staff_ai_action"') || !moderationAiSource.includes('rpc("reserve_staff_ai_action"')) {
+    throw new Error("Support and moderation AI requests must reserve hourly usage atomically before sending case or ticket content.");
+  }
   if (!supportPageSource.includes("Google Gemini for this request") || !supportPageSource.includes("Use in reply editor")) {
     throw new Error("Support AI UI must require consent and keep the draft under staff control.");
   }
