@@ -635,6 +635,12 @@ try {
   }
   process.stdout.write("PASS admin post management rejects NULL actions instead of defaulting to removal\\n");
 
+  const appealNotificationMigration = await readFile(new URL("../supabase/migrations/20261120085401_fix_appeal_notification_deep_link.sql", import.meta.url), "utf8");
+  if (!appealNotificationMigration.includes("staff_decide_case(uuid,text,text,text,uuid)") || !appealNotificationMigration.includes("'/support?tab=appeals'") || !appealNotificationMigration.includes("'/verify'")) {
+    throw new Error("Appeal status notifications must link to the existing Trust Center route.");
+  }
+  process.stdout.write("PASS appeal notifications link to the existing Trust Center route\\n");
+
   process.stdout.write(`\\nSmoke test passed for ${routes.length} production routes.\\n`);
 } finally {
   if (server.pid) {
