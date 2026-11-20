@@ -1729,3 +1729,90 @@ body { color: var(--verity-text); background: var(--verity-ivory); }
 @media(max-width:639px){
   .verity-public-page > article { border-radius: 16px !important; padding: 20px !important; }
 }
+
+
+/* Remaining route families: profiles, communities, verification, support and organization pages. */
+.verity-product-page,
+.verity-workspace {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(22 132 119 / 4%), transparent 36%),
+    #f5f6f2 !important;
+}
+.verity-product-page > section,
+.verity-workspace > section {
+  min-width: 0;
+}
+.verity-product-page article,
+.verity-workspace article {
+  min-width: 0;
+}
+.verity-product-page img,
+.verity-workspace img {
+  max-width: 100%;
+}
+.verity-product-page a,
+.verity-workspace a {
+  text-underline-offset: 3px;
+}
+.verity-product-page .rounded-3xl,
+.verity-workspace .rounded-3xl {
+  border-radius: 20px;
+}
+.verity-product-page .rounded-2xl,
+.verity-workspace .rounded-2xl {
+  border-radius: 15px;
+}
+.verity-product-page .bg-white,
+.verity-workspace .bg-white {
+  background-color: #fff;
+}
+.verity-org-page {
+  background:
+    radial-gradient(ellipse at 12% 4%, rgb(22 132 119 / 8%), transparent 32%),
+    #f5f6f2 !important;
+}
+.verity-org-page h1,
+.verity-org-page h2,
+.verity-org-page h3 {
+  letter-spacing: -.04em;
+  text-wrap: balance;
+}
+.verity-org-page input:not([type="checkbox"]),
+.verity-org-page textarea,
+.verity-org-page select {
+  border-color: #d9e2dd;
+  border-radius: 11px;
+}
+.verity-org-page input:focus,
+.verity-org-page textarea:focus,
+.verity-org-page select:focus {
+  outline: none;
+  border-color: #168477;
+  box-shadow: 0 0 0 3px rgb(22 132 119 / 15%);
+}
+.verity-org-page a:focus-visible,
+.verity-org-page button:focus-visible {
+  outline: 3px solid rgb(22 132 119 / 35%);
+  outline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .verity-product-page,
+  .verity-workspace { overflow-x: clip; }
+  .verity-product-page > section,
+  .verity-workspace > section { padding-top: 22px; }
+  .verity-product-page .grid,
+  .verity-workspace .grid { min-width: 0; }
+  .verity-org-page { overflow-x: clip; }
+  .verity-org-page h1 { font-size: clamp(2rem, 8vw, 3.25rem); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verity-workspace *,
+  .verity-product-page *,
+  .verity-org-page *,
+  .verity-public-page * {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
