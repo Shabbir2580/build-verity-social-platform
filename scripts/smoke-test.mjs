@@ -79,6 +79,12 @@ try {
   }
 
   const homePageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  for (const marker of ["Optional content review.", 'href="/verify/quick"', "Sign-in and explicit consent are required"]) {
+    if (!homePageSource.includes(marker)) throw new Error(`Home feed AI review notice is missing accurate opt-in guidance: ${marker}`);
+  }
+  if (homePageSource.includes("Gemini-assisted reviews are available.")) {
+    throw new Error("Home feed must not claim Gemini is available without a live provider check.");
+  }
   const removePostStart = homePageSource.indexOf("async function deletePost(postId: string)");
   const removePostEnd = homePageSource.indexOf("async function deleteComment", removePostStart);
   if (removePostStart < 0 || removePostEnd < 0) throw new Error("Home feed is missing the author post-removal workflow.");
@@ -142,6 +148,17 @@ try {
   process.stdout.write("PASS editorial design system rules are present\\n");
 
   const adminAssistantSource = await readFile(new URL("../app/api/admin/assistant/route.ts", import.meta.url), "utf8");
+  for (const marker of [
+    "const requestedModel = process.env.GEMINI_ADMIN_MODEL?.trim() ||",
+    "models/${ADMIN_AI_MODEL}:generateContent",
+    "Google Gemini returned 404 for the configured model.",
+    "No AI answer was generated.",
+  ]) {
+    if (!adminAssistantSource.includes(marker)) throw new Error(`Admin AI provider diagnostics are missing: ${marker}`);
+  }
+  if (adminAssistantSource.includes("The model configuration has been updated; redeploy")) {
+    throw new Error("Admin AI 404 message must not claim a model change that was not made.");
+  }
   const supportPageSource = await readFile(new URL("../app/support/staff/page.tsx", import.meta.url), "utf8");
   const moderationPageSource = await readFile(new URL("../app/moderation/page.tsx", import.meta.url), "utf8");
   if (!moderationPageSource.includes("const actionsRequest = useRef(0)") ||
