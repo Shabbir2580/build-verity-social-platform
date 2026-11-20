@@ -42,6 +42,7 @@ export default function QuickReviewPage() {
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
   const [humanReviewConfirmed, setHumanReviewConfirmed] = useState(false);
   const [humanConclusion, setHumanConclusion] = useState<"supported" | "contradicted" | "inconclusive" | null>(null);
+  const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -199,6 +200,13 @@ export default function QuickReviewPage() {
             </div>
           </fieldset>
           {humanConclusion && <p role="status" className="mt-3 rounded-xl border border-teal-200 bg-white p-3 text-xs leading-5 text-teal-950">Your manual assessment: <strong>{humanConclusion === "supported" ? "Evidence supports it" : humanConclusion === "contradicted" ? "Evidence contradicts it" : "Not enough evidence"}</strong>. This is your own review, not an AI verdict.</p>}
+          {humanConclusion && <div className="mt-2">
+            <button type="button" onClick={() => {
+              const note = ["Verity human review note", "AI review-risk index: " + review.review_risk_percent + "/100", "AI summary: " + review.summary, "Human assessment: " + humanConclusion, "Limitations: experimental, uncalibrated; not a truth verdict."].join(String.fromCharCode(10));
+              void navigator.clipboard.writeText(note).then(() => setCopyStatus("Review note copied. Check it before sharing.")).catch(() => setCopyStatus("Clipboard access was blocked; copy the visible result manually."));
+            }} className="min-h-10 rounded-xl border border-teal-300 px-3 py-2 text-xs font-semibold text-teal-900 hover:bg-teal-50">Copy review note</button>
+            {copyStatus && <p role="status" className="mt-2 text-xs text-teal-800">{copyStatus}</p>}
+          </div>}
           <p className="mt-3 text-[11px] leading-5 text-slate-500">This manual assessment is held only in this page current session. It is not saved, sent to Google, or used to change the AI score. For images, review the original image and its provenance separately; this tool cannot authenticate image origins.</p>
         </section>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-sm font-semibold text-amber-950">Uncertainty and limitations</h3><p className="mt-2 text-xs leading-5 text-amber-900">{review.uncertainty}</p><p className="mt-2 text-xs leading-5 text-amber-900">The percentage is an experimental, uncalibrated AI triage index—not a probability, validated risk measurement, model-accuracy score or truth verdict. High means check more carefully; it does not mean false. Low does not mean verified. These bands follow the proposed PPT interface and have not been validated against a labelled dataset.</p></div>
