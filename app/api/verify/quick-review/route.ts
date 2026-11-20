@@ -33,7 +33,7 @@ function boundedStrings(value: unknown, limit = 6): string[] {
 
 export async function GET() {
   return NextResponse.json(
-    { available: Boolean(process.env.GEMINI_API_KEY), provider: "Google Gemini" },
+    { configured: Boolean(process.env.GEMINI_API_KEY), provider: "Google Gemini" },
     { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } },
   );
 }
