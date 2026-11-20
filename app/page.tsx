@@ -462,7 +462,7 @@ export default function HomePage() {
           .select("id", { count: "exact", head: true }).eq("user_id", currentUser.id).is("read_at", null);
         if (unreadError) throw unreadError;
         setUnreadNotifications(unreadCount ?? 0);
-        const { data: roleData, error: roleError } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
+        const { data: roleData, error: roleError } = await supabase.rpc("my_role");
         if (roleError) {
           setIsModerator(false);
           setIsSupportStaff(false);
@@ -474,9 +474,9 @@ export default function HomePage() {
           setIsAdmin(false);
           setStaffAccessMessage("Your account profile could not be found, so staff permissions are unavailable.");
         } else {
-          setIsModerator(roleData.role === "moderator" || roleData.role === "admin");
-          setIsSupportStaff(roleData.role === "support" || roleData.role === "moderator" || roleData.role === "admin");
-          setIsAdmin(roleData.role === "admin");
+          setIsModerator(roleData === "moderator" || roleData === "admin");
+          setIsSupportStaff(roleData === "support" || roleData === "moderator" || roleData === "admin");
+          setIsAdmin(roleData === "admin");
           setStaffAccessMessage("");
         }
         const { data: membershipData, error: membershipError } = await supabase
