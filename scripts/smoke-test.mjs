@@ -410,6 +410,12 @@ try {
     if (!adminEngagementMigration.includes(marker)) throw new Error("Admin aggregate analytics migration is missing a security or aggregation guard: " + marker);
   }
   process.stdout.write("PASS admin engagement analytics use an admin-only aggregate without exposing reaction or membership identities\\n");
+  const publicActivityMigration = await readFile(new URL("../supabase/migrations/20261120083912_admin_engagement_only_public_content.sql", import.meta.url), "utf8");
+  for (const marker of ["c.is_deleted = false", "p.status = 'published'", "a.status = 'published'", "q.status = 'published'", "public.is_admin()"]) {
+    if (!publicActivityMigration.includes(marker)) throw new Error("Admin analytics must exclude deleted or non-public content: " + marker);
+  }
+  process.stdout.write("PASS admin engagement analytics exclude deleted and non-public content\\n");
+
 
   await waitForServer();
 
