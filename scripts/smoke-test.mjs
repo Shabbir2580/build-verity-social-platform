@@ -167,6 +167,7 @@ try {
     throw new Error("Admin assistant source contains an escaped newline that breaks TypeScript parsing.");
   }
   const moderationPageSource = await readFile(new URL("../app/moderation/page.tsx", import.meta.url), "utf8");
+  const supportPageSource = await readFile(new URL("../app/support/staff/page.tsx", import.meta.url), "utf8");
   if (!moderationPageSource.includes("const actionsRequest = useRef(0)") ||
       !moderationPageSource.includes("if (requestId !== actionsRequest.current) return;") ||
       !moderationPageSource.includes("setActions([]);")) {
