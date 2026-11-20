@@ -41,7 +41,7 @@ export default function QuickReviewPage() {
     if (!consent) { setError("Consent is required before sending content to Google Gemini."); return; }
     if (kind === "text" && text.trim().length < 30) { setError("Enter at least 30 characters to review."); return; }
     if (kind === "image" && !file) { setError("Choose an image first."); return; }
-    if (file && file.size > 8 * 1024 * 1024) { setError("Choose an image no larger than 8 MB."); return; }
+    if (file && file.size > 3 * 1024 * 1024) { setError("Choose an image no larger than 3 MB."); return; }
     setBusy(true);
     try {
       const supabase = createClient();
@@ -104,7 +104,7 @@ export default function QuickReviewPage() {
           <label className="block text-sm font-semibold">Choose an image
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFileChange} className="mt-2 block w-full rounded-xl border border-slate-200 p-3 text-sm"/>
           </label>
-          <p className="mt-2 text-xs text-slate-500">JPG, PNG or WebP · maximum 8 MB. The model can describe visible details and context gaps; it cannot prove whether an image is AI-generated or manipulated.</p>
+          <p className="mt-2 text-xs text-slate-500">JPG, PNG or WebP · maximum 3 MB. The model can describe visible details and context gaps; it cannot prove whether an image is AI-generated or manipulated.</p>
           {file && <p className="mt-2 text-xs text-slate-600">{file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB</p>}
         </div>}
         <label className="mt-5 flex cursor-pointer items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-950">
