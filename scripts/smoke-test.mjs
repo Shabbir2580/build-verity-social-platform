@@ -93,6 +93,29 @@ try {
   }
   process.stdout.write("PASS author post removal hides content before best-effort media cleanup\\n");
 
+  if (!removePostSource.includes('.eq("id", postId).eq("author_id", user.id)')) {
+    throw new Error("Author post removal must scope the update to the signed-in author.");
+  }
+  if (!homePageSource.includes("user?.id === post.author_id") || !homePageSource.includes('aria-label="Delete your post"')) {
+    throw new Error("The feed must show post edit/delete controls only to the post author.");
+  }
+  const postOwnershipMigration = await readFile(new URL("../supabase/migrations/20261120052137_restrict_direct_post_mutations_to_owners.sql", import.meta.url), "utf8");
+  for (const marker of [
+    "create policy posts_update",
+    "create policy posts_delete",
+    "author_id = (select auth.uid())",
+    "public.is_active_user()",
+    "admin_manage_post() and staff_decide_case()",
+  ]) {
+    if (!postOwnershipMigration.includes(marker)) {
+      throw new Error(`Post ownership migration is missing required authorization rule: ${marker}`);
+    }
+  }
+  if (/using\\s*\\([\\s\\S]*?is_moderator\\(\\)/i.test(postOwnershipMigration)) {
+    throw new Error("Direct post update/delete policies must not grant staff-wide client mutation access.");
+  }
+  process.stdout.write("PASS post edit/delete UI and database policies enforce author ownership; staff actions stay in audited RPCs\\n");
+
   const productPageSources = await Promise.all([
     readFile(new URL("../app/u/[username]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/people/page.tsx", import.meta.url), "utf8"),
