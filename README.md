@@ -20,6 +20,7 @@ These dimensions must remain separate. AI-generated content is not automatically
 - Comments, reactions and bookmarks
 - Interest-based communities
 - Trust Center for content checks, labels, sources and review requests
+- Standalone, consent-based text and image quick review with low/medium/high human-review priority bands
 - User reporting, moderation and appeals
 - Support tickets
 - Role-aware administration foundations
@@ -88,7 +89,7 @@ Supabase migrations are stored in `supabase/migrations`. Review and apply migrat
 
 ## Verification status and product limitations
 
-The Trust Center has a live related-news discovery search powered by Google News RSS. It returns links to reporting that matches a query. This is source discovery only: search ranking is not evidence quality, the result is not a fact-check or truth verdict, and results are not written as persistent assessments.
+The Trust Center also offers a standalone Quick Content Review for signed-in users. It accepts text or JPG/PNG/WebP images up to 3 MB, requires explicit per-request consent before sending content to Google Gemini, and limits each account to five requests per hour. It returns a low/medium/high human-review priority with observable signals, missing context and suggested checks. These bands are triage guidance only—not probabilities, calibrated risk scores, model accuracy or truth verdicts. The submitted content is not persisted by this endpoint; audit logs store only provider, request type and status. Image review is not forensic AI-generation or manipulation detection.\n\nThe Trust Center has a live related-news discovery search powered by Google News RSS. It returns links to reporting that matches a query. This is source discovery only: search ranking is not evidence quality, the result is not a fact-check or truth verdict, and results are not written as persistent assessments.
 
 The Trust Center now includes opt-in Gemini routes for a post author's own uploaded media and claim review. Both routes require an authenticated author, explicit per-request consent, usage limits, and server-side API/database credentials. Media assessment accepts images up to 8 MB and short videos up to 20 MB; it records `uncertain` in `content_checks` because Gemini's general multimodal reasoning is not forensic AI/deepfake detection and cannot establish provenance or authenticity. Claim review compares a claim with Google News RSS headlines only; it does not read full articles or establish truth, and it also records `uncertain`. The Gemini free tier may use submitted content to improve Google's products, so the UI discloses this and requires consent. These integrations must never be represented as proof or a definitive fact-check. An optional Google Fact Check Tools claim-search integration is available when `GOOGLE_FACT_CHECK_API_KEY` is configured. It returns third-party reviews already published by participating fact-check publishers; ratings remain the publishers' own wording, not Verity's verdict. It requires a Google API key and is not assumed to be free or enabled. The Trust Center asks for explicit consent, limits searches per account and does not store the search text in its usage log. Cryptographic C2PA manifest verification is still not integrated.
 
