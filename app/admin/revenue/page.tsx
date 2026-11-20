@@ -187,13 +187,16 @@ export default function AdminRevenuePage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex items-start gap-3">
-          <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-700"/>
-          <div className="min-w-0">
-            <h2 className="font-semibold">Public impact showcase</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">A separate public report should show only approved, aggregated impact metrics—such as learning sessions, community contributions and independently reviewed content context. It must never expose private financials, user-level activity or unreviewed AI verdicts.</p>
-            <p className="mt-2 text-xs font-semibold text-slate-500">Public publishing is not enabled yet. No unreviewed impact figures are being exposed.</p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-700"/>
+            <div className="min-w-0">
+              <h2 className="font-semibold">Public impact showcase</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">The public impact page is live. It displays aggregate platform counts and explains what those counts do—and do not—prove. Private financials, user-level activity and unreviewed AI verdicts stay excluded.</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Review the public definitions and limitations before sharing impact claims externally.</p>
+            </div>
           </div>
+          <Link href="/impact" className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">View public impact <ArrowUpRight size={14}/></Link>
         </div>
       </section>
 
