@@ -202,9 +202,28 @@ export default function QuickReviewPage() {
           {humanConclusion && <p role="status" className="mt-3 rounded-xl border border-teal-200 bg-white p-3 text-xs leading-5 text-teal-950">Your manual assessment: <strong>{humanConclusion === "supported" ? "Evidence supports it" : humanConclusion === "contradicted" ? "Evidence contradicts it" : "Not enough evidence"}</strong>. This is your own review, not an AI verdict.</p>}
           {humanConclusion && <div className="mt-2">
             <button type="button" onClick={() => {
-              const note = ["Verity human review note", "AI review-risk index: " + review.review_risk_percent + "/100", "AI summary: " + review.summary, "Human assessment: " + humanConclusion, "Limitations: experimental, uncalibrated; not a truth verdict."].join(String.fromCharCode(10));
-              void navigator.clipboard.writeText(note).then(() => setCopyStatus("Review note copied. Check it before sharing.")).catch(() => setCopyStatus("Clipboard access was blocked; copy the visible result manually."));
-            }} className="min-h-10 rounded-xl border border-teal-300 px-3 py-2 text-xs font-semibold text-teal-900 hover:bg-teal-50">Copy review note</button>
+              const note = [
+                "VERITY — HUMAN REVIEW NOTE",
+                "AI review-risk index: " + review.review_risk_percent + "/100 (" + review.review_priority + ")",
+                "AI summary: " + review.summary,
+                "Signals: " + (review.signals.join("; ") || "None listed"),
+                "Missing context: " + (review.missing_context.join("; ") || "None listed"),
+                "Suggested checks: " + (review.verification_steps.join("; ") || "None listed"),
+                "Sources: " + (review.sources.map((source) => source.title + " — " + source.url).join("; ") || "No sources returned"),
+                "Human assessment: " + (humanConclusion === "supported" ? "Evidence supports it" : humanConclusion === "contradicted" ? "Evidence contradicts it" : "Not enough evidence"),
+                "Limitations: experimental and uncalibrated; not a probability or truth verdict. Human assessment is user-provided, not independently verified.",
+              ].join(String.fromCharCode(10));
+              if (typeof navigator.share === "function") {
+                void navigator.share({ title: "Verity human review note", text: note })
+                  .then(() => setCopyStatus("Share sheet opened. Review the note before sending."))
+                  .catch((shareError: unknown) => {
+                    if (shareError instanceof Error && shareError.name === "AbortError") return;
+                    void navigator.clipboard.writeText(note).then(() => setCopyStatus("Sharing was unavailable; review note copied instead.")).catch(() => setCopyStatus("Sharing and clipboard are unavailable. Copy the visible result manually."));
+                  });
+              } else {
+                void navigator.clipboard.writeText(note).then(() => setCopyStatus("Review note copied. Check it before sharing.")).catch(() => setCopyStatus("Clipboard access was blocked; copy the visible result manually."));
+              }
+            }} className="min-h-10 rounded-xl border border-teal-300 px-3 py-2 text-xs font-semibold text-teal-900 hover:bg-teal-50">Share / copy review note</button>
             {copyStatus && <p role="status" className="mt-2 text-xs text-teal-800">{copyStatus}</p>}
           </div>}
           <p className="mt-3 text-[11px] leading-5 text-slate-500">This manual assessment is held only in this page current session. It is not saved, sent to Google, or used to change the AI score. For images, review the original image and its provenance separately; this tool cannot authenticate image origins.</p>
