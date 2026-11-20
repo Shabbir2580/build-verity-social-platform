@@ -159,7 +159,7 @@ try {
   if (adminAssistantSource.includes("The model configuration has been updated; redeploy")) {
     throw new Error("Admin AI 404 message must not claim a model change that was not made.");
   }
-  const supportPageSource = await readFile(new URL("../app/support/staff/page.tsx", import.meta.url), "utf8");
+  if (adminAssistantSource.split(/\\r?\\n/).some((line) => line.includes("\\nconst ADMIN_AI_MODEL"))) {\n    throw new Error("Admin assistant source contains an escaped newline that breaks TypeScript parsing.");\n  }\n  const supportPageSource = await readFile(new URL("../app/support/staff/page.tsx", import.meta.url), "utf8");
   const moderationPageSource = await readFile(new URL("../app/moderation/page.tsx", import.meta.url), "utf8");
   if (!moderationPageSource.includes("const actionsRequest = useRef(0)") ||
       !moderationPageSource.includes("if (requestId !== actionsRequest.current) return;") ||
