@@ -103,7 +103,15 @@ export default function QuestionsPage() {
         currentUserId = authData.user?.id ?? null;
       }
       setUserId(currentUserId);
-      const rows = questionRows ?? [];
+      let blockedAuthorIds: string[] = [];
+      if (currentUserId) {
+        const { data: blockRows, error: blockError } = await supabase.from("blocks")
+          .select("blocked_id").eq("blocker_id", currentUserId);
+        if (blockError) throw blockError;
+        blockedAuthorIds = (blockRows ?? []).map((row) => row.blocked_id);
+      }
+      const blockedAuthors = new Set(blockedAuthorIds);
+      const rows = (questionRows ?? []).filter((row) => !blockedAuthors.has(row.author_id));
       const authorIds = [...new Set(rows.map((row) => row.author_id))];
       const questionIds = rows.map((row) => row.id);
 
@@ -121,7 +129,7 @@ export default function QuestionsPage() {
           .in("question_id", questionIds).eq("status", "published")
           .order("created_at", { ascending: true }).limit(300);
         if (answerError) throw answerError;
-        answerRows = data ?? [];
+        answerRows = (data ?? []).filter((row) => !blockedAuthors.has(row.author_id));
       }
       const answerAuthorIds = [...new Set(answerRows.map((row) => row.author_id))];
       const missingAuthors = answerAuthorIds.filter((id) => !authorIds.includes(id));
