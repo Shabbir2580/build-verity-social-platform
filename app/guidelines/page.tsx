@@ -13,7 +13,7 @@ const rules = [
 
 export default function GuidelinesPage() {
   return (
-    <main className="min-h-[100dvh] bg-[#f5f6fb] px-4 py-8 text-slate-900 sm:px-6 sm:py-12">
+    <main className="verity-public-page min-h-[100dvh] bg-[#f5f6fb] px-4 py-8 text-slate-900 sm:px-6 sm:py-12">
       <article className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-10">
         <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-700"><ArrowLeft size={16} /> Back to Verity</Link>
         <div className="mt-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><ShieldCheck size={24} /></div>
