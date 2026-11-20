@@ -164,6 +164,9 @@ try {
   if (!profileBlockSource.includes("viewerBlockedProfile ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
     throw new Error("A blocked profile must not display its public posts to the viewer who blocked it.");
   }
+  if (!profileBlockSource.includes("await load();") || !profileBlockSource.includes("if (unfollowError)")) {
+    throw new Error("Unblocking must refresh the profile, and failed automatic unfollow must be reported.");
+  }
   process.stdout.write("PASS blocked accounts are hidden from feed and profile views\\n");
 
   const visualSystem = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
