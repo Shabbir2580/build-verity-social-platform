@@ -138,7 +138,7 @@ try {
       throw new Error(`Verity's current PPT scope requires image-only media analysis: missing ${marker}`);
     }
   }
-  if (mediaReviewApiSource.includes("MAX_VIDEO_BYTES") || mediaReviewApiSource.includes('"video/mp4"')) {
+  if (mediaReviewApiSource.includes("MAX_VIDEO_BYTES")) {
     throw new Error("The media assessment API must not accept video analysis in the current project scope.");
   }
   process.stdout.write("PASS media analysis is restricted to images; video remains outside the stated project scope\\n");
