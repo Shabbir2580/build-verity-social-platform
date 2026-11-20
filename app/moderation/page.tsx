@@ -122,10 +122,10 @@ export default function ModerationPage() {
       if (authError) throw authError;
       if (!auth.user) { setAuthorized(false); setChecking(false); return; }
       setUserId(auth.user.id);
-      const { data: me, error: meError } = await supabase.from("profiles").select("role").eq("id", auth.user.id).single();
+      const { data: meRole, error: meError } = await supabase.rpc("my_role");
       if (meError) throw meError;
-      if (!["moderator", "admin"].includes(me.role)) { setAuthorized(false); setChecking(false); return; }
-      setUserRole(me.role as "moderator" | "admin");
+      if (!["moderator", "admin"].includes(meRole)) { setAuthorized(false); setChecking(false); return; }
+      setUserRole(meRole as "moderator" | "admin");
       setAuthorized(true);
       const offset = append ? casesRef.current.length : 0;
       const { data: caseRows, error: casesError } = await supabase.from("moderation_cases")
@@ -170,9 +170,8 @@ export default function ModerationPage() {
         : { data: [], error: null };
       if (peopleResult.error) throw peopleResult.error;
       let people = peopleResult.data ?? [];
-      if (me.role === "admin") {
-        const { data: staffPeople, error: staffError } = await supabase.from("profiles")
-          .select("id, username, display_name").in("role", ["moderator", "admin"]).eq("is_suspended", false);
+      if (meRole === "admin") {
+        const { data: staffPeople, error: staffError } = await supabase.rpc("moderation_staff_directory");
         if (staffError) throw staffError;
         people = [...people, ...(staffPeople ?? [])];
       }
