@@ -76,20 +76,20 @@ export default function AdminPage() {
       if (authError) throw authError;
       if (!auth.user) { window.location.href = "/login?next=%2Fadmin"; return; }
       setCurrentUserId(auth.user.id);
-      const { data: me, error: roleError } = await supabase.from("profiles").select("role").eq("id", auth.user.id).single();
+      const { data: myRole, error: roleError } = await supabase.rpc("my_role");
       if (roleError) throw roleError;
-      if (me.role !== "admin") { setAuthorized(false); setChecking(false); return; }
+      if (myRole !== "admin") { setAuthorized(false); setChecking(false); return; }
       setAuthorized(true);
       const since = new Date(); since.setDate(since.getDate() - 13); since.setHours(0,0,0,0);
       const sinceIso = since.toISOString();
-      let peopleQuery = supabase.from("profiles")
-        .select("id, username, display_name, role, is_suspended, created_at", { count: "exact" });
       const peopleTerm = debouncedSearch.trim().replace(/[^\p{L}\p{N}_ -]/gu, "").slice(0, 60);
-      if (peopleTerm) {
-        peopleQuery = peopleQuery.or(`username.ilike.%${peopleTerm}%,display_name.ilike.%${peopleTerm}%`);
-      }
-      if (peopleRoleFilter !== "all") peopleQuery = peopleQuery.eq("role", peopleRoleFilter);
-      if (peopleStatusFilter !== "all") peopleQuery = peopleQuery.eq("is_suspended", peopleStatusFilter === "suspended");
+      const peopleQuery = supabase.rpc("admin_list_profiles", {
+        p_search: peopleTerm || null,
+        p_role: peopleRoleFilter,
+        p_status: peopleStatusFilter,
+        p_limit: 50,
+        p_offset: peoplePage * 50,
+      });
       const [members, posts, reports, cases, tickets, people, logs, recentMembers, recentPosts, recentComments, recentReactions, recentMemberships] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
@@ -117,8 +117,8 @@ export default function AdminPage() {
       if (recentReactions.error) throw recentReactions.error;
       if (recentMemberships.error) throw recentMemberships.error;
       setStats({ members: members.count ?? 0, posts: posts.count ?? 0, reports: reports.count ?? 0, cases: cases.count ?? 0, tickets: tickets.count ?? 0 });
-      setStaff((people.data ?? []) as Profile[]);
-      setPeopleTotal(people.count ?? 0);
+      setStaff((people.data?.rows ?? []) as Profile[]);
+      setPeopleTotal(Number(people.data?.total ?? 0));
       const auditRows = (logs.data ?? []) as Audit[];
       setAudit(auditRows);
       const actorIds = [...new Set(auditRows.map((entry) => entry.actor_id).filter((id): id is string => Boolean(id)))];
