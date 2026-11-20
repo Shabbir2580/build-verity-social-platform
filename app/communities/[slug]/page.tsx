@@ -22,7 +22,8 @@ function ago(value: string) {
 export default function CommunityDetailPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
-  const slug = decodeURIComponent(params.slug);
+  // Next.js route params are already decoded. Decoding again can throw on valid slugs containing a literal percent sign.
+  const slug = params.slug;
   const [community, setCommunity] = useState<Community | null>(null);
   const [rules, setRules] = useState<Rule[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
