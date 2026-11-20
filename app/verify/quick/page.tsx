@@ -15,7 +15,7 @@ type Review = {
   provider: string;
   checked_at: string;
   stored: false;
-  evidence_status: "visual_only" | "google_search_grounded" | "search_not_used";
+  evidence_status: "visual_only" | "google_search_grounded" | "search_no_sources";
   sources: { title: string; url: string }[];
   source_linked_statements: { statement: string; sources: { title: string; url: string }[] }[];
   search_queries: string[];
