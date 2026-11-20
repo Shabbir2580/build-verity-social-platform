@@ -415,6 +415,12 @@ try {
     if (!publicActivityMigration.includes(marker)) throw new Error("Admin analytics must exclude deleted or non-public content: " + marker);
   }
   process.stdout.write("PASS admin engagement analytics exclude deleted and non-public content\\n");
+  const anonPolicyHelperMigration = await readFile(new URL("../supabase/migrations/20261120084119_restore_anon_moderator_policy_helper_execution.sql", import.meta.url), "utf8");
+  if (!anonPolicyHelperMigration.includes("grant execute on function public.is_moderator() to anon")) {
+    throw new Error("Anonymous public-read policies require safe execution of is_moderator().");
+  }
+  process.stdout.write("PASS anonymous visitors can safely evaluate public moderator RLS policies\\n");
+
 
 
   await waitForServer();
