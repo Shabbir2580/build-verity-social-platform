@@ -1691,3 +1691,41 @@ body { color: var(--verity-text); background: var(--verity-ivory); }
   .verity-auth-page > div { border-radius: 18px !important; }
   .verity-auth-page > div > section:first-child { padding: 24px !important; }
 }
+
+
+/* Public policy and impact pages — readable editorial content with clear navigation. */
+.verity-public-page {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(22 132 119 / 6%), transparent 38%),
+    #f5f5f0 !important;
+}
+.verity-public-page > article {
+  border-color: #e1e7e3 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 12px 40px rgb(20 43 58 / 6%) !important;
+}
+.verity-public-page > article h1 {
+  color: #142b3a;
+  letter-spacing: -.05em;
+  line-height: 1.08;
+}
+.verity-public-page > article h2 {
+  margin-top: 1.6rem;
+  color: #1d394a;
+  letter-spacing: -.025em;
+}
+.verity-public-page > article p,
+.verity-public-page > article li {
+  color: #52636b;
+  line-height: 1.8;
+}
+.verity-public-page > header {
+  border-color: #dfe7e2 !important;
+}
+.verity-public-page a:focus-visible {
+  outline: 3px solid rgb(22 132 119 / 35%);
+  outline-offset: 3px;
+}
+@media(max-width:639px){
+  .verity-public-page > article { border-radius: 16px !important; padding: 20px !important; }
+}
