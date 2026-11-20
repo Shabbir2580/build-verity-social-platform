@@ -235,18 +235,29 @@ export default function PublicProfilePage() {
   async function toggleBlock() {
     if (!profile || !viewerId || busy || viewerId === profile.id) return;
     if (!window.confirm((blocked ? "Unblock " : "Block ") + "@" + profile.username + "?")) return;
-    setBusy(true); setError("");
+    setBusy(true);
+    setError("");
     const supabase = createClient();
     const result = blocked
       ? await supabase.from("blocks").delete().eq("blocker_id", viewerId).eq("blocked_id", profile.id)
       : await supabase.from("blocks").insert({ blocker_id: viewerId, blocked_id: profile.id });
-    if (result.error) setError(result.error.message);
-    else {
-      setBlocked(!blocked);
-      if (!blocked && following) {
-        await supabase.from("follows").delete().eq("follower_id", viewerId).eq("following_id", profile.id);
-        setFollowing(false);
-        setFollowers((count) => Math.max(0, count - 1));
+    if (result.error) {
+      setError(result.error.message);
+    } else if (blocked) {
+      // Re-fetch posts and follow state when unblocking; the initial blocked
+      // profile load intentionally kept its post list empty.
+      await load();
+    } else {
+      setBlocked(true);
+      if (following) {
+        const { error: unfollowError } = await supabase.from("follows").delete()
+          .eq("follower_id", viewerId).eq("following_id", profile.id);
+        if (unfollowError) {
+          setError("Account blocked, but the existing follow could not be removed. Please retry from your Following list.");
+        } else {
+          setFollowing(false);
+          setFollowers((count) => Math.max(0, count - 1));
+        }
       }
     }
     setBusy(false);
