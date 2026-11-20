@@ -146,8 +146,10 @@ export default function PublicProfilePage() {
 
   async function toggleFollow() {
     if (!profile || busy) return;
-    if (blockedByProfile) {
-      setError("You cannot follow this account because it has blocked you.");
+    if (blocked || blockedByProfile) {
+      setError(blockedByProfile
+        ? "You cannot follow this account because it has blocked you."
+        : "Unblock this account before following it.");
       return;
     }
     if (!viewerId) {
@@ -319,7 +321,7 @@ export default function PublicProfilePage() {
                   <button type="button" onClick={() => void toggleBlock()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:border-rose-200 hover:text-rose-700 disabled:opacity-60">
                     <ShieldBan size={15} />{blocked ? "Unblock" : "Block"}
                   </button>
-                  {!blockedByProfile && <button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
+                  {!blocked && !blockedByProfile && <button type="button" onClick={() => void toggleFollow()} disabled={busy} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-60 ${following ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
                     {busy ? <LoaderCircle size={15} className="animate-spin" /> : following ? <UserMinus size={15} /> : <UserPlus size={15} />}
                     {following ? "Following" : "Follow"}
                   </button>}
