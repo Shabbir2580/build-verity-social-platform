@@ -124,6 +124,20 @@ try {
   }
   process.stdout.write("PASS quick review covers text and image with the proposed uncalibrated risk bands and explicit consent\\n");
 
+  const humanReviewPageSource = await readFile(new URL("../app/verify/quick/page.tsx", import.meta.url), "utf8");
+  for (const marker of [
+    "Your decision · human check",
+    "I have independently checked the available sources",
+    "aria-pressed={humanConclusion === value}",
+    "Evidence supports it",
+    "Evidence contradicts it",
+    "Not enough evidence",
+    "This manual assessment is held only in this page current session",
+    "It is not saved, sent to Google, or used to change the AI score",
+  ]) {
+    if (!humanReviewPageSource.includes(marker)) throw new Error(`Human verification workflow is missing: ${marker}`);
+  }
+  process.stdout.write("PASS quick review requires an explicit human check and keeps the manual assessment local\\n");
   const mediaReviewSource = await readFile(new URL("../components/verify/gemini-media-check.tsx", import.meta.url), "utf8");
   const mediaReviewApiSource = await readFile(new URL("../app/api/verify/gemini/route.ts", import.meta.url), "utf8");
   for (const [source, marker] of [
