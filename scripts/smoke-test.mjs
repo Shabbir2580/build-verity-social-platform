@@ -133,6 +133,7 @@ try {
     readFile(new URL("../app/communities/[slug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/notifications/page.tsx", import.meta.url), "utf8"),
   ]);
+  const profileBlockSource = productPageSources[0];
   for (const [index, source] of productPageSources.entries()) {
     if (!source.includes("verity-product-page")) {
       throw new Error(`Product page ${index + 1} is missing the shared responsive design shell.`);
@@ -163,7 +164,6 @@ try {
   if (!feedBlockSource.includes('.select("post_id, author_id")') || !feedBlockSource.includes("blockedUserIds.includes(row.author_id)") || !feedBlockSource.includes("let commentRows: { post_id: string; author_id: string }[] = [];")) {
     throw new Error("Comments, their visible counts and comment row types must support blocked-author filtering.");
   }
-  const profileBlockSource = productPageSources[0];
   if (!profileBlockSource.includes("eitherAccountBlocked ? [] : postRows ?? []") || !profileBlockSource.includes("Posts hidden")) {
     throw new Error("A profile must not display posts when either account has blocked the other.");
   }
