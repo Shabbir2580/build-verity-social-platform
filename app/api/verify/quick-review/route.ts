@@ -131,8 +131,8 @@ export async function POST(request: NextRequest) {
             required: ["review_priority", "summary", "signals", "missing_context", "verification_steps", "uncertainty"],
           },
           maxOutputTokens: 1200,
+          temperature: 1.0,
         },
-      },
     };
     // Text claims use live Google Search grounding; image inspection stays visual-only.
     if (kind === "text") requestBody.tools = [{ googleSearch: {} }];
