@@ -198,6 +198,10 @@ try {
     throw new Error("People discovery must explain blocked or restricted follow failures without exposing raw database errors.");
   }
   process.stdout.write("PASS people discovery gives clear feedback for blocked or restricted follow attempts\\n");
+  for (const marker of ["if (blocked || blockedByProfile)", "!blocked && !blockedByProfile && <button", "Unblock this account before following it."]) {
+    if (!profileBlockSource.includes(marker)) throw new Error(`Blocked profile must not offer a follow action: ${marker}`);
+  }
+  process.stdout.write("PASS follow controls are unavailable while either account is blocked\\n");
 
   process.stdout.write("PASS blocked accounts are hidden from feed and profile views\\n");
 
