@@ -5,6 +5,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+const ADMIN_AI_MODEL = process.env.GEMINI_ADMIN_MODEL?.trim() || "gemini-3.5-flash-lite";
+
 type AdminContext = {
   generatedAt: string;
   members: number | null; posts: number | null; reports: number | null;
@@ -123,7 +125,7 @@ export async function GET(request: NextRequest) {
       metrics,
       role: access.role,
       aiEnabled: process.env.VERITY_ADMIN_AI_ENABLED === "true" && Boolean(process.env.GEMINI_API_KEY),
-      aiModel: "gemini-3.5-flash-lite",
+      aiModel: ADMIN_AI_MODEL,
     }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("Admin assistant metrics failed:", error instanceof Error ? error.message : "unknown");
@@ -174,7 +176,7 @@ export async function POST(request: NextRequest) {
       action: "admin_ai_assistant_request",
       entity_type: "ai_assistant",
       entity_id: null,
-      details: { model: "gemini-3.5-flash-lite", mode, status: "started" },
+      details: { model: ADMIN_AI_MODEL, mode, status: "started" },
     })
     .select("id")
     .single();
@@ -185,7 +187,7 @@ export async function POST(request: NextRequest) {
 
   const updateUsage = async (details: Record<string, unknown>) => {
     const { error } = await access.supabase.from("audit_logs")
-      .update({ details: { model: "gemini-3.5-flash-lite", mode, ...details } })
+      .update({ details: { model: ADMIN_AI_MODEL, mode, ...details } })
       .eq("id", usageEvent.id);
     if (error) console.error("Could not update AI usage event:", error.message);
   };
@@ -238,7 +240,7 @@ export async function POST(request: NextRequest) {
       console.error("Admin assistant provider error:", response.status, providerCode, providerDetail);
       if (response.status === 429) return jsonError("Gemini usage limit reached. Check Google AI Studio rate limits and try again later.", 429);
       if (response.status === 403) return jsonError("Google Gemini denied generation access for this project. Check AI Studio project eligibility and API restrictions.", 503);
-      if (response.status === 404) return jsonError("The configured Gemini model is unavailable to this project. The model configuration has been updated; redeploy and try again.", 503);
+      if (response.status === 404) return jsonError("Google Gemini returned 404 for the configured model. Check that this model is available to the Google AI Studio project belonging to GEMINI_API_KEY and that the key has access. No AI answer was generated.", 503);
       return jsonError(`Gemini returned HTTP ${response.status}${providerCode ? ` (${providerCode})` : ""}. ${providerDetail || "Check the server diagnostic log."}`, 502);
     }
     const payload = await response.json();
