@@ -84,11 +84,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message, queuedForHumanReview: !caseError }, { status });
   };
 
-  const { count, error: countError } = await supabase.from("content_checks").select("id", { count: "exact", head: true })
-    .eq("post_id", post.id).eq("check_type", "claim")
-    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
-  if (countError) return NextResponse.json({ error: "Could not verify the assessment usage limit." }, { status: 503 });
-  if ((count ?? 0) >= 6) return NextResponse.json({ error: "This post has reached its limit of 6 assessment attempts per hour." }, { status: 429 });
+  const { data: assessmentSlot, error: quotaError } = await supabase.rpc("reserve_post_ai_assessment", {
+    p_post_id: post.id,
+    p_user_id: authData.user.id,
+    p_check_type: "claim",
+  });
+  if (quotaError) {
+    console.error("Could not reserve claim assessment quota:", quotaError.message);
+    return NextResponse.json({ error: "Could not verify the assessment usage limit. Try again shortly." }, { status: 503 });
+  }
+  if (assessmentSlot !== true) return NextResponse.json({ error: "This post has reached its limit of 6 assessment attempts per hour." }, { status: 429 });
 
   if (!apiKey) {
     const { error: unavailableSaveError } = await supabase.from("content_checks").insert({
